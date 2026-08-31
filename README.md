@@ -1,19 +1,19 @@
 # RuangKampus — Project PPK 2026
 
-Scaffold full-stack untuk sistem reservasi dan pelaporan fasilitas kampus. Pengunjung dapat melihat fasilitas dan ketersediaan tanpa login; pengguna terverifikasi mengajukan reservasi/laporan; petugas dan admin memproses antrean melalui portal berbasis peran.
+Scaffold full-stack satu aplikasi untuk sistem reservasi dan pelaporan fasilitas kampus. Pengunjung dapat melihat fasilitas tanpa login, sedangkan route pengguna, petugas, dan admin telah disiapkan untuk milestone fitur berikutnya.
 
 ## Stack
 
-- Vite, React 19, TypeScript, React Router, TanStack Query
-- shadcn/ui preset `b7Br7GOGm` (Maia, emerald/mist, Hugeicons)
-- Fastify, Zod, cookie session
-- PostgreSQL 17, Drizzle ORM
-- pnpm workspace, Turborepo
-- Vitest, Testing Library, Playwright, GitHub Actions
+- Next.js 16 App Router, React 19, dan TypeScript
+- Tailwind CSS v4 dan shadcn/ui preset `b7Br7GOGm` (Maia, emerald/mist, Hugeicons)
+- Next.js Route Handlers, Zod, dan database-backed cookie session
+- PostgreSQL 17 dan Drizzle ORM
+- pnpm workspace dan Turborepo
+- Vitest, Testing Library, Playwright, dan GitHub Actions
 
 ## Mulai lokal
 
-Prasyarat: Node.js 20+, pnpm 11+, Docker Desktop, dan Git.
+Prasyarat: Node.js 20.9+, pnpm 11+, Docker Desktop, dan Git.
 
 ```bash
 cp .env.example .env
@@ -24,18 +24,18 @@ pnpm db:seed
 pnpm dev
 ```
 
-- Web: <http://localhost:5173>
-- API health: <http://localhost:3000/health>
-- PostgreSQL: `localhost:5432`
-
 Di PowerShell, gunakan `Copy-Item .env.example .env` untuk menyalin environment file.
+
+- Aplikasi: <http://localhost:3000>
+- Health endpoint: <http://localhost:3000/health>
+- PostgreSQL: `localhost:5432`
 
 ## Perintah penting
 
 ```bash
-pnpm dev          # web + API
-pnpm check        # lint + typecheck + unit test + build
-pnpm test:e2e     # smoke test browser
+pnpm dev          # Next.js pada port 3000
+pnpm check        # lint + typecheck + unit test + production build
+pnpm test:e2e     # browser smoke test desktop dan mobile
 pnpm db:generate  # buat migration setelah schema berubah
 pnpm db:migrate   # jalankan migration
 pnpm db:seed      # masukkan data demo
@@ -45,17 +45,18 @@ pnpm db:seed      # masukkan data demo
 
 Sudah tersedia:
 
-- workspace web/API/UI/contracts;
-- schema database, migration, seed, dan constraint bentrok approved;
-- session store PostgreSQL, role guard, error envelope, health/session endpoint;
-- route dan layout publik, pengguna, petugas, admin;
-- client-side form validation yang memakai schema bersama;
-- unit/integration/e2e test dan CI.
+- satu Next.js app dengan public, auth, user, staff, dan admin route groups;
+- schema, migration, seed, serta constraint bentrok reservasi approved;
+- signed opaque session cookie, role guard server-side, health/session endpoint, dan REST error envelope;
+- shared contracts dan shared shadcn component package;
+- client-side form validation, unit test, integration smoke test, E2E, serta CI;
+- konfigurasi monorepo yang siap dihubungkan ke Vercel.
 
-Belum termasuk implementasi fitur bisnis penuh: register/login/logout, CRUD, upload foto, proses keputusan, dan export. Form saat ini memvalidasi data lalu menampilkan status scaffold.
+Belum termasuk fitur bisnis penuh: register/login/logout, CRUD, upload foto, keputusan petugas, dan export. Form saat ini memvalidasi data lalu menampilkan status scaffold.
 
 Dokumentasi lanjutan:
 
 - [Arsitektur](docs/ARCHITECTURE.md)
 - [Pembagian tim](docs/TEAM-WORK.md)
+- [Deployment Vercel](docs/DEPLOYMENT.md)
 - [Panduan kontribusi](CONTRIBUTING.md)

@@ -13,7 +13,7 @@ import {
   CardHeader,
 } from "@workspace/ui/components/card"
 import { cn } from "@workspace/ui/lib/utils"
-import { Link } from "react-router-dom"
+import Link from "next/link"
 
 import { StatusPill } from "@/components/status-pill"
 
@@ -53,7 +53,7 @@ export function FacilityCard({ facility }: { facility: Facility }) {
       </CardContent>
       <CardFooter className="mt-1 border-t px-5 py-4">
         <Link
-          to={`/facilities?selected=${facility.id}`}
+          href={`/facilities?selected=${facility.id}`}
           className={cn(
             buttonVariants({ variant: "ghost", size: "sm" }),
             "-ml-3 text-primary"

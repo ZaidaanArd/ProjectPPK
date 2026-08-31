@@ -1,3 +1,5 @@
+"use client"
+
 import { zodResolver } from "@hookform/resolvers/zod"
 import { registerInputSchema, type RegisterInput } from "@workspace/contracts"
 import { Button } from "@workspace/ui/components/button"
@@ -5,7 +7,7 @@ import { Card, CardContent } from "@workspace/ui/components/card"
 import { Input } from "@workspace/ui/components/input"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
-import { Link } from "react-router-dom"
+import Link from "next/link"
 
 import { FormField } from "@/components/form-field"
 
@@ -92,7 +94,7 @@ export function Component() {
       </Card>
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Sudah terdaftar?{" "}
-        <Link to="/login" className="font-bold text-primary hover:underline">
+        <Link href="/login" className="font-bold text-primary hover:underline">
           Masuk
         </Link>
       </p>

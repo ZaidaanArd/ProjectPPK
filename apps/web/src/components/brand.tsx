@@ -1,11 +1,11 @@
 import { Building03Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Link } from "react-router-dom"
+import Link from "next/link"
 
 export function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <Link
-      to="/"
+      href="/"
       aria-label="RuangKampus, kembali ke beranda"
       className="group inline-flex items-center gap-3"
     >

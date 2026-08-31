@@ -10,7 +10,7 @@ import { buttonVariants } from "@workspace/ui/components/button"
 import { Badge } from "@workspace/ui/components/badge"
 import { Card, CardContent } from "@workspace/ui/components/card"
 import { cn } from "@workspace/ui/lib/utils"
-import { Link } from "react-router-dom"
+import Link from "next/link"
 
 import { FacilityCard } from "@/components/facility-card"
 import { facilities } from "@/mocks/facilities"
@@ -47,7 +47,10 @@ export function Component() {
               laporkan kerusakan dalam satu jalur yang mudah dipantau.
             </p>
             <div className="page-enter stagger-3 mt-8 flex flex-wrap gap-3">
-              <Link to="/facilities" className={buttonVariants({ size: "lg" })}>
+              <Link
+                href="/facilities"
+                className={buttonVariants({ size: "lg" })}
+              >
                 Cek fasilitas
                 <HugeiconsIcon
                   icon={ArrowRight02Icon}
@@ -56,7 +59,7 @@ export function Component() {
                 />
               </Link>
               <Link
-                to="/register"
+                href="/register"
                 className={buttonVariants({ variant: "outline", size: "lg" })}
               >
                 Buat akun
@@ -146,7 +149,7 @@ export function Component() {
             </h2>
           </div>
           <Link
-            to="/facilities"
+            href="/facilities"
             className={buttonVariants({ variant: "outline" })}
           >
             Lihat semua fasilitas

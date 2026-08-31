@@ -1,10 +1,11 @@
 import { Calendar03Icon, Tick02Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Link, Outlet } from "react-router-dom"
+import Link from "next/link"
+import type { ReactNode } from "react"
 
 import { Brand } from "@/components/brand"
 
-export function AuthLayout() {
+export function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <main className="grid min-h-svh bg-muted/40 lg:grid-cols-[0.85fr_1.15fr]">
       <section className="relative hidden overflow-hidden bg-foreground p-12 text-background lg:flex lg:flex-col lg:justify-between">
@@ -44,14 +45,14 @@ export function AuthLayout() {
             <Brand />
           </div>
           <Link
-            to="/"
+            href="/"
             className="text-sm font-semibold text-muted-foreground hover:text-foreground"
           >
             Kembali ke beranda
           </Link>
         </div>
         <div className="mx-auto flex w-full max-w-md flex-1 items-center py-12">
-          <Outlet />
+          {children}
         </div>
       </section>
     </main>

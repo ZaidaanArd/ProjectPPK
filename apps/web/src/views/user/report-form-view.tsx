@@ -1,3 +1,5 @@
+"use client"
+
 import { zodResolver } from "@hookform/resolvers/zod"
 import { reportInputSchema, type ReportInput } from "@workspace/contracts"
 import { Button } from "@workspace/ui/components/button"

@@ -1,5 +1,5 @@
 import { buttonVariants } from "@workspace/ui/components/button"
-import { Link } from "react-router-dom"
+import Link from "next/link"
 
 export function Component() {
   return (
@@ -14,7 +14,7 @@ export function Component() {
         <p className="mt-4 leading-7 text-muted-foreground">
           Halaman ini belum tersedia atau alamatnya sudah berubah.
         </p>
-        <Link to="/" className={buttonVariants({ className: "mt-7" })}>
+        <Link href="/" className={buttonVariants({ className: "mt-7" })}>
           Kembali ke beranda
         </Link>
       </div>

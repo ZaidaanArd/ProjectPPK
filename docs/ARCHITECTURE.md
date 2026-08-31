@@ -5,57 +5,49 @@
 ```text
 apps/
   web/
-    public/                 aset statis
-    src/app/                router, provider, layout
-    src/config/             konfigurasi frontend
-    src/views/              public/auth/user/staff/admin
-  api/
-    src/app/controllers/    translasi HTTP
-    src/app/services/       aturan bisnis dan guard
-    src/app/models/         schema, koneksi, session store
-    src/app/routes/         registrasi endpoint
-    src/config/             environment tervalidasi
+    src/app/                 App Router pages, layouts, dan Route Handlers
+    src/server/auth/         pembacaan dan validasi session
+    src/server/db/           schema, database client, dan seed
+    src/server/http/         REST response helpers
+    drizzle/                 SQL migrations dan metadata
 packages/
-  contracts/                schema Zod + type client/server
-  ui/                       komponen shadcn + design tokens
+  contracts/                 schema Zod dan type lintas boundary
+  ui/                        komponen shadcn dan design tokens
 ```
 
-Struktur ini memetakan ketentuan tugas `/public`, `/app (model/controller)`, `/views`, dan `/config` tanpa mencampur frontend dengan koneksi database.
+Route groups `(public)`, `(auth)`, `(user)`, `(staff)`, dan `(admin)` membagi ownership tanpa mengubah URL. Folder `src/server` menggantikan model/controller Fastify dan tidak boleh diimpor oleh Client Components.
 
 ## Aliran data
 
 ```text
-React view
-  → TanStack Query/API client
-  → Fastify route
-  → validasi Zod di server
-  → controller/service
-  → Drizzle ORM
-  → PostgreSQL
+Server Component → DAL/service → Drizzle → PostgreSQL
+Client Component → Route Handler → validasi/service → Drizzle → PostgreSQL
 ```
 
-Validasi di client membantu UX, tetapi server selalu memvalidasi ulang. Type dan schema umum tinggal di `@workspace/contracts`; model database hanya tinggal di API.
+Server Components tidak melakukan HTTP request ke Route Handlers milik aplikasi sendiri. Keduanya memakai DAL/service yang sama. Validasi client membantu UX, tetapi setiap endpoint mutasi wajib memvalidasi ulang input, session, dan role di server.
 
 ## Autentikasi
 
-- Browser menerima cookie `ppk.sid` yang `HttpOnly`, `SameSite=Lax`, dan `Secure` di production.
-- Isi session disimpan pada tabel `sessions`, bukan di browser.
-- Request mutasi `/api/*` harus berasal dari `WEB_ORIGIN`.
-- `ProtectedLayout` mengatur redirect UI; Fastify role guard tetap menjadi sumber otorisasi utama.
-- Registrasi mandiri nantinya menghasilkan akun `pending`; hanya akun `active` dapat login.
+- Cookie `ppk.sid` berisi opaque session ID dan signature HMAC-SHA256.
+- Isi session dan expiry tetap berada di tabel `sessions`.
+- Cookie produksi wajib `HttpOnly`, `SameSite=Lax`, `Secure`, path `/`, dan maksimal tujuh hari.
+- Layout protected memanggil `requireUser`; tidak ada session mengarah ke `/login`, role yang salah ke `/forbidden`.
+- Setiap Route Handler sensitif tetap harus mengulangi pemeriksaan session/role.
+- Registrasi dan login nyata belum termasuk scaffold ini.
 
 ## Reservasi
 
-- Waktu disimpan sebagai UTC dan ditampilkan dalam `Asia/Jakarta`.
-- Rentang harus berada pada 07.00–20.00 WIB, pada hari yang sama, dan tepat pada slot 30 menit.
+- Waktu disimpan dalam UTC dan ditampilkan sebagai `Asia/Jakarta`.
+- Rentang harus berada pada 07.00–20.00 WIB, di hari yang sama, dan sejajar slot 30 menit.
 - Reservasi `pending` boleh beririsan.
-- Saat approval, service wajib memakai transaksi database.
-- Constraint PostgreSQL `reservations_no_approved_overlap` menjadi lapisan terakhir untuk mencegah race condition pada approval bersamaan.
+- Approval nantinya wajib memakai transaksi database.
+- Constraint PostgreSQL `reservations_no_approved_overlap` mencegah race condition saat approval bersamaan.
 
-## Kontrak API scaffold
+## Kontrak REST scaffold
 
-- `GET /health` — status service dan request ID.
+- `GET /health` — status runtime, versi, uptime, dan request ID.
 - `GET /api/v1/auth/session` — `{ user: UserSession | null }`.
-- Error envelope — `{ code, message, fieldErrors?, requestId }`.
+- Endpoint `/api/v1/*` yang belum tersedia — `{ code, message, requestId }` dengan status 404.
+- Error lain memakai `{ code, message, fieldErrors?, requestId }`.
 
-Namespace berikut sudah dicadangkan untuk milestone fitur: `/api/v1/auth`, `/facilities`, `/reservations`, `/reports`, `/staff`, dan `/admin`.
+Namespace fitur berikut sudah dicadangkan: `/api/v1/auth`, `/facilities`, `/reservations`, `/reports`, `/staff`, dan `/admin`.

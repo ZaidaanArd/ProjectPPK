@@ -1,6 +1,6 @@
 import { buttonVariants } from "@workspace/ui/components/button"
 import { Card, CardContent } from "@workspace/ui/components/card"
-import { Link } from "react-router-dom"
+import Link from "next/link"
 
 import { PageHeading } from "@/components/page-heading"
 import { StatusPill } from "@/components/status-pill"
@@ -34,7 +34,7 @@ export function Component() {
         title="Jadwal dan riwayat penggunaan."
         description="Lihat keputusan petugas, detail waktu, dan pembatalan yang pernah dilakukan."
         action={
-          <Link to="new" className={buttonVariants()}>
+          <Link href="/app/reservations/new" className={buttonVariants()}>
             Ajukan reservasi
           </Link>
         }

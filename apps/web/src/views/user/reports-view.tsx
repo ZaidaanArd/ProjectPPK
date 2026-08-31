@@ -1,6 +1,6 @@
 import { buttonVariants } from "@workspace/ui/components/button"
 import { Card, CardContent } from "@workspace/ui/components/card"
-import { Link } from "react-router-dom"
+import Link from "next/link"
 
 import { PageHeading } from "@/components/page-heading"
 import { StatusPill } from "@/components/status-pill"
@@ -13,7 +13,7 @@ export function Component() {
         title="Masalah yang sedang ditangani."
         description="Status laporan diperbarui oleh petugas beserta catatan penyelesaiannya."
         action={
-          <Link to="new" className={buttonVariants()}>
+          <Link href="/app/reports/new" className={buttonVariants()}>
             Buat laporan
           </Link>
         }

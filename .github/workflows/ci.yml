@@ -25,7 +25,6 @@ jobs:
     env:
       DATABASE_URL: postgres://ppk:ppk@localhost:5432/ppk
       SESSION_SECRET: ci-secret-with-at-least-32-characters
-      WEB_ORIGIN: http://localhost:5173
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -37,6 +36,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm db:migrate
+      - run: pnpm db:seed
       - run: pnpm check
 
   e2e:

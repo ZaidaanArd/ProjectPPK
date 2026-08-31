@@ -1,15 +1,11 @@
 import { render, screen } from "@testing-library/react"
-import { MemoryRouter } from "react-router-dom"
+import { createElement } from "react"
 
 import { Component } from "./home-view"
 
 describe("public home", () => {
   it("explains the core service without requiring login", () => {
-    render(
-      <MemoryRouter>
-        <Component />
-      </MemoryRouter>
-    )
+    render(createElement(Component))
 
     expect(
       screen.getByRole("heading", {

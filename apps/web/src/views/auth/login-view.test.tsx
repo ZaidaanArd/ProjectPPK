@@ -1,17 +1,13 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { MemoryRouter } from "react-router-dom"
+import { createElement } from "react"
 
 import { Component } from "./login-view"
 
 describe("login form", () => {
   it("runs client-side validation before submission", async () => {
     const user = userEvent.setup()
-    render(
-      <MemoryRouter>
-        <Component />
-      </MemoryRouter>
-    )
+    render(createElement(Component))
 
     await user.type(screen.getByLabelText(/email kampus/i), "bukan-email")
     await user.type(screen.getByLabelText(/kata sandi/i), "pendek")
