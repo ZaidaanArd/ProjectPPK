@@ -1,29 +1,26 @@
-# Pembagian Tim
+# Pembagian Tim RuangKampus
 
-## Ownership
+## Kondisi awal
 
-| Pemilik          | Porsi | Scaffold                                                            | Lanjutan                                               |
-| ---------------- | ----: | ------------------------------------------------------------------- | ------------------------------------------------------ |
-| Kamu / Tech Lead |   50% | Next.js, Route Handlers, Drizzle, session, contracts, CI, integrasi | Auth, service layer, conflict engine, analytics/export |
-| Anggota 2        |   17% | Shared UI, public layout, fasilitas, responsive shell               | US 1–2, fasilitas admin, okupansi/export UI            |
-| Anggota 3        |   17% | Auth dan user routes, form dengan client validation                 | US 3–7, UI reservasi dan laporan pengguna              |
-| Anggota 4        |   16% | Staff/admin routes, tabel antrean, status                           | US 8–15, proses petugas dan verifikasi akun            |
+Project baru berisi satu aplikasi Next.js, komponen dasar shadcn, placeholder route, dan satu health endpoint. Belum ada fitur yang dianggap selesai.
 
-## Batas file agar minim konflik
+| Anggota          | Porsi | Ownership implementasi berikutnya                                                         |
+| ---------------- | ----: | ----------------------------------------------------------------------------------------- |
+| Kamu / Tech Lead |   50% | Arsitektur, database, API/service, auth/session, contracts, integrasi, CI, dan deployment |
+| Anggota 2        |   17% | Komponen UI, public layout, daftar/detail fasilitas, dan responsive UI                    |
+| Anggota 3        |   17% | Auth, portal pengguna, reservasi, laporan, dan validasi form                              |
+| Anggota 4        |   16% | Portal petugas/admin, antrean approval, fasilitas, dan pengguna                           |
 
-- Lead: `apps/web/src/server`, `apps/web/src/app/api`, `packages/contracts`, root config, CI, dan integrasi route.
-- Anggota 2: `packages/ui`, `apps/web/src/app/(public)`, komponen fasilitas.
-- Anggota 3: `apps/web/src/app/(auth)`, `apps/web/src/app/(user)`, form pengguna.
-- Anggota 4: `apps/web/src/app/(staff)`, `apps/web/src/app/(admin)`, tabel/status operasional.
+## Batas folder
 
-Perubahan lintas ownership dibicarakan terlebih dahulu. Komponen reusable masuk ke `packages/ui` melalui PR anggota 2 atau review anggota 2.
+- Lead: konfigurasi root, `src/lib`, serta backend yang nanti dibuat di `src/server` dan `src/app/api`.
+- Anggota 2: `src/components/ui` dan `src/app/(public)`.
+- Anggota 3: `src/app/(auth)` dan `src/app/(user)`.
+- Anggota 4: `src/app/(staff)` dan `src/app/(admin)`.
 
-## Urutan kerja
+## Aturan mulai kerja
 
-1. Merge bootstrap dan migrasi Next.js milik lead.
-2. Anggota 2 menstabilkan primitives dan public shell.
-3. Anggota 3 dan 4 bekerja paralel di route group masing-masing.
-4. Lead menghubungkan Route Handlers, contracts, database, dan quality gate.
-5. Semua anggota melakukan review silang dan mengambil screenshot bagiannya.
-
-Setiap anggota membuat minimal tiga commit bermakna: struktur, implementasi, lalu test/dokumentasi. Pertahankan author commit ketika merge; jangan squash seluruh pekerjaan menjadi commit milik lead.
+1. Ambil satu user story dan buat branch sendiri.
+2. Jangan menganggap placeholder sebagai implementasi fitur.
+3. Buat minimal tiga commit bermakna: struktur, implementasi, dan perbaikan/test.
+4. Mintakan satu review silang sebelum merge ke `main`.

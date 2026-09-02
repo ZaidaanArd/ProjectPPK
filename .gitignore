@@ -17,9 +17,6 @@ dist-ssr
 .env*
 !.env.example
 
-# turbo
-.turbo
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

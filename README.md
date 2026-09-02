@@ -1,62 +1,47 @@
-# RuangKampus — Project PPK 2026
+# RuangKampus — Initial Scaffold
 
-Scaffold full-stack satu aplikasi untuk sistem reservasi dan pelaporan fasilitas kampus. Pengunjung dapat melihat fasilitas tanpa login, sedangkan route pengguna, petugas, dan admin telah disiapkan untuk milestone fitur berikutnya.
+Repository awal untuk project sistem reservasi dan pelaporan fasilitas kampus.
 
-## Stack
+> Status saat ini: **scaffold only**. Belum ada desain final, autentikasi, database, API, CRUD, approval, upload, export, atau business logic.
 
-- Next.js 16 App Router, React 19, dan TypeScript
-- Tailwind CSS v4 dan shadcn/ui preset `b7Br7GOGm` (Maia, emerald/mist, Hugeicons)
-- Next.js Route Handlers, Zod, dan database-backed cookie session
-- PostgreSQL 17 dan Drizzle ORM
-- pnpm workspace dan Turborepo
-- Vitest, Testing Library, Playwright, dan GitHub Actions
+## Stack awal
 
-## Mulai lokal
+- Next.js App Router, React, dan TypeScript
+- Tailwind CSS v4 dan shadcn/ui preset `b7Br7GOGm`
+- pnpm sebagai package manager
 
-Prasyarat: Node.js 20.9+, pnpm 11+, Docker Desktop, dan Git.
+## Menjalankan project
 
 ```bash
-cp .env.example .env
-pnpm install --frozen-lockfile
-docker compose up -d db
-pnpm db:migrate
-pnpm db:seed
+pnpm install
 pnpm dev
 ```
 
-Di PowerShell, gunakan `Copy-Item .env.example .env` untuk menyalin environment file.
+Buka <http://localhost:3000>. Database dan Docker belum dibutuhkan pada tahap ini.
 
-- Aplikasi: <http://localhost:3000>
-- Health endpoint: <http://localhost:3000/health>
-- PostgreSQL: `localhost:5432`
+Health check tersedia di <http://localhost:3000/api/health>.
 
-## Perintah penting
+## Struktur
 
-```bash
-pnpm dev          # Next.js pada port 3000
-pnpm check        # lint + typecheck + unit test + production build
-pnpm test:e2e     # browser smoke test desktop dan mobile
-pnpm db:generate  # buat migration setelah schema berubah
-pnpm db:migrate   # jalankan migration
-pnpm db:seed      # masukkan data demo
+```text
+src/
+  app/
+    (public)/       halaman umum
+    (auth)/         login dan registrasi
+    (user)/         portal pengguna
+    (staff)/        portal petugas
+    (admin)/        portal admin
+    api/health/     contoh backend Route Handler
+  components/ui/    komponen dasar shadcn
+  lib/              helper dan type/schema bersama nanti
 ```
 
-## Status scaffold
+Semua route saat ini hanya menampilkan placeholder. Folder dibuat lebih awal untuk membagi ownership dan mengurangi konflik ketika implementasi dimulai.
 
-Sudah tersedia:
+## Quality check
 
-- satu Next.js app dengan public, auth, user, staff, dan admin route groups;
-- schema, migration, seed, serta constraint bentrok reservasi approved;
-- signed opaque session cookie, role guard server-side, health/session endpoint, dan REST error envelope;
-- shared contracts dan shared shadcn component package;
-- client-side form validation, unit test, integration smoke test, E2E, serta CI;
-- konfigurasi monorepo yang siap dihubungkan ke Vercel.
+```bash
+pnpm check
+```
 
-Belum termasuk fitur bisnis penuh: register/login/logout, CRUD, upload foto, keputusan petugas, dan export. Form saat ini memvalidasi data lalu menampilkan status scaffold.
-
-Dokumentasi lanjutan:
-
-- [Arsitektur](docs/ARCHITECTURE.md)
-- [Pembagian tim](docs/TEAM-WORK.md)
-- [Deployment Vercel](docs/DEPLOYMENT.md)
-- [Panduan kontribusi](CONTRIBUTING.md)
+Pembagian kerja ada di [docs/TEAM-WORK.md](docs/TEAM-WORK.md).
