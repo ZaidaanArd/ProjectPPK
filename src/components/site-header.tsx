@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils"
 const nav = [
   { href: "/", label: "Beranda" },
   { href: "/facilities", label: "Fasilitas" },
-  { href: "/login", label: "Masuk" },
 ]
 
 export function SiteHeader() {

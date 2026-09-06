@@ -3,7 +3,6 @@ import Link from "next/link"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowRight01Icon,
-  Building02Icon,
   CalendarCheckIn01Icon,
   CheckmarkCircle02Icon,
   Clock01Icon,
@@ -96,10 +95,6 @@ export default function HomePage() {
       {/* Hero */}
       <section className="border-b bg-gradient-to-b from-accent/40 via-background to-background">
         <div className="mx-auto max-w-6xl px-6 pt-16 pb-12 md:pt-24 md:pb-16">
-          <Badge variant="secondary" className="mb-5">
-            <HugeiconsIcon icon={Building02Icon} size={14} strokeWidth={2} />
-            Sistem informasi fasilitas kampus
-          </Badge>
           <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-balance md:text-6xl">
             Pinjam ruangan kampus tanpa drama antre.
           </h1>
@@ -165,7 +160,7 @@ export default function HomePage() {
 
         <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {facilities.map((facility) => (
-            <Card key={facility.slug} className="transition-shadow hover:shadow-md">
+            <Card key={facility.slug} className="transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/40">
               <CardHeader>
                 <div className="flex items-start justify-between gap-3">
                   <Badge variant="secondary">{facility.category}</Badge>
@@ -211,7 +206,7 @@ export default function HomePage() {
           </h2>
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {steps.map((step) => (
-              <div key={step.title} className="rounded-2xl border bg-card p-5">
+              <div key={step.title} className="rounded-2xl border bg-card p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/40">
                 <span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <HugeiconsIcon icon={step.icon} size={20} strokeWidth={2} />
                 </span>
@@ -240,7 +235,7 @@ export default function HomePage() {
         </p>
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {portals.map((portal) => (
-            <Card key={portal.title}>
+            <Card key={portal.title} className="transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/40">
               <CardHeader>
                 <span className="flex size-10 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
                   <HugeiconsIcon icon={portal.icon} size={20} strokeWidth={2} />
@@ -276,19 +271,10 @@ export default function HomePage() {
           </p>
           <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
             <Link
-              href="/app/reports/new"
+              href="/register"
               className={cn(
                 buttonVariants({ variant: "secondary", size: "lg" }),
                 "bg-primary-foreground text-primary hover:bg-primary-foreground/90"
-              )}
-            >
-              Buat laporan kerusakan
-            </Link>
-            <Link
-              href="/register"
-              className={cn(
-                buttonVariants({ variant: "outline", size: "lg" }),
-                "border-primary-foreground/30 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
               )}
             >
               Daftar dulu, gratis
