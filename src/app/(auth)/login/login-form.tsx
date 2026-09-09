@@ -1,8 +1,19 @@
 "use client"
 
-import { useState } from "react"
+import Link from "next/link"
+import { useEffect, useState } from "react"
 import type { FormEvent } from "react"
-import { IconEye, IconEyeOff, IconLoader2 } from "@tabler/icons-react"
+import {
+  IconArrowLeft,
+  IconBuilding,
+  IconCalendarEvent,
+  IconChevronLeft,
+  IconChevronRight,
+  IconEye,
+  IconEyeOff,
+  IconFileDescription,
+  IconLoader2,
+} from "@tabler/icons-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -77,83 +88,214 @@ function SsoIcon() {
   )
 }
 
-function AbstractPanel() {
+const carouselSlides = [
+  {
+    title: "Temukan ruang yang tersedia",
+    description: "Cek fasilitas dan jadwalnya sebelum mengajukan reservasi.",
+    icon: IconBuilding,
+  },
+  {
+    title: "Reservasi tanpa bentrok jadwal",
+    description: "Pilih waktu penggunaan dalam slot 30 menit yang tersedia.",
+    icon: IconCalendarEvent,
+  },
+  {
+    title: "Laporkan fasilitas bermasalah",
+    description:
+      "Kirim laporan dan pantau status penanganannya dari satu tempat.",
+    icon: IconFileDescription,
+  },
+] as const
+
+const reservationSlots = Array.from({ length: 12 }, (_, index) => index)
+
+function FeaturePreview({ index }: { index: number }) {
+  if (index === 1) {
+    return (
+      <div className="grid h-full grid-cols-4 gap-3 p-6">
+        {reservationSlots.map((slot) => (
+          <div
+            key={slot}
+            className={
+              [2, 3, 6, 10].includes(slot)
+                ? "rounded-xl border border-white/15 bg-white/8"
+                : "rounded-xl border border-white/25 bg-white/20"
+            }
+          />
+        ))}
+        <div className="absolute right-8 bottom-8 left-8 rounded-2xl bg-white px-5 py-4 text-[#65002d] shadow-2xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-[#65002d]/55">Slot dipilih</p>
+              <p className="mt-0.5 font-semibold">09.00 – 09.30</p>
+            </div>
+            <IconCalendarEvent size={22} aria-hidden="true" />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (index === 2) {
+    return (
+      <div className="flex h-full flex-col justify-center px-9">
+        <div className="mb-8 flex items-center gap-4">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-white text-[#80003d]">
+            <IconFileDescription size={26} aria-hidden="true" />
+          </div>
+          <div>
+            <p className="text-sm text-white/55">Proyektor · Ruang Seminar</p>
+            <p className="mt-1 text-lg font-semibold">Sedang ditangani</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {["Dilaporkan", "Diproses", "Selesai"].map((label, step) => (
+            <div key={label}>
+              <div
+                className={
+                  step < 2
+                    ? "h-2 rounded-full bg-white"
+                    : "h-2 rounded-full bg-white/16"
+                }
+              />
+              <p className="mt-2 text-xs text-white/55">{label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="relative hidden flex-1 overflow-hidden lg:block">
-      <svg
-        className="absolute inset-0 h-full w-full"
-        viewBox="0 0 800 900"
-        preserveAspectRatio="xMidYMid slice"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-      >
-        <defs>
-          <radialGradient id="login-g1" cx="30%" cy="20%" r="70%">
-            <stop offset="0%" stopColor="#c6005c" />
-            <stop offset="100%" stopColor="#7b0036" stopOpacity="0" />
-          </radialGradient>
-          <radialGradient id="login-g2" cx="80%" cy="70%" r="65%">
-            <stop offset="0%" stopColor="#ff4d8f" />
-            <stop offset="100%" stopColor="#c6005c" stopOpacity="0" />
-          </radialGradient>
-          <radialGradient id="login-g3" cx="50%" cy="100%" r="60%">
-            <stop offset="0%" stopColor="#ff80b5" />
-            <stop offset="100%" stopColor="#c6005c" stopOpacity="0" />
-          </radialGradient>
-          <filter id="login-blur" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="40" />
-          </filter>
-        </defs>
-        <rect width="800" height="900" fill="#7b0036" />
-        <ellipse
-          cx="200"
-          cy="150"
-          rx="420"
-          ry="340"
-          fill="url(#login-g1)"
-          filter="url(#login-blur)"
-          opacity="0.9"
-        />
-        <ellipse
-          cx="650"
-          cy="620"
-          rx="380"
-          ry="420"
-          fill="url(#login-g2)"
-          filter="url(#login-blur)"
-          opacity="0.85"
-        />
-        <ellipse
-          cx="400"
-          cy="900"
-          rx="500"
-          ry="300"
-          fill="url(#login-g3)"
-          filter="url(#login-blur)"
-          opacity="0.7"
-        />
-        <path
-          d="M 0,400 C 150,200 350,600 500,300 C 650,0 750,500 800,350 L 800,900 L 0,900 Z"
-          fill="#ff4d8f"
-          opacity="0.18"
-          filter="url(#login-blur)"
-        />
-        <path
-          d="M 0,600 C 200,400 400,800 600,500 C 700,350 800,700 800,600 L 800,900 L 0,900 Z"
-          fill="#ffc0d9"
-          opacity="0.12"
-          filter="url(#login-blur)"
-        />
-        <path
-          d="M 100,0 C 300,200 100,500 400,400 C 600,300 700,100 800,200 L 800,0 Z"
-          fill="#ff80b5"
-          opacity="0.2"
-          filter="url(#login-blur)"
-        />
-      </svg>
-      {/* Curved left edge */}
-      <div className="absolute inset-y-0 left-0 w-[42px] -translate-x-1/2 rounded-full bg-background" />
+    <div className="grid h-full grid-cols-[1.25fr_0.75fr] gap-4 p-6">
+      <div className="grid grid-cols-2 grid-rows-3 gap-3">
+        <div className="col-span-2 rounded-2xl border border-white/18 bg-white/16" />
+        <div className="rounded-2xl border border-white/18 bg-white/10" />
+        <div className="rounded-2xl border border-white/25 bg-white/25" />
+        <div className="col-span-2 rounded-2xl border border-white/18 bg-white/12" />
+      </div>
+      <div className="flex flex-col justify-end rounded-2xl bg-white p-5 text-[#65002d] shadow-xl">
+        <IconBuilding size={24} aria-hidden="true" />
+        <p className="mt-auto text-xs text-[#65002d]/55">Tersedia sekarang</p>
+        <p className="mt-1 leading-tight font-semibold">Lab Komputer A</p>
+      </div>
     </div>
+  )
+}
+
+function AbstractPanel() {
+  const [activeSlide, setActiveSlide] = useState(0)
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+
+    const timer = window.setInterval(() => {
+      setActiveSlide((current) => (current + 1) % carouselSlides.length)
+    }, 5000)
+
+    return () => window.clearInterval(timer)
+  }, [])
+
+  const slide = carouselSlides[activeSlide]
+  const SlideIcon = slide.icon
+
+  function showPrevious() {
+    setActiveSlide(
+      (current) => (current - 1 + carouselSlides.length) % carouselSlides.length
+    )
+  }
+
+  function showNext() {
+    setActiveSlide((current) => (current + 1) % carouselSlides.length)
+  }
+
+  return (
+    <aside className="login-gradient-flow relative hidden h-full flex-1 overflow-hidden bg-[linear-gradient(145deg,#d00064_0%,#82003e_50%,#43001c_100%)] text-white lg:flex">
+      <div
+        className="login-gradient-drift absolute -right-32 -bottom-32 size-[620px] rounded-full bg-pink-300/25 blur-[100px]"
+        aria-hidden="true"
+      />
+
+      <div className="relative z-10 flex w-full flex-col px-12 py-10 xl:px-16 xl:py-12 2xl:px-24">
+        {/* <div className="flex items-center gap-3">
+          <div className="flex size-9 items-center justify-center rounded-xl bg-white/15">
+            <LogoIcon />
+          </div>
+          <span className="font-heading text-sm font-semibold">
+            RuangKampus
+          </span>
+        </div> */}
+
+        <div className="my-auto w-full max-w-[560px] self-center">
+          <div className="relative aspect-[16/10] overflow-hidden rounded-[28px] border border-white/16 bg-black/12 shadow-[0_30px_90px_rgba(39,0,18,0.3)] backdrop-blur-xl">
+            <div
+              key={activeSlide}
+              className="login-carousel-enter absolute inset-0"
+            >
+              <FeaturePreview index={activeSlide} />
+            </div>
+          </div>
+
+          <div className="mt-7 flex items-end justify-between gap-8">
+            <div className="max-w-sm" aria-live="polite">
+              <div className="mb-3 flex size-9 items-center justify-center rounded-xl bg-white/14">
+                <SlideIcon size={19} aria-hidden="true" />
+              </div>
+              <h2 className="font-heading text-2xl font-semibold tracking-tight xl:text-3xl">
+                {slide.title}
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-white/65">
+                {slide.description}
+              </p>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={showPrevious}
+                aria-label="Fitur sebelumnya"
+                className="rounded-full border border-white/15 text-white hover:bg-white/12 hover:text-white"
+              >
+                <IconChevronLeft aria-hidden="true" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={showNext}
+                aria-label="Fitur berikutnya"
+                className="rounded-full border border-white/15 text-white hover:bg-white/12 hover:text-white"
+              >
+                <IconChevronRight aria-hidden="true" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-7 flex gap-2" aria-label="Pilih fitur">
+            {carouselSlides.map((item, index) => (
+              <button
+                key={item.title}
+                type="button"
+                onClick={() => setActiveSlide(index)}
+                aria-label={
+                  "Tampilkan fitur " + (index + 1) + ": " + item.title
+                }
+                aria-current={index === activeSlide ? "true" : undefined}
+                className={
+                  index === activeSlide
+                    ? "h-1 w-10 rounded-full bg-white transition-all duration-300"
+                    : "h-1 w-5 rounded-full bg-white/25 transition-all duration-300"
+                }
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="absolute inset-y-0 left-0 w-8 -translate-x-1/2 rounded-full bg-background" />
+    </aside>
   )
 }
 
@@ -170,9 +312,17 @@ export function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-svh bg-background">
+    <div className="flex min-h-svh bg-background lg:h-svh lg:overflow-hidden">
       {/* Left — login panel */}
-      <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-8 py-12">
+      <div className="relative flex flex-1 flex-col items-center justify-center overflow-y-auto px-8 py-12 lg:h-svh lg:max-w-[48%] lg:flex-none lg:basis-[48%] xl:basis-[44%]">
+        <Link
+          href="/"
+          className="absolute top-6 left-6 inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:top-8 sm:left-8"
+        >
+          <IconArrowLeft size={17} aria-hidden="true" />
+          Kembali
+        </Link>
+
         <div className="w-full max-w-[380px]">
           {/* Logo */}
           <div className="mb-10 flex flex-col items-center gap-3">
