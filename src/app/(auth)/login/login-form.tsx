@@ -1,24 +1,23 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import type { FormEvent } from "react"
 import {
   IconArrowLeft,
-  IconBuilding,
-  IconCalendarEvent,
-  IconChevronLeft,
-  IconChevronRight,
   IconEye,
   IconEyeOff,
-  IconFileDescription,
+  IconInfoCircle,
   IconLoader2,
+  IconX,
 } from "@tabler/icons-react"
 
+import { LoginFeatureCarousel } from "./login-feature-carousel"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { LiveOrb } from "@/components/ui/live-orb"
 
 function LogoIcon() {
   return (
@@ -88,213 +87,62 @@ function SsoIcon() {
   )
 }
 
-const carouselSlides = [
-  {
-    title: "Temukan ruang yang tersedia",
-    description: "Cek fasilitas dan jadwalnya sebelum mengajukan reservasi.",
-    icon: IconBuilding,
-  },
-  {
-    title: "Reservasi tanpa bentrok jadwal",
-    description: "Pilih waktu penggunaan dalam slot 30 menit yang tersedia.",
-    icon: IconCalendarEvent,
-  },
-  {
-    title: "Laporkan fasilitas bermasalah",
-    description:
-      "Kirim laporan dan pantau status penanganannya dari satu tempat.",
-    icon: IconFileDescription,
-  },
-] as const
-
-const reservationSlots = Array.from({ length: 12 }, (_, index) => index)
-
-function FeaturePreview({ index }: { index: number }) {
-  if (index === 1) {
-    return (
-      <div className="grid h-full grid-cols-4 gap-3 p-6">
-        {reservationSlots.map((slot) => (
-          <div
-            key={slot}
-            className={
-              [2, 3, 6, 10].includes(slot)
-                ? "rounded-xl border border-white/15 bg-white/8"
-                : "rounded-xl border border-white/25 bg-white/20"
-            }
-          />
-        ))}
-        <div className="absolute right-8 bottom-8 left-8 rounded-2xl bg-white px-5 py-4 text-[#65002d] shadow-2xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-[#65002d]/55">Slot dipilih</p>
-              <p className="mt-0.5 font-semibold">09.00 – 09.30</p>
-            </div>
-            <IconCalendarEvent size={22} aria-hidden="true" />
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (index === 2) {
-    return (
-      <div className="flex h-full flex-col justify-center px-9">
-        <div className="mb-8 flex items-center gap-4">
-          <div className="flex size-14 items-center justify-center rounded-2xl bg-white text-[#80003d]">
-            <IconFileDescription size={26} aria-hidden="true" />
-          </div>
-          <div>
-            <p className="text-sm text-white/55">Proyektor · Ruang Seminar</p>
-            <p className="mt-1 text-lg font-semibold">Sedang ditangani</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          {["Dilaporkan", "Diproses", "Selesai"].map((label, step) => (
-            <div key={label}>
-              <div
-                className={
-                  step < 2
-                    ? "h-2 rounded-full bg-white"
-                    : "h-2 rounded-full bg-white/16"
-                }
-              />
-              <p className="mt-2 text-xs text-white/55">{label}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="grid h-full grid-cols-[1.25fr_0.75fr] gap-4 p-6">
-      <div className="grid grid-cols-2 grid-rows-3 gap-3">
-        <div className="col-span-2 rounded-2xl border border-white/18 bg-white/16" />
-        <div className="rounded-2xl border border-white/18 bg-white/10" />
-        <div className="rounded-2xl border border-white/25 bg-white/25" />
-        <div className="col-span-2 rounded-2xl border border-white/18 bg-white/12" />
-      </div>
-      <div className="flex flex-col justify-end rounded-2xl bg-white p-5 text-[#65002d] shadow-xl">
-        <IconBuilding size={24} aria-hidden="true" />
-        <p className="mt-auto text-xs text-[#65002d]/55">Tersedia sekarang</p>
-        <p className="mt-1 leading-tight font-semibold">Lab Komputer A</p>
-      </div>
-    </div>
-  )
-}
+const liveOrbColors = ["#f062aa", "#fff5fa", "#ffacd5"]
 
 function AbstractPanel() {
-  const [activeSlide, setActiveSlide] = useState(0)
-
-  useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
-
-    const timer = window.setInterval(() => {
-      setActiveSlide((current) => (current + 1) % carouselSlides.length)
-    }, 5000)
-
-    return () => window.clearInterval(timer)
-  }, [])
-
-  const slide = carouselSlides[activeSlide]
-  const SlideIcon = slide.icon
-
-  function showPrevious() {
-    setActiveSlide(
-      (current) => (current - 1 + carouselSlides.length) % carouselSlides.length
-    )
-  }
-
-  function showNext() {
-    setActiveSlide((current) => (current + 1) % carouselSlides.length)
-  }
+  const [showInfo, setShowInfo] = useState(false)
+  const [introConsumed, setIntroConsumed] = useState(false)
 
   return (
-    <aside className="login-gradient-flow relative hidden h-full flex-1 overflow-hidden bg-[linear-gradient(145deg,#d00064_0%,#82003e_50%,#43001c_100%)] text-white lg:flex">
+    <aside className="login-gradient-flow relative hidden h-full flex-1 items-center justify-center overflow-hidden bg-[linear-gradient(145deg,#d00064_0%,#82003e_50%,#43001c_100%)] text-white lg:flex">
       <div
         className="login-gradient-drift absolute -right-32 -bottom-32 size-[620px] rounded-full bg-pink-300/25 blur-[100px]"
         aria-hidden="true"
       />
 
-      <div className="relative z-10 flex w-full flex-col px-12 py-10 xl:px-16 xl:py-12 2xl:px-24">
-        {/* <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-xl bg-white/15">
-            <LogoIcon />
-          </div>
-          <span className="font-heading text-sm font-semibold">
-            RuangKampus
-          </span>
-        </div> */}
+      <button
+        type="button"
+        onClick={() => {
+          setIntroConsumed(true)
+          setShowInfo((current) => !current)
+        }}
+        aria-label={showInfo ? "Kembali ke orb" : "Lihat fitur RuangKampus"}
+        aria-pressed={showInfo}
+        title={showInfo ? "Kembali ke orb" : "Lihat fitur"}
+        className="absolute top-7 right-7 z-20 flex size-9 items-center justify-center rounded-full border border-white/20 bg-black/10 text-white/75 backdrop-blur-md transition-colors hover:bg-white/15 hover:text-white focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
+      >
+        {showInfo ? (
+          <IconX size={17} aria-hidden="true" />
+        ) : (
+          <IconInfoCircle size={18} aria-hidden="true" />
+        )}
+      </button>
 
-        <div className="my-auto w-full max-w-[560px] self-center">
-          <div className="relative aspect-[16/10] overflow-hidden rounded-[28px] border border-white/16 bg-black/12 shadow-[0_30px_90px_rgba(39,0,18,0.3)] backdrop-blur-xl">
-            <div
-              key={activeSlide}
-              className="login-carousel-enter absolute inset-0"
-            >
-              <FeaturePreview index={activeSlide} />
-            </div>
-          </div>
-
-          <div className="mt-7 flex items-end justify-between gap-8">
-            <div className="max-w-sm" aria-live="polite">
-              <div className="mb-3 flex size-9 items-center justify-center rounded-xl bg-white/14">
-                <SlideIcon size={19} aria-hidden="true" />
+      <div
+        key={showInfo ? "carousel" : "orb"}
+        className="login-panel-swap relative z-10 flex size-full items-center justify-center"
+      >
+        {showInfo ? (
+          <LoginFeatureCarousel />
+        ) : (
+          <div className="login-orb-scene" data-intro={!introConsumed}>
+            <div className="login-orb-halo" aria-hidden="true" />
+            <div className="login-orb-entrance">
+              <div className="login-orb-float">
+                <LiveOrb
+                  size={360}
+                  variant="webgl"
+                  appearance="luminous"
+                  colors={liveOrbColors}
+                />
               </div>
-              <h2 className="font-heading text-2xl font-semibold tracking-tight xl:text-3xl">
-                {slide.title}
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-white/65">
-                {slide.description}
-              </p>
             </div>
-
-            <div className="flex shrink-0 items-center gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                onClick={showPrevious}
-                aria-label="Fitur sebelumnya"
-                className="rounded-full border border-white/15 text-white hover:bg-white/12 hover:text-white"
-              >
-                <IconChevronLeft aria-hidden="true" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                onClick={showNext}
-                aria-label="Fitur berikutnya"
-                className="rounded-full border border-white/15 text-white hover:bg-white/12 hover:text-white"
-              >
-                <IconChevronRight aria-hidden="true" />
-              </Button>
+            <div className="login-orb-shadow" aria-hidden="true">
+              <div />
             </div>
           </div>
-
-          <div className="mt-7 flex gap-2" aria-label="Pilih fitur">
-            {carouselSlides.map((item, index) => (
-              <button
-                key={item.title}
-                type="button"
-                onClick={() => setActiveSlide(index)}
-                aria-label={
-                  "Tampilkan fitur " + (index + 1) + ": " + item.title
-                }
-                aria-current={index === activeSlide ? "true" : undefined}
-                className={
-                  index === activeSlide
-                    ? "h-1 w-10 rounded-full bg-white transition-all duration-300"
-                    : "h-1 w-5 rounded-full bg-white/25 transition-all duration-300"
-                }
-              />
-            ))}
-          </div>
-        </div>
+        )}
       </div>
-
-      <div className="absolute inset-y-0 left-0 w-8 -translate-x-1/2 rounded-full bg-background" />
     </aside>
   )
 }
@@ -314,7 +162,7 @@ export function LoginForm() {
   return (
     <div className="flex min-h-svh bg-background lg:h-svh lg:overflow-hidden">
       {/* Left — login panel */}
-      <div className="relative flex flex-1 flex-col items-center justify-center overflow-y-auto px-8 py-12 lg:h-svh lg:max-w-[48%] lg:flex-none lg:basis-[48%] xl:basis-[44%]">
+      <div className="login-form-panel relative z-10 flex flex-1 flex-col items-center overflow-y-auto px-8 pt-24 pb-12 lg:h-svh lg:max-w-[48%] lg:flex-none lg:basis-[48%] lg:rounded-r-2xl xl:basis-[44%]">
         <Link
           href="/"
           className="absolute top-6 left-6 inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:top-8 sm:left-8"
@@ -323,10 +171,10 @@ export function LoginForm() {
           Kembali
         </Link>
 
-        <div className="w-full max-w-[380px]">
+        <div className="my-auto w-full max-w-[380px] shrink-0">
           {/* Logo */}
           <div className="mb-10 flex flex-col items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <div className="login-pink-accent flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
               <LogoIcon />
             </div>
             <div className="text-center">
@@ -427,7 +275,7 @@ export function LoginForm() {
             <Button
               type="submit"
               disabled={loading}
-              className="mt-1 w-full rounded-lg"
+              className="login-pink-accent mt-1 w-full rounded-lg"
             >
               {loading ? (
                 <>
