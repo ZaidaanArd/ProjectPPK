@@ -8,7 +8,7 @@ import { site, siteUrl } from "@/lib/site"
 
 const robotoHeading = localFont({
   src: "./fonts/roboto.woff2",
-  weight: "100 900",
+  weight: "700",
   display: "swap",
   variable: "--font-heading",
 })
