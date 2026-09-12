@@ -106,6 +106,7 @@ export default function HomePage() {
                   "@type": "WebSite",
                   "@id": `${siteUrl}/#website`,
                   name: site.name,
+                  alternateName: "Sthana",
                   url: siteUrl,
                   description: site.description,
                   inLanguage: "id-ID",
@@ -230,7 +231,7 @@ export default function HomePage() {
               Katalog contoh · Foto merupakan ilustrasi fasilitas.
             </p>
           </section>
-          <section id="tentang" data-reveal aria-labelledby="steps-heading">
+          <section id="cara-kerja" data-reveal aria-labelledby="steps-heading">
             <div className="section-heading">
               <h2 id="steps-heading">
                 Dari cari ruangan

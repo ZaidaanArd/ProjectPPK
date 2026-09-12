@@ -94,6 +94,7 @@
 .sthana-header a:focus-visible,
 .sthana-header button:focus-visible,
 .sthana-landing a:focus-visible,
+.sthana-about a:focus-visible,
 .sthana-footer a:focus-visible {
   outline: 3px solid #f075b3;
   outline-offset: 5px;
@@ -109,6 +110,90 @@
 .sthana-landing {
   color: #1c172f;
   overflow: clip;
+}
+.sthana-about {
+  color: #1c172f;
+  background:
+    radial-gradient(circle at 8% 4%, #fff0f7 0, transparent 28rem),
+    linear-gradient(#fff, #fffcfe);
+}
+.about-hero {
+  padding-block: clamp(72px, 10vw, 132px) clamp(52px, 7vw, 88px);
+  border-bottom: 1px solid #f0e4ec;
+}
+.about-hero h1 {
+  max-width: 760px;
+  font-family: var(--font-heading), sans-serif;
+  font-size: clamp(44px, 6vw, 76px);
+  font-weight: 750;
+  line-height: 1.02;
+  letter-spacing: -0.05em;
+}
+.about-hero p {
+  max-width: 690px;
+  margin-top: 28px;
+  color: #655b70;
+  font-size: clamp(17px, 2vw, 21px);
+  line-height: 1.75;
+}
+.about-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr);
+  gap: clamp(48px, 8vw, 110px);
+  padding-block: clamp(58px, 8vw, 100px);
+}
+.about-main {
+  display: grid;
+  gap: 52px;
+}
+.about-section h2,
+.about-project h2 {
+  font-family: var(--font-heading), sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+.about-section p,
+.about-project p,
+.about-role-list p {
+  margin-top: 14px;
+  color: #6f6579;
+  font-size: 14px;
+  line-height: 1.8;
+}
+.about-role-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 22px;
+}
+.about-role-list li {
+  padding: 20px;
+  border: 1px solid #eee4eb;
+  border-radius: 14px;
+  background: rgb(255 255 255 / 72%);
+}
+.about-role-list strong {
+  font-size: 14px;
+  font-weight: 650;
+}
+.about-role-list p {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.about-project {
+  align-self: start;
+  padding: 28px;
+  border: 1px solid #f0dbe7;
+  border-radius: 18px;
+  background: #fff8fc;
+}
+.about-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
 }
 .landing-hero {
   position: relative;
@@ -962,6 +1047,9 @@
     grid-template-columns: 1.5fr 1fr;
     gap: 28px;
   }
+  .about-content {
+    grid-template-columns: 1fr;
+  }
 }
 @media (max-width: 600px) {
   .header-row .sthana-button {
@@ -1160,6 +1248,21 @@
     width: 200px;
     height: 200px;
     opacity: 0.2;
+  }
+  .about-hero {
+    padding-block: 58px 46px;
+  }
+  .about-hero h1 {
+    font-size: 44px;
+  }
+  .about-role-list {
+    grid-template-columns: 1fr;
+  }
+  .about-main {
+    gap: 42px;
+  }
+  .about-project {
+    padding: 22px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
