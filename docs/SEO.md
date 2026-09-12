@@ -24,8 +24,11 @@ Use the verified `myudak.com` Domain property, which also covers `sthana.myudak.
 
 ### Submission log
 
-| Date (Asia/Jakarta) | Sitemap | Live test | Indexing request |
-| ------------------- | ------- | --------- | ---------------- |
-| 2026-09-12          | Success | Indexable | Queued           |
+| Date (Asia/Jakarta) | Sitemap           | Live test                         | Indexing request |
+| ------------------- | ----------------- | --------------------------------- | ---------------- |
+| 2026-09-12          | Success           | Indexable                         | Queued           |
+| 2026-09-13          | Success (2 pages) | Homepage and `/tentang` indexable | Both queued      |
+
+On 2026-09-13, Search Console initially reported `/tentang` as "Discovered - currently not indexed", which is expected for a newly published URL. Its live test passed before the indexing request was submitted.
 
 The Rich Results Test detected one valid Software Application item. Its only notices were the optional `offers` and `aggregateRating` fields; they remain omitted because the scaffold has no real pricing or ratings.
