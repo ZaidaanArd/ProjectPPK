@@ -95,11 +95,35 @@ export default function HomePage() {
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
               "@context": "https://schema.org",
-              "@type": "WebSite",
-              name: site.name,
-              url: siteUrl,
-              description: site.description,
-              inLanguage: "id-ID",
+              "@graph": [
+                {
+                  "@type": "Person",
+                  "@id": `${siteUrl}/#creator`,
+                  name: site.creator.name,
+                  url: site.creator.url,
+                },
+                {
+                  "@type": "WebSite",
+                  "@id": `${siteUrl}/#website`,
+                  name: site.name,
+                  url: siteUrl,
+                  description: site.description,
+                  inLanguage: "id-ID",
+                  creator: { "@id": `${siteUrl}/#creator` },
+                },
+                {
+                  "@type": "WebApplication",
+                  "@id": `${siteUrl}/#application`,
+                  name: site.name,
+                  url: siteUrl,
+                  description: site.description,
+                  applicationCategory: "BusinessApplication",
+                  operatingSystem: "Web",
+                  inLanguage: "id-ID",
+                  creator: { "@id": `${siteUrl}/#creator` },
+                  isPartOf: { "@id": `${siteUrl}/#website` },
+                },
+              ],
             }).replace(/</g, "\\u003c"),
           }}
         />
