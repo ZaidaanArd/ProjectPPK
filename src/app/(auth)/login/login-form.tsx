@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { BrandLogo } from "@/components/brand-logo"
 import { useState } from "react"
 import type { FormEvent } from "react"
 import {
@@ -18,26 +19,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { LiveOrb } from "@/components/ui/live-orb"
-
-function LogoIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
 
 function GoogleIcon() {
   return (
@@ -106,7 +87,7 @@ function AbstractPanel() {
           setIntroConsumed(true)
           setShowInfo((current) => !current)
         }}
-        aria-label={showInfo ? "Kembali ke orb" : "Lihat fitur RuangKampus"}
+        aria-label={showInfo ? "Kembali ke orb" : "Lihat fitur Sthana Kampus"}
         aria-pressed={showInfo}
         title={showInfo ? "Kembali ke orb" : "Lihat fitur"}
         className="absolute top-7 right-7 z-20 flex size-9 items-center justify-center rounded-full border border-white/20 bg-black/10 text-white/75 backdrop-blur-md transition-colors hover:bg-white/15 hover:text-white focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
@@ -174,12 +155,10 @@ export function LoginForm() {
         <div className="my-auto w-full max-w-[380px] shrink-0">
           {/* Logo */}
           <div className="mb-10 flex flex-col items-center gap-3">
-            <div className="login-pink-accent flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <LogoIcon />
-            </div>
+            <BrandLogo markOnly />
             <div className="text-center">
               <h1 className="font-heading text-[26px] font-semibold tracking-tight text-foreground">
-                Selamat Datang di RuangKampus!
+                Selamat Datang di Sthana Kampus!
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
                 Masuk ke akun Anda untuk melanjutkan
