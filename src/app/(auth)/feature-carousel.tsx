@@ -104,7 +104,7 @@ function FeaturePreview({ index }: { index: number }) {
   )
 }
 
-export function LoginFeatureCarousel() {
+export function FeatureCarousel() {
   const [activeSlide, setActiveSlide] = useState(0)
 
   useEffect(() => {
