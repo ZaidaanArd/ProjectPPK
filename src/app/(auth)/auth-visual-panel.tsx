@@ -19,6 +19,11 @@ export function AuthVisualPanel() {
         aria-hidden="true"
       />
 
+      <div
+        aria-hidden="true"
+        className="absolute inset-y-0 left-0 w-[42px] -translate-x-1/2 rounded-full bg-background"
+      />
+
       <button
         type="button"
         onClick={() => {
