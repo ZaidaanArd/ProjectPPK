@@ -16,10 +16,11 @@ import {
 import { DashboardPreview } from "@/components/public/dashboard-preview"
 import { LandingMotion } from "@/components/public/landing-motion"
 import { facilities } from "@/lib/facilities"
+import { site, siteUrl } from "@/lib/site"
 export const metadata: Metadata = {
   title: { absolute: "Sthana Kampus — Reservasi & Pelaporan Fasilitas Kampus" },
-  description:
-    "Cari fasilitas kampus, ajukan reservasi ruangan, pantau persetujuan, dan laporkan kerusakan dalam satu tempat.",
+  description: site.description,
+  ...(siteUrl ? { alternates: { canonical: siteUrl } } : {}),
 }
 const features = [
   {
@@ -88,6 +89,21 @@ const portals = [
 export default function HomePage() {
   return (
     <main id="main-content" className="sthana-landing">
+      {siteUrl && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: site.name,
+              url: siteUrl,
+              description: site.description,
+              inLanguage: "id-ID",
+            }).replace(/</g, "\\u003c"),
+          }}
+        />
+      )}
       <LandingMotion>
         <section className="landing-hero">
           <div className="sthana-container hero-grid">
