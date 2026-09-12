@@ -8,6 +8,8 @@ export type Facility = {
   capacity: number
   status: FacilityStatus
   description: string
+  image: string
+  imageAlt: string
 }
 
 // Data contoh untuk tampilan public.
@@ -15,6 +17,8 @@ export type Facility = {
 export const facilities: Facility[] = [
   {
     slug: "aula-gedung-a",
+    image: "/images/facilities/16859956.jpg",
+    imageAlt: "Ilustrasi aula dengan deretan kursi untuk seminar",
     name: "Aula Gedung A",
     category: "Aula",
     building: "Gedung A · Lt. 2",
@@ -25,6 +29,8 @@ export const facilities: Facility[] = [
   },
   {
     slug: "lab-komputer-3",
+    image: "/images/facilities/18471480.jpg",
+    imageAlt: "Ilustrasi laboratorium dengan deretan komputer",
     name: "Lab Komputer 3",
     category: "Laboratorium",
     building: "Gedung Informatika · Lt. 3",
@@ -35,6 +41,8 @@ export const facilities: Facility[] = [
   },
   {
     slug: "ruang-seminar-2",
+    image: "/images/facilities/6602623.jpg",
+    imageAlt: "Ilustrasi ruang kelas dengan meja dan kursi",
     name: "Ruang Seminar 2",
     category: "Ruang Kelas",
     building: "Gedung Kuliah Bersama · Lt. 1",
@@ -45,16 +53,19 @@ export const facilities: Facility[] = [
   },
   {
     slug: "lapangan-basket-outdoor",
+    image: "/images/facilities/2186251.jpg",
+    imageAlt: "Ilustrasi lapangan basket di luar ruangan",
     name: "Lapangan Basket Outdoor",
     category: "Olahraga",
     building: "Kawasan Sport Center",
     capacity: 50,
     status: "Tersedia",
-    description:
-      "Bisa dipakai latihan rutin UKM dan kelas olahraga. Lampu lapangan sampai pukul 21.00.",
+    description: "Untuk latihan rutin UKM dan kegiatan olahraga kampus.",
   },
   {
     slug: "studio-multimedia",
+    image: "/images/facilities/7457920.jpg",
+    imageAlt: "Ilustrasi ruang kerja komputer multimedia",
     name: "Studio Multimedia",
     category: "Laboratorium",
     building: "Gedung Desain · Lt. 2",
@@ -65,6 +76,8 @@ export const facilities: Facility[] = [
   },
   {
     slug: "ruang-rapat-senat",
+    image: "/images/facilities/8102300.jpg",
+    imageAlt: "Ilustrasi ruang rapat dengan jendela besar",
     name: "Ruang Rapat Senat",
     category: "Rapat",
     building: "Gedung Rektorat · Lt. 4",
