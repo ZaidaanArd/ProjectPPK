@@ -7,7 +7,7 @@ import { BrandLogo } from "@/components/brand-logo"
 const nav = [
   { href: "/", label: "Beranda" },
   { href: "/facilities", label: "Fasilitas" },
-  { href: "/#tentang", label: "Tentang" },
+  { href: "/tentang", label: "Tentang" },
 ]
 export function SiteHeader() {
   const [open, setOpen] = useState(false)
