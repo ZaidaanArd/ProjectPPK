@@ -13,6 +13,7 @@ import {
 
 import { AuthVisualPanel } from "../auth-visual-panel"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
@@ -69,6 +70,7 @@ export function LoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
 
   function handleSubmit(e: FormEvent) {
@@ -186,6 +188,17 @@ export function LoginForm() {
                   )}
                 </Button>
               </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="remember-me"
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(checked === true)}
+              />
+              <Label htmlFor="remember-me" className="text-sm font-normal">
+                Ingat saya
+              </Label>
             </div>
 
             <Button
