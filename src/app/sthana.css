@@ -127,7 +127,6 @@
 .hero-copy {
   position: relative;
   z-index: 2;
-  animation: sthana-enter 800ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .hero-copy h1 {
   max-width: 550px;
