@@ -274,7 +274,7 @@ export default function HomePage() {
                   <div>
                     <h3>{title}</h3>
                     <p>{text}</p>
-                    <Link href={href}>
+                    <Link href={href} aria-label={`Buka portal ${title}`}>
                       Buka portal{" "}
                       <IconArrowRight size={15} aria-hidden="true" />
                     </Link>
