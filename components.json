@@ -20,5 +20,7 @@
   "rtl": false,
   "menuColor": "default",
   "menuAccent": "subtle",
-  "registries": {}
+  "registries": {
+    "@23rd": "https://23rd.dev/r/{name}.json"
+  }
 }

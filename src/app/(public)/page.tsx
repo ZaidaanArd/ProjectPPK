@@ -1,287 +1,282 @@
 import type { Metadata } from "next"
+import Image from "next/image"
 import Link from "next/link"
-import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  ArrowRight01Icon,
-  CalendarCheckIn01Icon,
-  CheckmarkCircle02Icon,
-  Clock01Icon,
-  Location01Icon,
-  Search01Icon,
-  Shield01Icon,
-  UserGroupIcon,
-  UserIcon,
-  Wrench01Icon,
-} from "@hugeicons/core-free-icons"
-
-import { Badge } from "@/components/ui/badge"
-import { buttonVariants } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { facilities, facilityStats, type FacilityStatus } from "@/lib/facilities"
-import { cn } from "@/lib/utils"
-
+  IconArrowRight,
+  IconBuilding,
+  IconCalendarEvent,
+  IconCheck,
+  IconMapPin,
+  IconSearch,
+  IconShield,
+  IconUsers,
+  IconUser,
+  IconTool as IconWrench,
+} from "@tabler/icons-react"
+import { DashboardPreview } from "@/components/public/dashboard-preview"
+import { LandingMotion } from "@/components/public/landing-motion"
+import { facilities } from "@/lib/facilities"
+import { site, siteUrl } from "@/lib/site"
 export const metadata: Metadata = {
-  title: "RuangKampus — Reservasi & Pelaporan Fasilitas Kampus",
-  description:
-    "Pesan aula, lab, ruang rapat, dan lapangan kampus. Pantau persetujuan dan laporkan kerusakan dalam satu tempat.",
+  title: { absolute: "Sthana Kampus — Reservasi & Pelaporan Fasilitas Kampus" },
+  description: site.description,
+  ...(siteUrl ? { alternates: { canonical: siteUrl } } : {}),
 }
-
-const statusVariant: Record<FacilityStatus, "default" | "secondary" | "destructive"> = {
-  Tersedia: "default",
-  Penuh: "secondary",
-  Perawatan: "destructive",
-}
-
+const features = [
+  {
+    icon: IconBuilding,
+    title: "Cari fasilitas",
+    text: "Ruangan hingga lapangan",
+  },
+  {
+    icon: IconCalendarEvent,
+    title: "Ajukan reservasi",
+    text: "Pilih jadwal yang sesuai",
+  },
+  {
+    icon: IconCheck,
+    title: "Pantau persetujuan",
+    text: "Status dalam satu tempat",
+  },
+  {
+    icon: IconWrench,
+    title: "Laporkan kendala",
+    text: "Ikuti progres penanganan",
+  },
+]
 const steps = [
   {
-    icon: Search01Icon,
-    title: "1. Cari fasilitas",
-    description:
-      "Telusuri daftar aula, lab, ruang rapat, dan lapangan beserta kapasitasnya.",
+    icon: IconSearch,
+    title: "Cari fasilitas",
+    text: "Temukan ruangan sesuai lokasi, kapasitas, dan kebutuhanmu.",
   },
   {
-    icon: CalendarCheckIn01Icon,
-    title: "2. Ajukan reservasi",
-    description:
-      "Pilih tanggal dan jam pakai, isi keperluan acara, lalu kirim pengajuan.",
+    icon: IconCalendarEvent,
+    title: "Ajukan reservasi",
+    text: "Pilih tanggal dan waktu, lalu isi keperluan penggunaan.",
   },
   {
-    icon: CheckmarkCircle02Icon,
-    title: "3. Tunggu persetujuan",
-    description:
-      "Petugas memverifikasi jadwal. Status bisa dipantau dari portal pengguna.",
+    icon: IconCheck,
+    title: "Tunggu persetujuan",
+    text: "Petugas memeriksa jadwal. Pantau status dari akunmu.",
   },
   {
-    icon: Wrench01Icon,
-    title: "4. Laporkan kendala",
-    description:
-      "AC mati atau proyektor rusak? Buat laporan agar cepat ditindaklanjuti.",
+    icon: IconWrench,
+    title: "Laporkan kendala",
+    text: "Ada yang rusak? Kirim laporan dan ikuti penanganannya.",
   },
-] as const
-
+]
 const portals = [
   {
-    icon: UserIcon,
+    icon: IconUser,
     title: "Pengguna",
-    description: "Mahasiswa & dosen: kelola reservasi dan laporan kerusakan.",
+    text: "Kelola reservasi dan laporan fasilitasmu.",
     href: "/app",
-    cta: "Buka portal pengguna",
   },
   {
-    icon: UserGroupIcon,
+    icon: IconUsers,
     title: "Petugas",
-    description: "Verifikasi reservasi dan tindak lanjuti laporan lapangan.",
+    text: "Verifikasi reservasi dan tangani laporan.",
     href: "/staff",
-    cta: "Buka portal petugas",
   },
   {
-    icon: Shield01Icon,
+    icon: IconShield,
     title: "Admin",
-    description: "Kelola data fasilitas, pengguna, dan rekap seluruh aktivitas.",
+    text: "Kelola fasilitas, pengguna, dan rekap aktivitas.",
     href: "/admin",
-    cta: "Buka portal admin",
   },
-] as const
-
+]
 export default function HomePage() {
   return (
-    <main>
-      {/* Hero */}
-      <section className="border-b bg-gradient-to-b from-accent/40 via-background to-background">
-        <div className="mx-auto max-w-6xl px-6 pt-16 pb-12 md:pt-24 md:pb-16">
-          <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-balance md:text-6xl">
-            Pinjam ruangan kampus tanpa drama antre.
-          </h1>
-          <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground md:text-lg">
-            RuangKampus menggantikan booking lewat chat dan kertas. Cari
-            fasilitas yang tersedia, ajukan reservasi, pantau status
-            persetujuan, dan laporkan kerusakan — semuanya tercatat rapi.
-          </p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link
-              href="/facilities"
-              className={cn(buttonVariants({ variant: "default", size: "lg" }))}
-            >
-              Lihat daftar fasilitas
-              <HugeiconsIcon icon={ArrowRight01Icon} size={18} strokeWidth={2} />
-            </Link>
-            <Link
-              href="/app/reservations/new"
-              className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
-            >
-              <HugeiconsIcon icon={CalendarCheckIn01Icon} size={18} strokeWidth={2} />
-              Ajukan reservasi
-            </Link>
+    <main id="main-content" className="sthana-landing">
+      {siteUrl && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: site.name,
+              url: siteUrl,
+              description: site.description,
+              inLanguage: "id-ID",
+            }).replace(/</g, "\\u003c"),
+          }}
+        />
+      )}
+      <LandingMotion>
+        <section className="landing-hero">
+          <div className="sthana-container hero-grid">
+            <div className="hero-copy">
+              <h1>
+                Pinjam ruangan kampus <span>tanpa drama antre.</span>
+              </h1>
+              <p>
+                Cari fasilitas, ajukan reservasi, dan pantau persetujuan. Semua
+                kebutuhan ruang kampusmu, dalam satu tempat.
+              </p>
+              <div className="hero-actions">
+                <Link href="/facilities" className="sthana-button primary">
+                  Lihat fasilitas{" "}
+                  <IconArrowRight size={18} aria-hidden="true" />
+                </Link>
+                <Link
+                  href="/app/reservations/new"
+                  className="sthana-button secondary"
+                >
+                  <IconCalendarEvent size={18} aria-hidden="true" />
+                  Ajukan reservasi
+                </Link>
+              </div>
+            </div>
+            <DashboardPreview />
           </div>
-
-          <dl className="mt-12 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {facilityStats.map((stat) => (
-              <div
-                key={stat.label}
-                className="rounded-2xl border bg-card px-5 py-4 ring-1 ring-foreground/5"
+          <div className="sthana-container feature-strip">
+            {features.map(({ icon: Icon, title, text }) => (
+              <div key={title}>
+                <span className="feature-icon">
+                  <Icon size={25} stroke={1.7} aria-hidden="true" />
+                </span>
+                <div>
+                  <h2>{title}</h2>
+                  <p>{text}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+        <div className="sthana-container landing-sections">
+          <section data-reveal aria-labelledby="facilities-heading">
+            <div className="section-heading">
+              <div>
+                <h2 id="facilities-heading">Ruang untuk setiap rencana.</h2>
+                <p>Temukan fasilitas yang pas untuk kegiatanmu.</p>
+              </div>
+              <Link
+                href="/facilities"
+                className="sthana-button secondary small"
               >
-                <dt className="order-2 mt-1 text-xs text-muted-foreground sm:text-sm">
-                  {stat.label}
-                </dt>
-                <dd className="order-1 text-2xl font-semibold tracking-tight md:text-3xl">
-                  {stat.value}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      </section>
-
-      {/* Fasilitas unggulan */}
-      <section className="mx-auto max-w-6xl px-6 py-14 md:py-20">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold tracking-wider text-primary uppercase">
-              Fasilitas unggulan
+                Semua fasilitas <IconArrowRight size={16} aria-hidden="true" />
+              </Link>
+            </div>
+            <div className="facility-grid">
+              {facilities.map((f) => (
+                <article className="facility-card" key={f.slug}>
+                  <div className="facility-photo">
+                    <Image
+                      src={f.image}
+                      alt={f.imageAlt}
+                      fill
+                      sizes="(max-width: 600px) 110px, (max-width: 1100px) 140px, 120px"
+                    />
+                  </div>
+                  <div className="facility-info">
+                    <div className="facility-tags">
+                      <span>{f.category}</span>
+                      <span
+                        className={`facility-status status-${f.status.toLowerCase()}`}
+                      >
+                        {f.status}
+                      </span>
+                    </div>
+                    <h3>{f.name}</h3>
+                    <p>{f.description}</p>
+                    <div className="facility-meta">
+                      <span>
+                        <IconMapPin size={13} aria-hidden="true" />
+                        {f.building}
+                      </span>
+                      <span>
+                        <IconUsers size={13} aria-hidden="true" />
+                        {f.capacity} orang
+                      </span>
+                    </div>
+                    <Link
+                      href="/facilities"
+                      aria-label={`Lihat fasilitas ${f.name}`}
+                    >
+                      Lihat fasilitas{" "}
+                      <IconArrowRight size={14} aria-hidden="true" />
+                    </Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <p className="demo-note">
+              Katalog contoh · Foto merupakan ilustrasi fasilitas.
             </p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
-              Paling sering dipesan minggu ini
-            </h2>
-          </div>
-          <Link
-            href="/facilities"
-            className={cn(buttonVariants({ variant: "outline" }))}
-          >
-            Semua fasilitas
-            <HugeiconsIcon icon={ArrowRight01Icon} size={16} strokeWidth={2} />
-          </Link>
-        </div>
-
-        <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {facilities.map((facility) => (
-            <Card key={facility.slug} className="transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/40">
-              <CardHeader>
-                <div className="flex items-start justify-between gap-3">
-                  <Badge variant="secondary">{facility.category}</Badge>
-                  <Badge variant={statusVariant[facility.status]}>
-                    {facility.status}
-                  </Badge>
-                </div>
-                <CardTitle className="mt-3 text-lg">{facility.name}</CardTitle>
-                <CardDescription>{facility.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
-                  <span className="inline-flex items-center gap-1.5">
-                    <HugeiconsIcon icon={Location01Icon} size={16} strokeWidth={2} />
-                    {facility.building}
+          </section>
+          <section id="tentang" data-reveal aria-labelledby="steps-heading">
+            <div className="section-heading">
+              <h2 id="steps-heading">
+                Dari cari ruangan
+                <br />
+                sampai urusan beres.
+              </h2>
+              <p>Empat langkah, semuanya tercatat.</p>
+            </div>
+            <div className="steps-grid">
+              {steps.map(({ icon: Icon, title, text }, i) => (
+                <article key={title}>
+                  <div className="step-top">
+                    <span className="feature-icon">
+                      <Icon size={26} stroke={1.7} aria-hidden="true" />
+                    </span>
+                    <span className="step-number">0{i + 1}</span>
+                  </div>
+                  <h3>{title}</h3>
+                  <p>{text}</p>
+                  {i < 3 && (
+                    <IconArrowRight
+                      className="step-arrow"
+                      size={20}
+                      aria-hidden="true"
+                    />
+                  )}
+                </article>
+              ))}
+            </div>
+          </section>
+          <section data-reveal aria-labelledby="portals-heading">
+            <div className="section-heading">
+              <h2 id="portals-heading">Satu sistem, tiga pintu masuk.</h2>
+            </div>
+            <div className="portal-grid">
+              {portals.map(({ icon: Icon, title, text, href }) => (
+                <article key={title}>
+                  <span className="feature-icon">
+                    <Icon size={25} aria-hidden="true" />
                   </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <HugeiconsIcon icon={UserGroupIcon} size={16} strokeWidth={2} />
-                    {facility.capacity} orang
-                  </span>
-                </div>
-                <Link
-                  href="/facilities"
-                  className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-                >
-                  Lihat detail & jadwal
-                  <HugeiconsIcon icon={ArrowRight01Icon} size={16} strokeWidth={2} />
-                </Link>
-              </CardContent>
-            </Card>
-          ))}
+                  <div>
+                    <h3>{title}</h3>
+                    <p>{text}</p>
+                    <Link href={href}>
+                      Buka portal{" "}
+                      <IconArrowRight size={15} aria-hidden="true" />
+                    </Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+          <section className="report-banner" data-reveal>
+            <div>
+              <h2>AC mati atau kursi rusak?</h2>
+              <p>Laporkan fasilitas bermasalah, lalu pantau penanganannya.</p>
+              <Link href="/app/reports/new" className="sthana-button white">
+                Laporkan kendala <IconArrowRight size={17} aria-hidden="true" />
+              </Link>
+            </div>
+            <Image
+              src="/brand/sthana-mark-512.png"
+              alt=""
+              width={260}
+              height={260}
+              className="banner-mark"
+            />
+          </section>
         </div>
-      </section>
-
-      {/* Alur */}
-      <section className="border-y bg-card/50">
-        <div className="mx-auto max-w-6xl px-6 py-14 md:py-20">
-          <p className="text-xs font-semibold tracking-wider text-primary uppercase">
-            Cara kerja
-          </p>
-          <h2 className="mt-2 max-w-xl text-2xl font-semibold tracking-tight md:text-3xl">
-            Dari cari ruangan sampai laporan beres, empat langkah saja
-          </h2>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {steps.map((step) => (
-              <div key={step.title} className="rounded-2xl border bg-card p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/40">
-                <span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <HugeiconsIcon icon={step.icon} size={20} strokeWidth={2} />
-                </span>
-                <h3 className="mt-4 text-sm font-semibold">{step.title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                  {step.description}
-                </p>
-              </div>
-            ))}
-          </div>
-          <p className="mt-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-            <HugeiconsIcon icon={Clock01Icon} size={16} strokeWidth={2} />
-            Rata-rata pengajuan diverifikasi petugas dalam &lt;24 jam kerja.
-          </p>
-        </div>
-      </section>
-
-      {/* Portal */}
-      <section className="mx-auto max-w-6xl px-6 py-14 md:py-20">
-        <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
-          Satu sistem, tiga pintu masuk
-        </h2>
-        <p className="mt-2 max-w-2xl text-muted-foreground">
-          Setiap peran punya portal sendiri supaya antrean reservasi dan laporan
-          tidak bercampur.
-        </p>
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {portals.map((portal) => (
-            <Card key={portal.title} className="transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/40">
-              <CardHeader>
-                <span className="flex size-10 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
-                  <HugeiconsIcon icon={portal.icon} size={20} strokeWidth={2} />
-                </span>
-                <CardTitle className="mt-3">{portal.title}</CardTitle>
-                <CardDescription>{portal.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Link
-                  href={portal.href}
-                  className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-                >
-                  {portal.cta}
-                </Link>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="mx-auto max-w-6xl px-6 pb-16 md:pb-24">
-        <div className="overflow-hidden rounded-3xl bg-primary px-6 py-12 text-center text-primary-foreground md:py-16">
-          <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary-foreground/15">
-            <HugeiconsIcon icon={Wrench01Icon} size={24} strokeWidth={2} />
-          </span>
-          <h2 className="mx-auto mt-5 max-w-xl text-2xl font-semibold tracking-tight text-balance md:text-3xl">
-            Nemu AC mati atau kursi rusak di ruangan?
-          </h2>
-          <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed opacity-90 md:text-base">
-            Jangan cuma difoto buat story. Laporkan lewat RuangKampus supaya
-            petugas mencatat, menindaklanjuti, dan memberi kabar progresnya.
-          </p>
-          <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
-            <Link
-              href="/register"
-              className={cn(
-                buttonVariants({ variant: "secondary", size: "lg" }),
-                "bg-primary-foreground text-primary hover:bg-primary-foreground/90"
-              )}
-            >
-              Daftar dulu, gratis
-            </Link>
-          </div>
-        </div>
-      </section>
+      </LandingMotion>
     </main>
   )
 }

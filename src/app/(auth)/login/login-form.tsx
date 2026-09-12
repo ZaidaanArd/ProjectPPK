@@ -1,33 +1,24 @@
 "use client"
 
+import Link from "next/link"
+import { BrandLogo } from "@/components/brand-logo"
 import { useState } from "react"
 import type { FormEvent } from "react"
-import { IconEye, IconEyeOff, IconLoader2 } from "@tabler/icons-react"
+import {
+  IconArrowLeft,
+  IconEye,
+  IconEyeOff,
+  IconInfoCircle,
+  IconLoader2,
+  IconX,
+} from "@tabler/icons-react"
 
+import { LoginFeatureCarousel } from "./login-feature-carousel"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-
-function LogoIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
+import { LiveOrb } from "@/components/ui/live-orb"
 
 function GoogleIcon() {
   return (
@@ -77,83 +68,63 @@ function SsoIcon() {
   )
 }
 
+const liveOrbColors = ["#f062aa", "#fff5fa", "#ffacd5"]
+
 function AbstractPanel() {
+  const [showInfo, setShowInfo] = useState(false)
+  const [introConsumed, setIntroConsumed] = useState(false)
+
   return (
-    <div className="relative hidden flex-1 overflow-hidden lg:block">
-      <svg
-        className="absolute inset-0 h-full w-full"
-        viewBox="0 0 800 900"
-        preserveAspectRatio="xMidYMid slice"
-        xmlns="http://www.w3.org/2000/svg"
+    <aside className="login-gradient-flow relative hidden h-full flex-1 items-center justify-center overflow-hidden bg-[linear-gradient(145deg,#d00064_0%,#82003e_50%,#43001c_100%)] text-white lg:flex">
+      <div
+        className="login-gradient-drift absolute -right-32 -bottom-32 size-[620px] rounded-full bg-pink-300/25 blur-[100px]"
         aria-hidden="true"
+      />
+
+      <button
+        type="button"
+        onClick={() => {
+          setIntroConsumed(true)
+          setShowInfo((current) => !current)
+        }}
+        aria-label={showInfo ? "Kembali ke orb" : "Lihat fitur Sthana Kampus"}
+        aria-pressed={showInfo}
+        title={showInfo ? "Kembali ke orb" : "Lihat fitur"}
+        className="absolute top-7 right-7 z-20 flex size-9 items-center justify-center rounded-full border border-white/20 bg-black/10 text-white/75 backdrop-blur-md transition-colors hover:bg-white/15 hover:text-white focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
       >
-        <defs>
-          <radialGradient id="login-g1" cx="30%" cy="20%" r="70%">
-            <stop offset="0%" stopColor="#c6005c" />
-            <stop offset="100%" stopColor="#7b0036" stopOpacity="0" />
-          </radialGradient>
-          <radialGradient id="login-g2" cx="80%" cy="70%" r="65%">
-            <stop offset="0%" stopColor="#ff4d8f" />
-            <stop offset="100%" stopColor="#c6005c" stopOpacity="0" />
-          </radialGradient>
-          <radialGradient id="login-g3" cx="50%" cy="100%" r="60%">
-            <stop offset="0%" stopColor="#ff80b5" />
-            <stop offset="100%" stopColor="#c6005c" stopOpacity="0" />
-          </radialGradient>
-          <filter id="login-blur" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="40" />
-          </filter>
-        </defs>
-        <rect width="800" height="900" fill="#7b0036" />
-        <ellipse
-          cx="200"
-          cy="150"
-          rx="420"
-          ry="340"
-          fill="url(#login-g1)"
-          filter="url(#login-blur)"
-          opacity="0.9"
-        />
-        <ellipse
-          cx="650"
-          cy="620"
-          rx="380"
-          ry="420"
-          fill="url(#login-g2)"
-          filter="url(#login-blur)"
-          opacity="0.85"
-        />
-        <ellipse
-          cx="400"
-          cy="900"
-          rx="500"
-          ry="300"
-          fill="url(#login-g3)"
-          filter="url(#login-blur)"
-          opacity="0.7"
-        />
-        <path
-          d="M 0,400 C 150,200 350,600 500,300 C 650,0 750,500 800,350 L 800,900 L 0,900 Z"
-          fill="#ff4d8f"
-          opacity="0.18"
-          filter="url(#login-blur)"
-        />
-        <path
-          d="M 0,600 C 200,400 400,800 600,500 C 700,350 800,700 800,600 L 800,900 L 0,900 Z"
-          fill="#ffc0d9"
-          opacity="0.12"
-          filter="url(#login-blur)"
-        />
-        <path
-          d="M 100,0 C 300,200 100,500 400,400 C 600,300 700,100 800,200 L 800,0 Z"
-          fill="#ff80b5"
-          opacity="0.2"
-          filter="url(#login-blur)"
-        />
-      </svg>
-      {/* Curved left edge */}
-      <div className="absolute inset-y-0 left-0 w-[42px] -translate-x-1/2 rounded-full bg-background" />
-    </div>
+        {showInfo ? (
+          <IconX size={17} aria-hidden="true" />
+        ) : (
+          <IconInfoCircle size={18} aria-hidden="true" />
+        )}
+      </button>
+
+      <div
+        key={showInfo ? "carousel" : "orb"}
+        className="login-panel-swap relative z-10 flex size-full items-center justify-center"
+      >
+        {showInfo ? (
+          <LoginFeatureCarousel />
+        ) : (
+          <div className="login-orb-scene" data-intro={!introConsumed}>
+            <div className="login-orb-halo" aria-hidden="true" />
+            <div className="login-orb-entrance">
+              <div className="login-orb-float">
+                <LiveOrb
+                  size={360}
+                  variant="webgl"
+                  appearance="luminous"
+                  colors={liveOrbColors}
+                />
+              </div>
+            </div>
+            <div className="login-orb-shadow" aria-hidden="true">
+              <div />
+            </div>
+          </div>
+        )}
+      </div>
+    </aside>
   )
 }
 
@@ -170,18 +141,24 @@ export function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-svh bg-background">
+    <div className="flex min-h-svh bg-background lg:h-svh lg:overflow-hidden">
       {/* Left — login panel */}
-      <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-8 py-12">
-        <div className="w-full max-w-[380px]">
+      <div className="login-form-panel relative z-10 flex flex-1 flex-col items-center overflow-y-auto px-8 pt-24 pb-12 lg:h-svh lg:max-w-[48%] lg:flex-none lg:basis-[48%] lg:rounded-r-2xl xl:basis-[44%]">
+        <Link
+          href="/"
+          className="absolute top-6 left-6 inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:top-8 sm:left-8"
+        >
+          <IconArrowLeft size={17} aria-hidden="true" />
+          Kembali
+        </Link>
+
+        <div className="my-auto w-full max-w-[380px] shrink-0">
           {/* Logo */}
           <div className="mb-10 flex flex-col items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <LogoIcon />
-            </div>
+            <BrandLogo markOnly />
             <div className="text-center">
               <h1 className="font-heading text-[26px] font-semibold tracking-tight text-foreground">
-                Selamat Datang di RuangKampus!
+                Selamat Datang di Sthana Kampus!
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
                 Masuk ke akun Anda untuk melanjutkan
@@ -277,7 +254,7 @@ export function LoginForm() {
             <Button
               type="submit"
               disabled={loading}
-              className="mt-1 w-full rounded-lg"
+              className="login-pink-accent mt-1 w-full rounded-lg"
             >
               {loading ? (
                 <>

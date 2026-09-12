@@ -1,14 +1,16 @@
-# RuangKampus — Initial Scaffold
+# RuangKampus — Project PPK 2026
 
-Repository awal untuk project sistem reservasi dan pelaporan fasilitas kampus.
+Scaffold awal sistem reservasi dan pelaporan fasilitas kampus untuk project Pengembangan Platform Khusus sebelum UTS.
 
-> Status saat ini: **scaffold only**. Belum ada desain final, autentikasi, database, API, CRUD, approval, upload, export, atau business logic.
+> **Status:** baru setup project dan dokumentasi. Belum ada autentikasi, database, CRUD, approval, upload, export, atau UI final.
 
-## Stack awal
+## Yang sudah tersedia
 
-- Next.js App Router, React, dan TypeScript
-- Tailwind CSS v4 dan shadcn/ui preset `b7Br7GOGm`
-- pnpm sebagai package manager
+- Single Next.js App Router project dengan React dan TypeScript.
+- Tailwind CSS v4 dan komponen dasar shadcn preset `b7Br7GOGm`.
+- Placeholder route untuk area public, auth, user, staff, dan admin.
+- Contoh backend Route Handler: `GET /api/health`.
+- ESLint, Prettier, typecheck, production build, dan CI.
 
 ## Menjalankan project
 
@@ -17,11 +19,17 @@ pnpm install
 pnpm dev
 ```
 
-Buka <http://localhost:3000>. Database dan Docker belum dibutuhkan pada tahap ini.
+Buka <http://localhost:3000>. Health check tersedia di <http://localhost:3000/api/health>.
 
-Health check tersedia di <http://localhost:3000/api/health>.
+```bash
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm build
+pnpm check
+```
 
-## Struktur
+## Struktur awal
 
 ```text
 src/
@@ -31,17 +39,28 @@ src/
     (user)/         portal pengguna
     (staff)/        portal petugas
     (admin)/        portal admin
-    api/health/     contoh backend Route Handler
-  components/ui/    komponen dasar shadcn
-  lib/              helper dan type/schema bersama nanti
+    api/             backend Route Handlers
+  components/
+    ui/              primitives shadcn
+  lib/               helper, schema, dan type bersama nanti
 ```
 
-Semua route saat ini hanya menampilkan placeholder. Folder dibuat lebih awal untuk membagi ownership dan mengurangi konflik ketika implementasi dimulai.
+Folder route dibuat untuk membagi ownership. Placeholder bukan implementasi fitur dan tidak boleh dicatat sebagai user story yang selesai.
 
-## Quality check
+## Dokumentasi tim
 
-```bash
-pnpm check
-```
+| Dokumen                              | Isi                                                              |
+| ------------------------------------ | ---------------------------------------------------------------- |
+| [Requirements](docs/REQUIREMENTS.md) | Ketentuan tugas, aktor, dan user story 1–17                      |
+| [Architecture](docs/ARCHITECTURE.md) | Diagram sistem, request flow, route map, dan aturan arsitektur   |
+| [Data & API](docs/DATA-AND-API.md)   | Rancangan ERD, status, validasi, dan endpoint yang direncanakan  |
+| [Team Work](docs/TEAM-WORK.md)       | Porsi, ownership folder, pembagian user story, dan review silang |
+| [Roadmap](docs/ROADMAP.md)           | Urutan milestone dan daftar pekerjaan atomic                     |
 
-Pembagian kerja ada di [docs/TEAM-WORK.md](docs/TEAM-WORK.md).
+## Aturan singkat kontribusi
+
+1. Satu branch untuk satu pekerjaan kecil.
+2. Jangan mengubah folder milik anggota lain tanpa koordinasi.
+3. Setiap anggota membuat minimal tiga commit bermakna.
+4. Jalankan `pnpm check` sebelum merge.
+5. Setiap pull request mendapat minimal satu review silang.

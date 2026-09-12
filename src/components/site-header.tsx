@@ -1,57 +1,79 @@
+"use client"
 import Link from "next/link"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { Building02Icon } from "@hugeicons/core-free-icons"
-
-import { buttonVariants } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-
+import { usePathname } from "next/navigation"
+import { useState } from "react"
+import { IconArrowRight, IconMenu2, IconX } from "@tabler/icons-react"
+import { BrandLogo } from "@/components/brand-logo"
 const nav = [
   { href: "/", label: "Beranda" },
   { href: "/facilities", label: "Fasilitas" },
+  { href: "/#tentang", label: "Tentang" },
 ]
-
 export function SiteHeader() {
+  const [open, setOpen] = useState(false)
+  const pathname = usePathname()
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-6">
-        <Link href="/" className="flex items-center gap-2.5">
-          <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <HugeiconsIcon icon={Building02Icon} size={20} strokeWidth={2} />
-          </span>
-          <span className="leading-tight">
-            <span className="block text-sm font-semibold tracking-tight">
-              RuangKampus
-            </span>
-            <span className="block text-xs text-muted-foreground">
-              Reservasi fasilitas kampus
-            </span>
-          </span>
+    <header
+      className="sthana-header"
+      onKeyDown={(e) => {
+        if (e.key === "Escape") setOpen(false)
+      }}
+    >
+      <div className="sthana-container header-row">
+        <Link
+          href="/"
+          aria-label="Sthana Kampus — Beranda"
+          onClick={() => setOpen(false)}
+        >
+          <BrandLogo />
         </Link>
-
-        <nav aria-label="Navigasi utama" className="hidden items-center gap-1 md:flex">
+        <nav className="desktop-nav" aria-label="Navigasi utama">
           {nav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="rounded-full px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-current={pathname === item.href ? "page" : undefined}
             >
               {item.label}
             </Link>
           ))}
         </nav>
-
-        <div className="flex items-center gap-2">
-          <Link
-            href="/login"
-            className={cn(buttonVariants({ variant: "ghost" }), "hidden sm:inline-flex")}
-          >
+        <div className="header-actions">
+          <Link href="/login" className="header-login">
             Masuk
           </Link>
-          <Link href="/register" className={cn(buttonVariants({ variant: "default" }))}>
-            Daftar akun
+          <Link href="/register" className="sthana-button primary small">
+            Daftar akun <IconArrowRight size={16} aria-hidden="true" />
           </Link>
+          <button
+            className="mobile-menu-button"
+            type="button"
+            aria-label={open ? "Tutup menu" : "Buka menu"}
+            aria-expanded={open}
+            aria-controls="mobile-navigation"
+            onClick={() => setOpen(!open)}
+          >
+            {open ? <IconX size={22} /> : <IconMenu2 size={22} />}
+          </button>
         </div>
       </div>
+      {open && (
+        <nav
+          id="mobile-navigation"
+          className="mobile-navigation"
+          aria-label="Navigasi mobile"
+        >
+          {[...nav, { href: "/login", label: "Masuk" }].map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setOpen(false)}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+      )}
     </header>
   )
 }
