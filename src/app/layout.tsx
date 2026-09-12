@@ -27,6 +27,8 @@ export const metadata: Metadata = {
     template: "%s | Sthana Kampus",
   },
   description: site.description,
+  authors: [{ name: site.creator.name, url: site.creator.url }],
+  creator: site.creator.name,
   robots: { index: Boolean(siteUrl), follow: Boolean(siteUrl) },
   manifest: "/site.webmanifest",
   icons: {

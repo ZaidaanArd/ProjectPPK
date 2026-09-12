@@ -1,5 +1,7 @@
 import Link from "next/link"
 import { BrandLogo } from "@/components/brand-logo"
+import { site } from "@/lib/site"
+
 export function SiteFooter() {
   return (
     <footer className="sthana-footer">
@@ -33,7 +35,13 @@ export function SiteFooter() {
         </nav>
       </div>
       <div className="sthana-container footer-bottom">
-        © 2026 Sthana Kampus · Project PPK
+        <span>© 2026 Sthana Kampus · Project PPK</span>
+        <span>
+          Dibuat oleh{" "}
+          <a href={site.creator.url} rel="author">
+            {site.creator.name}
+          </a>
+        </span>
       </div>
     </footer>
   )

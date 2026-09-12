@@ -734,10 +734,21 @@
   color: #c70060;
 }
 .footer-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   border-top: 1px solid #f0e7ed;
   padding-block: 20px;
   font-size: 10px;
   color: #8d8198;
+}
+.footer-bottom a {
+  color: #b50058;
+  font-weight: 650;
+}
+.footer-bottom a:hover {
+  color: #d50067;
 }
 [data-reveal] {
   transition:

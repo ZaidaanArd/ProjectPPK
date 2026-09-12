@@ -2,6 +2,10 @@ export const site = {
   name: "Sthana Kampus",
   description:
     "Cari fasilitas kampus, ajukan reservasi ruangan, pantau persetujuan, dan laporkan kerusakan dalam satu tempat.",
+  creator: {
+    name: "Myudak",
+    url: "https://www.myudak.com/",
+  },
 }
 
 function productionUrl() {
