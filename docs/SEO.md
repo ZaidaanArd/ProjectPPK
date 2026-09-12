@@ -26,4 +26,6 @@ Use the verified `myudak.com` Domain property, which also covers `sthana.myudak.
 
 | Date (Asia/Jakarta) | Sitemap | Live test | Indexing request |
 | ------------------- | ------- | --------- | ---------------- |
-| Pending             | Pending | Pending   | Pending          |
+| 2026-09-12          | Success | Indexable | Queued           |
+
+The Rich Results Test detected one valid Software Application item. Its only notices were the optional `offers` and `aggregateRating` fields; they remain omitted because the scaffold has no real pricing or ratings.
