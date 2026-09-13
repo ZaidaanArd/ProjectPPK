@@ -1,9 +1,9 @@
 import type { Metadata } from "next"
 
-import { ScaffoldPage } from "@/components/scaffold-page"
+import { RegisterForm } from "./register-form"
 
 export const metadata: Metadata = { title: "Daftar" }
 
 export default function RegisterPage() {
-  return <ScaffoldPage area="Auth" title="Registrasi" />
+  return <RegisterForm />
 }
