@@ -1,8 +1,8 @@
-# RuangKampus — Project PPK 2026
+# Sthana Kampus — Project PPK 2026
 
-Scaffold awal sistem reservasi dan pelaporan fasilitas kampus untuk project Pengembangan Platform Khusus sebelum UTS.
+Sthana Kampus adalah sistem reservasi dan pelaporan fasilitas kampus untuk project Pengembangan Platform Khusus sebelum UTS.
 
-> **Status:** baru setup project dan dokumentasi. Belum ada autentikasi, database, CRUD, approval, upload, export, atau UI final.
+> **Status:** pengembangan aktif. Beberapa halaman dan alur UI sudah tersedia, sementara data masih banyak menggunakan mock dan integrasi backend masih dikembangkan.
 
 ## Yang sudah tersedia
 
