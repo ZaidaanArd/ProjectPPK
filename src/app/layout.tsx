@@ -3,6 +3,7 @@ import "./globals.css"
 import type { Metadata } from "next"
 import localFont from "next/font/local"
 import type { ReactNode } from "react"
+import { ConvexClientProvider } from "./convex-client-provider"
 import { cn } from "@/lib/utils"
 import { site, siteUrl } from "@/lib/site"
 
@@ -61,7 +62,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <body
         className={`${inter.variable} min-h-screen bg-background font-sans text-foreground`}
       >
-        {children}
+        <ConvexClientProvider>{children}</ConvexClientProvider>
       </body>
     </html>
   )
