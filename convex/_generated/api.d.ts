@@ -9,11 +9,15 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as facilities from "../facilities.js";
 import type * as http from "../http.js";
+import type * as lib_audit from "../lib/audit.js";
 import type * as lib_authz from "../lib/authz.js";
 import type * as lib_reservationTime from "../lib/reservationTime.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as profiles from "../profiles.js";
+import type * as reports from "../reports.js";
+import type * as reservations from "../reservations.js";
 
 import type {
   ApiFromModules,
@@ -23,11 +27,15 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  facilities: typeof facilities;
   http: typeof http;
+  "lib/audit": typeof lib_audit;
   "lib/authz": typeof lib_authz;
   "lib/reservationTime": typeof lib_reservationTime;
   "lib/validators": typeof lib_validators;
   profiles: typeof profiles;
+  reports: typeof reports;
+  reservations: typeof reservations;
 }>;
 
 /**
