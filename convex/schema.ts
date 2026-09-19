@@ -18,6 +18,8 @@ export default defineSchema({
     email: v.string(),
     role: roleValidator,
     status: accountStatusValidator,
+    userKind: v.optional(v.union(v.literal("student"), v.literal("lecturer"))),
+    institutionalId: v.optional(v.string()),
     mustChangePassword: v.boolean(),
     rejectionReason: v.optional(v.string()),
     createdAt: v.number(),
