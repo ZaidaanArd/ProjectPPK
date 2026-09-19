@@ -1,5 +1,5 @@
-import { ScaffoldPage } from "@/components/scaffold-page"
+import { ReservationList } from "@/components/user-portal"
 
 export default function ReservationsPage() {
-  return <ScaffoldPage area="User" title="Reservasi saya" />
+  return <ReservationList />
 }

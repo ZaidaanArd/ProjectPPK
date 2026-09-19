@@ -1,5 +1,5 @@
-import { ScaffoldPage } from "@/components/scaffold-page"
+import { UserDashboard } from "@/components/user-portal"
 
 export default function UserDashboardPage() {
-  return <ScaffoldPage area="User" title="Dashboard pengguna" />
+  return <UserDashboard />
 }
