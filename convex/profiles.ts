@@ -1,6 +1,7 @@
 import { v } from "convex/values"
 
 import { mutation, query } from "./_generated/server"
+import { authComponent, createAuth } from "./auth"
 import { getCurrentProfile, requireProfile } from "./lib/authz"
 import { accountStatusValidator, roleValidator } from "./lib/validators"
 
@@ -56,6 +57,40 @@ export const completeRegistration = mutation({
       institutionalId,
       updatedAt: Date.now(),
     })
+
+    return null
+  },
+})
+
+export const changePassword = mutation({
+  args: {
+    currentPassword: v.string(),
+    newPassword: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx)
+
+    if (args.newPassword.length < 8) {
+      throw new Error("Password baru minimal 8 karakter")
+    }
+
+    const { auth, headers } = await authComponent.getAuth(createAuth, ctx)
+    await auth.api.changePassword({
+      body: {
+        currentPassword: args.currentPassword,
+        newPassword: args.newPassword,
+        revokeOtherSessions: true,
+      },
+      headers,
+    })
+
+    if (profile.mustChangePassword) {
+      await ctx.db.patch(profile._id, {
+        mustChangePassword: false,
+        updatedAt: Date.now(),
+      })
+    }
 
     return null
   },
