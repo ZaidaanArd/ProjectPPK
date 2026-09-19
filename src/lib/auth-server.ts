@@ -9,6 +9,10 @@ export const {
   fetchAuthMutation,
   fetchAuthAction,
 } = convexBetterAuthNextJs({
-  convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL!,
-  convexSiteUrl: process.env.NEXT_PUBLIC_CONVEX_SITE_URL!,
+  // Valid placeholders keep static tooling/builds working before env injection.
+  // Runtime auth is only called when the real public variables are present.
+  convexUrl:
+    process.env.NEXT_PUBLIC_CONVEX_URL ?? "https://unused.convex.cloud",
+  convexSiteUrl:
+    process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "https://unused.convex.site",
 })

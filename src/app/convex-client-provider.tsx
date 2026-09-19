@@ -6,8 +6,9 @@ import type { ReactNode } from "react"
 
 import { authClient } from "@/lib/auth-client"
 
-const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL
-const convex = convexUrl ? new ConvexReactClient(convexUrl) : null
+const convex = new ConvexReactClient(
+  process.env.NEXT_PUBLIC_CONVEX_URL ?? "https://unused.convex.cloud"
+)
 
 export function ConvexClientProvider({
   children,
@@ -16,10 +17,6 @@ export function ConvexClientProvider({
   children: ReactNode
   initialToken?: string | null
 }) {
-  if (!convex) {
-    return children
-  }
-
   return (
     <ConvexBetterAuthProvider
       client={convex}
