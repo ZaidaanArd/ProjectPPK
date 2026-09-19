@@ -19,6 +19,7 @@ import type * as lib_validators from "../lib/validators.js";
 import type * as profiles from "../profiles.js";
 import type * as reports from "../reports.js";
 import type * as reservations from "../reservations.js";
+import type * as seed from "../seed.js";
 
 import type {
   ApiFromModules,
@@ -38,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   profiles: typeof profiles;
   reports: typeof reports;
   reservations: typeof reservations;
+  seed: typeof seed;
 }>;
 
 /**
