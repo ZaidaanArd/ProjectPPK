@@ -29,7 +29,7 @@ flowchart TB
 
 | Pemilik   | Boleh mengubah langsung                                                              | Perlu koordinasi                                     |
 | --------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------- |
-| Tech Lead | Root config, `src/lib`, `src/server`, `src/app/api`                                  | Route UI milik anggota lain                          |
+| Tech Lead | Root config, `convex`, `src/lib`, `src/app/api`                                     | Route UI milik anggota lain                          |
 | Anggota 2 | `src/components/ui`, `src/components/public`, `src/app/(public)`                     | Perubahan primitives yang sudah dipakai anggota lain |
 | Anggota 3 | `src/components/auth`, `src/components/user`, `src/app/(auth)`, `src/app/(user)`     | Contract/API dan shared navigation                   |
 | Anggota 4 | `src/components/staff`, `src/components/admin`, `src/app/(staff)`, `src/app/(admin)` | Contract/API dan shared tables/status                |
@@ -41,14 +41,14 @@ Folder `src/server` dan component domain baru dibuat ketika task implementasi pe
 ### Platform dan data
 
 - Menetapkan shared Zod schema/type untuk role, status, facility, reservation, dan report.
-- Menyiapkan PostgreSQL, ORM, environment validation, migration, dan seed development.
-- Membuat data-access dan service layer yang digunakan Server Components serta Route Handlers.
-- Menjaga constraint dan transaksi agar approval reservasi tidak mengalami race condition.
+- Menyiapkan schema/index Convex, environment, dan seed development.
+- Membuat query/mutation Convex yang dipakai portal secara real-time.
+- Menjaga validasi dan mutation atomik agar approval reservasi tidak mengalami race condition.
 
 ### Auth dan API
 
-- Implementasi password hashing, registrasi, login, logout, session, cookie, dan role guard.
-- Menetapkan HTTP error format, request ID, validasi server, dan authorization setiap endpoint.
+- Mengintegrasikan Better Auth untuk registrasi, login, logout, session cookie, dan role guard.
+- Menetapkan validasi server dan authorization setiap Convex function.
 - Menyediakan endpoint yang dibutuhkan Anggota 2–4 sesuai urutan roadmap.
 - Menentukan storage foto dan generator export bersama tim sebelum implementasi terkait dimulai.
 
@@ -83,7 +83,7 @@ Folder `src/server` dan component domain baru dibuat ketika task implementasi pe
 - Implementasi antrean reservasi serta aksi approve/reject/cancel berikut dialog alasan.
 - Implementasi antrean laporan, perubahan status, catatan resolusi, dan status perbaikan fasilitas.
 - Implementasi UI pembuatan/verifikasi akun serta pengelolaan fasilitas oleh admin.
-- Membuat tampilan rekap okupansi/kerusakan dan tombol export dengan state yang jelas.
+- Membuat tampilan rekap okupansi/kerusakan dan tombol export CSV dengan state yang jelas.
 - Menguji table state, filter, confirmation dialog, permission state, dan responsive behavior.
 
 ## Pembagian user story

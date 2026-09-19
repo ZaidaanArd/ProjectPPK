@@ -1,163 +1,89 @@
-# Rancangan Data dan API
+# Data dan interface backend
 
-> Selain `GET /api/health`, seluruh isi dokumen ini adalah **blueprint**. Schema database dan endpoint bisnis belum diimplementasikan.
-
-## Current API
-
-### `GET /api/health`
-
-Response `200`:
-
-```json
-{
-  "status": "ok",
-  "service": "ruang-kampus"
-}
-```
-
-## Planned data model
+## Model data
 
 ```mermaid
 erDiagram
-  USERS ||--o{ SESSIONS : owns
-  USERS ||--o{ RESERVATIONS : requests
-  USERS ||--o{ REPORTS : submits
-  FACILITIES ||--o{ RESERVATIONS : booked_for
-  FACILITIES ||--o{ REPORTS : reported_for
+  AUTH_USER ||--|| PROFILE : maps_to
+  PROFILE ||--o{ RESERVATION : creates
+  PROFILE ||--o{ REPORT : creates
+  PROFILE ||--o{ AUDIT_EVENT : acts
+  FACILITY ||--o{ RESERVATION : receives
+  FACILITY ||--o{ REPORT : receives
 
-  USERS {
-    uuid id PK
-    string name
-    string email UK
-    string password_hash
+  PROFILE {
+    string authUserId
     string role
     string status
-    timestamp created_at
-    timestamp updated_at
+    boolean mustChangePassword
   }
-
-  SESSIONS {
-    uuid id PK
-    uuid user_id FK
-    timestamp expires_at
-    timestamp created_at
-  }
-
-  FACILITIES {
-    uuid id PK
+  FACILITY {
     string name
     string type
     string location
-    int capacity
-    string description
+    number capacity
     string status
-    timestamp created_at
-    timestamp updated_at
   }
-
-  RESERVATIONS {
-    uuid id PK
-    uuid user_id FK
-    uuid facility_id FK
-    string purpose
-    timestamp start_time
-    timestamp end_time
+  RESERVATION {
+    id userId
+    id facilityId
+    number startAt
+    number endAt
     string status
-    string decision_note
-    timestamp created_at
-    timestamp updated_at
   }
-
-  REPORTS {
-    uuid id PK
-    uuid reporter_id FK
-    uuid facility_id FK
-    string category
-    string description
-    string photo_url
+  REPORT {
+    id reporterId
+    id facilityId
+    id photoStorageId
     string status
-    string resolution_note
-    timestamp created_at
-    timestamp updated_at
   }
 ```
 
-Atribut timestamp, notes, dan session ditambahkan agar audit perubahan, alasan pembatalan, resolusi laporan, dan autentikasi dapat diterapkan tanpa mengubah entity inti.
+Schema aktual ada di `convex/schema.ts`. Better Auth menyimpan user, credential, session, dan JWKS di isolated Convex component.
 
-## Planned enums
+## Status
 
-| Domain             | Nilai awal                                       |
-| ------------------ | ------------------------------------------------ |
-| User role          | `user`, `officer`, `admin`                       |
-| Account status     | `pending`, `active`, `rejected`, `disabled`      |
-| Facility status    | `active`, `maintenance`, `inactive`              |
-| Reservation status | `pending`, `approved`, `rejected`, `cancelled`   |
-| Report status      | `pending`, `in_progress`, `resolved`, `rejected` |
+| Domain | Nilai |
+| --- | --- |
+| Role | `user`, `officer`, `admin` |
+| Account | `pending`, `active`, `rejected`, `disabled` |
+| Facility | `active`, `maintenance`, `inactive` |
+| Reservation | `pending`, `approved`, `rejected`, `cancelled` |
+| Report | `pending`, `in_progress`, `resolved`, `rejected` |
 
-Nilai status akan dibuat sebagai schema/type bersama sebelum tabel, API, dan UI menggunakannya.
+## Public functions
 
-## Planned validation rules
+| Module | Function | Access | Purpose |
+| --- | --- | --- | --- |
+| `profiles` | `current`, `completeRegistration`, `changePassword` | Session | Profile dan password |
+| `facilities` | `listPublic`, `getPublicAvailability` | Public | Katalog dan blocked slots |
+| `facilities` | `listManaged`, `create`, `update`, `setStatus` | Admin | Master fasilitas |
+| `reservations` | `listMine`, `create`, `cancelMine` | User | Reservasi milik sendiri |
+| `reservations` | `listQueue`, `decide`, `cancelByStaff` | Officer/admin | Antrean dan keputusan |
+| `reports` | `generateUploadUrl`, `create`, `listMine` | User | Upload dan laporan sendiri |
+| `reports` | `listQueue`, `updateStatus` | Officer/admin | Penanganan laporan |
+| `admin` | account functions, `analytics`, `exportData` | Admin | Administrasi dan rekap |
 
-### Facility
+Next.js Route Handlers hanya dipakai untuk:
 
-- Nama, tipe, dan lokasi wajib diisi.
-- Kapasitas berupa bilangan bulat positif.
-- Fasilitas nonaktif/perbaikan tidak dapat menerima approval reservasi baru.
+- `/api/auth/[...all]`: proxy Better Auth;
+- `/api/admin/export`: file CSV dengan session/role check;
+- `/api/health`: health check aplikasi.
 
-### Reservation
+## Privacy dan authorization
 
-- Waktu berada pada 07.00–20.00 WIB dan di hari yang sama.
-- Awal dan akhir sejajar dengan slot 30 menit; akhir harus setelah awal.
-- Tujuan penggunaan wajib diisi.
-- Hanya reservasi `approved` yang memblokir slot.
-- Approval harus mengecek bentrok di dalam transaksi agar dua petugas tidak dapat menyetujui slot yang sama bersamaan.
+- Public availability hanya berisi `startAt`, `endAt`, dan status; tidak ada nama pemohon atau tujuan.
+- Query user mengambil data berdasarkan `profile._id` dari session, bukan ID dari client.
+- Foto laporan hanya menghasilkan URL di query user milik sendiri atau antrean petugas.
+- Seluruh admin/staff mutation mengulang pemeriksaan role di backend.
 
-### Report
+## Aturan reservasi
 
-- Fasilitas, kategori, dan deskripsi wajib diisi.
-- Foto divalidasi berdasarkan tipe, ukuran, dan storage policy yang dipilih tim.
-- Laporan `resolved` memiliki catatan resolusi.
+- 07.00–20.00 WIB, satu hari, slot 30 menit.
+- Pengguna dapat membatalkan minimal 1 jam sebelum mulai.
+- Pengajuan baru berstatus `pending`; belum memblokir slot.
+- Mutation approval mengecek overlap terhadap reservasi approved pada index `by_facility_status_start`.
 
-## Planned API map
+## Upload
 
-Endpoint berikut adalah rencana minimum dan dapat dibuat satu per satu sesuai roadmap.
-
-| Method    | Path                           | Aktor      | Tujuan                                     |
-| --------- | ------------------------------ | ---------- | ------------------------------------------ |
-| POST      | `/api/auth/register`           | Pengunjung | Registrasi mandiri                         |
-| POST      | `/api/auth/login`              | Pengunjung | Membuat session                            |
-| POST      | `/api/auth/logout`             | Login      | Menghapus session                          |
-| GET       | `/api/auth/session`            | Semua      | Membaca user aktif atau `null`             |
-| GET       | `/api/facilities`              | Semua      | Daftar, filter, dan ketersediaan fasilitas |
-| GET       | `/api/facilities/[id]`         | Semua      | Detail fasilitas yang boleh dipublikasikan |
-| GET/POST  | `/api/reservations`            | Pengguna   | Riwayat dan pengajuan reservasi            |
-| GET/PATCH | `/api/reservations/[id]`       | Pengguna   | Detail dan pembatalan reservasi sendiri    |
-| GET/POST  | `/api/reports`                 | Pengguna   | Daftar dan pembuatan laporan               |
-| GET       | `/api/reports/[id]`            | Pengguna   | Detail/status laporan sendiri              |
-| GET       | `/api/staff/reservations`      | Petugas    | Antrean reservasi                          |
-| PATCH     | `/api/staff/reservations/[id]` | Petugas    | Approve, reject, atau cancel dengan alasan |
-| GET       | `/api/staff/reports`           | Petugas    | Antrean laporan                            |
-| PATCH     | `/api/staff/reports/[id]`      | Petugas    | Status dan catatan resolusi                |
-| GET/POST  | `/api/admin/users`             | Admin      | Daftar atau membuat akun                   |
-| PATCH     | `/api/admin/users/[id]`        | Admin      | Verifikasi, reject, atau disable akun      |
-| POST      | `/api/admin/facilities`        | Admin      | Menambah fasilitas                         |
-| PATCH     | `/api/admin/facilities/[id]`   | Admin      | Mengubah/status fasilitas                  |
-| GET       | `/api/admin/analytics`         | Admin      | Rekap okupansi dan kerusakan               |
-| GET       | `/api/admin/analytics/export`  | Admin      | Export CSV, Excel, atau PDF                |
-
-## Planned HTTP conventions
-
-- JSON digunakan untuk request/response biasa; upload foto memakai `multipart/form-data` atau signed upload sesuai storage decision.
-- Validation error menggunakan status `400`, tanpa login `401`, role salah `403`, data tidak ditemukan `404`, dan konflik jadwal `409`.
-- Error body konsisten:
-
-```json
-{
-  "code": "RESERVATION_CONFLICT",
-  "message": "Slot fasilitas sudah digunakan.",
-  "fieldErrors": {},
-  "requestId": "..."
-}
-```
-
-- Response tidak pernah mengirim password hash, session ID mentah, atau detail pemohon reservasi kepada pengunjung.
+Client meminta upload URL, mengunggah langsung ke Convex storage, lalu mengirim storage ID ke mutation laporan. Server membaca metadata storage dan menolak file lebih dari 5 MB atau MIME selain JPEG/PNG/WebP.

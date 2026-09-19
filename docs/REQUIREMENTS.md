@@ -1,4 +1,4 @@
-# Requirements RuangKampus
+# Requirements Sthana Kampus
 
 Dokumen ini merangkum brief tugas. Status implementasi harus diperbarui ketika pull request fitur sudah di-merge, bukan ketika placeholder dibuat.
 
@@ -8,9 +8,10 @@ Dokumen ini merangkum brief tugas. Status implementasi harus diperbarui ketika p
 | ------ | ------------------------------- |
 | ⬜     | Belum dikerjakan                |
 | 🟨     | Sedang dikerjakan               |
+| 🧪     | Sudah lulus verifikasi lokal, menunggu review/merge |
 | ✅     | Sudah di-merge dan diverifikasi |
 
-Saat ini seluruh user story masih ⬜.
+Seluruh user story berada pada tahap 🧪 di branch implementasi Convex. Status berubah menjadi ✅ setelah review dan merge ke `main`.
 
 ## Ketentuan umum
 
@@ -43,23 +44,23 @@ Saat ini seluruh user story masih ⬜.
 
 |    ID | Status | User story ringkas                                                                                                  |
 | ----: | :----: | ------------------------------------------------------------------------------------------------------------------- |
-| US-01 |   ⬜   | Pengunjung/pengguna melihat fasilitas dan status tersedia/tidak tersedia per slot tanpa detail pemohon/tujuan.      |
-| US-02 |   ⬜   | Pengunjung/pengguna mencari fasilitas berdasarkan tipe, lokasi, atau kapasitas.                                     |
-| US-03 |   ⬜   | Pengguna mengajukan reservasi pada rentang waktu tertentu dengan tujuan penggunaan.                                 |
-| US-04 |   ⬜   | Pengguna membatalkan reservasinya sendiri sebelum batas waktu.                                                      |
-| US-05 |   ⬜   | Pengguna melihat riwayat, status terbaru, dan detail lengkap reservasinya.                                          |
-| US-06 |   ⬜   | Pengguna melaporkan kerusakan/masalah dengan kategori, deskripsi, dan foto.                                         |
-| US-07 |   ⬜   | Pengguna melihat status laporan miliknya.                                                                           |
-| US-08 |   ⬜   | Petugas melihat dashboard/antrean reservasi dan laporan yang menunggu atau sedang diproses.                         |
-| US-09 |   ⬜   | Petugas menyetujui/menolak reservasi; sistem mencegah dua reservasi approved pada fasilitas dan jadwal yang sama.   |
-| US-10 |   ⬜   | Petugas membatalkan reservasi approved dalam kondisi mendesak dengan alasan pembatalan.                             |
-| US-11 |   ⬜   | Petugas memproses laporan, memperbarui status, dan menambahkan catatan resolusi ketika ditutup.                     |
-| US-12 |   ⬜   | Petugas menandai fasilitas dalam perbaikan lalu mengaktifkannya kembali setelah selesai.                            |
-| US-13 |   ⬜   | Admin mendaftarkan akun petugas secara langsung.                                                                    |
-| US-14 |   ⬜   | Admin mendaftarkan akun pengguna secara langsung tanpa registrasi mandiri.                                          |
-| US-15 |   ⬜   | Admin memverifikasi atau menolak akun hasil registrasi mandiri sebelum dapat login.                                 |
-| US-16 |   ⬜   | Admin menambah, mengubah, dan menonaktifkan fasilitas.                                                              |
-| US-17 |   ⬜   | Admin melihat dan mengekspor rekap okupansi serta frekuensi kerusakan per fasilitas/lokasi ke CSV, Excel, atau PDF. |
+| US-01 |   🧪   | Pengunjung/pengguna melihat fasilitas dan status tersedia/tidak tersedia per slot tanpa detail pemohon/tujuan.      |
+| US-02 |   🧪   | Pengunjung/pengguna mencari fasilitas berdasarkan tipe, lokasi, atau kapasitas.                                     |
+| US-03 |   🧪   | Pengguna mengajukan reservasi pada rentang waktu tertentu dengan tujuan penggunaan.                                 |
+| US-04 |   🧪   | Pengguna membatalkan reservasinya sendiri sebelum batas waktu.                                                      |
+| US-05 |   🧪   | Pengguna melihat riwayat, status terbaru, dan detail lengkap reservasinya.                                          |
+| US-06 |   🧪   | Pengguna melaporkan kerusakan/masalah dengan kategori, deskripsi, dan foto.                                         |
+| US-07 |   🧪   | Pengguna melihat status laporan miliknya.                                                                           |
+| US-08 |   🧪   | Petugas melihat dashboard/antrean reservasi dan laporan yang menunggu atau sedang diproses.                         |
+| US-09 |   🧪   | Petugas menyetujui/menolak reservasi; sistem mencegah dua reservasi approved pada fasilitas dan jadwal yang sama.   |
+| US-10 |   🧪   | Petugas membatalkan reservasi approved dalam kondisi mendesak dengan alasan pembatalan.                             |
+| US-11 |   🧪   | Petugas memproses laporan, memperbarui status, dan menambahkan catatan resolusi ketika ditutup.                     |
+| US-12 |   🧪   | Petugas menandai fasilitas dalam perbaikan lalu mengaktifkannya kembali setelah selesai.                            |
+| US-13 |   🧪   | Admin mendaftarkan akun petugas secara langsung.                                                                    |
+| US-14 |   🧪   | Admin mendaftarkan akun pengguna secara langsung tanpa registrasi mandiri.                                          |
+| US-15 |   🧪   | Admin memverifikasi atau menolak akun hasil registrasi mandiri sebelum dapat login.                                 |
+| US-16 |   🧪   | Admin menambah, mengubah, dan menonaktifkan fasilitas.                                                              |
+| US-17 |   🧪   | Admin melihat dan mengekspor rekap okupansi serta frekuensi kerusakan per fasilitas/lokasi ke CSV.                 |
 
 ## Artefak pengumpulan
 
