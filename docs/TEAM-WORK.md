@@ -29,7 +29,7 @@ flowchart TB
 
 | Pemilik   | Boleh mengubah langsung                                                              | Perlu koordinasi                                     |
 | --------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------- |
-| Tech Lead | Root config, `convex`, `src/lib`, `src/app/api`                                     | Route UI milik anggota lain                          |
+| Tech Lead | Root config, `convex`, `src/lib`, `src/app/api`                                      | Route UI milik anggota lain                          |
 | Anggota 2 | `src/components/ui`, `src/components/public`, `src/app/(public)`                     | Perubahan primitives yang sudah dipakai anggota lain |
 | Anggota 3 | `src/components/auth`, `src/components/user`, `src/app/(auth)`, `src/app/(user)`     | Contract/API dan shared navigation                   |
 | Anggota 4 | `src/components/staff`, `src/components/admin`, `src/app/(staff)`, `src/app/(admin)` | Contract/API dan shared tables/status                |

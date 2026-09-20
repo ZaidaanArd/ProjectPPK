@@ -56,11 +56,12 @@ Kedua function menolak secret salah. Bootstrap admin berhenti bekerja setelah ad
 ## Quality gate
 
 ```bash
-pnpm test
-pnpm lint
-pnpm typecheck
-pnpm build
+pnpm check
 ```
+
+`pnpm check` menjalankan Oxfmt, Oxlint, aturan khusus Convex, TypeScript,
+Vitest, peer-dependency validation, React Doctor, lalu production build.
+Gunakan `pnpm doctor` untuk audit React interaktif yang lebih lengkap.
 
 ## Struktur
 

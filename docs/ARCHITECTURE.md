@@ -47,11 +47,11 @@ Server layouts memakai token dari cookie untuk guard `/app`, `/staff`, dan `/adm
 
 ## Route ownership
 
-| Area | URL | Owner |
-| --- | --- | --- |
-| Public | `/`, `/facilities`, `/tentang` | Anggota 2 |
-| Auth/user | `/login`, `/register`, `/app/**` | Anggota 3 |
-| Staff/admin | `/staff/**`, `/admin/**` | Anggota 4 |
+| Area                | URL                                             | Owner     |
+| ------------------- | ----------------------------------------------- | --------- |
+| Public              | `/`, `/facilities`, `/tentang`                  | Anggota 2 |
+| Auth/user           | `/login`, `/register`, `/app/**`                | Anggota 3 |
+| Staff/admin         | `/staff/**`, `/admin/**`                        | Anggota 4 |
 | Backend/integration | `convex/**`, `src/app/api/**`, `src/lib/auth-*` | Tech Lead |
 
 ## Invariants
@@ -59,9 +59,11 @@ Server layouts memakai token dari cookie untuk guard `/app`, `/staff`, dan `/adm
 1. Seluruh Convex function mendeklarasikan validator argumen dan return value.
 2. Query operasional memakai index; public availability hanya mengirim waktu yang terblokir.
 3. Hanya reservasi `approved` yang memblokir slot. Approval membaca slot yang sama dalam mutation atomik sehingga concurrent approval akan conflict/retry.
-4. Waktu disimpan sebagai Unix milliseconds dan divalidasi terhadap 07.00–20.00 WIB, satu hari, kelipatan 30 menit.
-5. Foto maksimum 5 MB dan hanya JPEG, PNG, atau WebP; signed URL dibuat setelah authorization.
-6. Data historis tidak dihapus secara destruktif. Akun/fasilitas dinonaktifkan dan aksi penting masuk `auditEvents`.
+4. Reservasi hanya dapat disetujui ketika fasilitas masih berstatus `active`.
+5. Laporan mengikuti lifecycle `pending → in_progress → resolved`, dengan penolakan hanya dari status nonterminal.
+6. Waktu disimpan sebagai Unix milliseconds dan divalidasi terhadap 07.00–20.00 WIB, satu hari, kelipatan 30 menit.
+7. Foto maksimum 5 MB dan hanya JPEG, PNG, atau WebP; signed URL dibuat setelah authorization.
+8. Data historis tidak dihapus secara destruktif. Akun/fasilitas dinonaktifkan dan aksi penting masuk `auditEvents`.
 
 ## Deployment
 

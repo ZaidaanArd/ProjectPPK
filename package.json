@@ -8,12 +8,17 @@
     "dev:full": "concurrently --kill-others-on-fail \"pnpm dev\" \"pnpm dev:backend\"",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint .",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "lint": "pnpm lint:oxc && pnpm lint:convex",
+    "lint:oxc": "oxlint --deny-warnings .",
+    "lint:convex": "eslint convex",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "check": "pnpm lint && pnpm typecheck && pnpm build"
+    "doctor": "react-doctor --no-telemetry --no-supply-chain --yes .",
+    "doctor:ci": "react-doctor --no-telemetry --no-supply-chain --yes --blocking error .",
+    "peers:check": "pnpm peers check",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm peers:check && pnpm doctor:ci && pnpm build"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -43,12 +48,13 @@
     "convex-test": "^0.0.59",
     "eslint": "^9.39.1",
     "eslint-config-next": "^16.3.3",
-    "prettier": "^3.8.3",
-    "prettier-plugin-tailwindcss": "^0.8.0",
+    "oxfmt": "0.68.0",
+    "oxlint": "1.83.0",
+    "react-doctor": "0.9.14",
     "shadcn": "^4.21.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~6",
-    "vitest": "^5.0.1"
+    "vitest": "^4.1.11"
   },
   "packageManager": "pnpm@11.3.0",
   "engines": {

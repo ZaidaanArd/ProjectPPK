@@ -43,26 +43,26 @@ Schema aktual ada di `convex/schema.ts`. Better Auth menyimpan user, credential,
 
 ## Status
 
-| Domain | Nilai |
-| --- | --- |
-| Role | `user`, `officer`, `admin` |
-| Account | `pending`, `active`, `rejected`, `disabled` |
-| Facility | `active`, `maintenance`, `inactive` |
-| Reservation | `pending`, `approved`, `rejected`, `cancelled` |
-| Report | `pending`, `in_progress`, `resolved`, `rejected` |
+| Domain      | Nilai                                            |
+| ----------- | ------------------------------------------------ |
+| Role        | `user`, `officer`, `admin`                       |
+| Account     | `pending`, `active`, `rejected`, `disabled`      |
+| Facility    | `active`, `maintenance`, `inactive`              |
+| Reservation | `pending`, `approved`, `rejected`, `cancelled`   |
+| Report      | `pending`, `in_progress`, `resolved`, `rejected` |
 
 ## Public functions
 
-| Module | Function | Access | Purpose |
-| --- | --- | --- | --- |
-| `profiles` | `current`, `completeRegistration`, `changePassword` | Session | Profile dan password |
-| `facilities` | `listPublic`, `getPublicAvailability` | Public | Katalog dan blocked slots |
-| `facilities` | `listManaged`, `create`, `update`, `setStatus` | Admin | Master fasilitas |
-| `reservations` | `listMine`, `create`, `cancelMine` | User | Reservasi milik sendiri |
-| `reservations` | `listQueue`, `decide`, `cancelByStaff` | Officer/admin | Antrean dan keputusan |
-| `reports` | `generateUploadUrl`, `create`, `listMine` | User | Upload dan laporan sendiri |
-| `reports` | `listQueue`, `updateStatus` | Officer/admin | Penanganan laporan |
-| `admin` | account functions, `analytics`, `exportData` | Admin | Administrasi dan rekap |
+| Module         | Function                                            | Access        | Purpose                    |
+| -------------- | --------------------------------------------------- | ------------- | -------------------------- |
+| `profiles`     | `current`, `completeRegistration`, `changePassword` | Session       | Profile dan password       |
+| `facilities`   | `listPublic`, `getPublicAvailability`               | Public        | Katalog dan blocked slots  |
+| `facilities`   | `listManaged`, `create`, `update`, `setStatus`      | Admin         | Master fasilitas           |
+| `reservations` | `listMine`, `create`, `cancelMine`                  | User          | Reservasi milik sendiri    |
+| `reservations` | `listQueue`, `decide`, `cancelByStaff`              | Officer/admin | Antrean dan keputusan      |
+| `reports`      | `generateUploadUrl`, `create`, `listMine`           | User          | Upload dan laporan sendiri |
+| `reports`      | `listQueue`, `updateStatus`                         | Officer/admin | Penanganan laporan         |
+| `admin`        | account functions, `analytics`, `exportData`        | Admin         | Administrasi dan rekap     |
 
 Next.js Route Handlers hanya dipakai untuk:
 
