@@ -5,6 +5,7 @@ import { recordAuditEvent } from "./lib/audit"
 import { requireActiveProfile, requireRole } from "./lib/authz"
 import { overlaps, validateReservationWindow } from "./lib/reservationTime"
 import { reservationStatusValidator } from "./lib/validators"
+import { assertFacilityCanApprove } from "./lib/workflows"
 
 const reservationListItemValidator = v.object({
   id: v.id("reservations"),
@@ -32,7 +33,7 @@ export const listMine = query({
 
     return Promise.all(
       reservations.map(async (reservation) => {
-        const facility = await ctx.db.get(reservation.facilityId)
+        const facility = await ctx.db.get("facilities", reservation.facilityId)
 
         return {
           id: reservation._id,
@@ -77,8 +78,8 @@ export const listQueue = query({
     return Promise.all(
       reservations.map(async (reservation) => {
         const [facility, applicant] = await Promise.all([
-          ctx.db.get(reservation.facilityId),
-          ctx.db.get(reservation.userId),
+          ctx.db.get("facilities", reservation.facilityId),
+          ctx.db.get("profiles", reservation.userId),
         ])
 
         return {
@@ -108,7 +109,7 @@ export const create = mutation({
   returns: v.id("reservations"),
   handler: async (ctx, args) => {
     const profile = await requireRole(ctx, ["user"])
-    const facility = await ctx.db.get(args.facilityId)
+    const facility = await ctx.db.get("facilities", args.facilityId)
 
     if (!facility || facility.status !== "active") {
       throw new ConvexError("Fasilitas sedang tidak dapat dipesan")
@@ -154,7 +155,7 @@ export const cancelMine = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const profile = await requireRole(ctx, ["user"])
-    const reservation = await ctx.db.get(args.reservationId)
+    const reservation = await ctx.db.get("reservations", args.reservationId)
 
     if (!reservation || reservation.userId !== profile._id) {
       throw new ConvexError("Reservasi tidak ditemukan")
@@ -171,7 +172,7 @@ export const cancelMine = mutation({
     }
 
     const now = Date.now()
-    await ctx.db.patch(reservation._id, {
+    await ctx.db.patch("reservations", reservation._id, {
       status: "cancelled",
       cancelledBy: profile._id,
       cancelledAt: now,
@@ -201,13 +202,21 @@ export const decide = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const actor = await requireRole(ctx, ["officer", "admin"])
-    const reservation = await ctx.db.get(args.reservationId)
+    const reservation = await ctx.db.get("reservations", args.reservationId)
 
     if (!reservation || reservation.status !== "pending") {
       throw new ConvexError("Reservasi tidak tersedia untuk diproses")
     }
 
     if (args.decision === "approved") {
+      const facility = await ctx.db.get("facilities", reservation.facilityId)
+
+      if (!facility) {
+        throw new ConvexError("Fasilitas reservasi tidak ditemukan")
+      }
+
+      assertFacilityCanApprove(facility.status)
+
       const approved = await ctx.db
         .query("reservations")
         .withIndex("by_facility_status_start", (q) =>
@@ -232,7 +241,7 @@ export const decide = mutation({
     }
 
     const now = Date.now()
-    await ctx.db.patch(reservation._id, {
+    await ctx.db.patch("reservations", reservation._id, {
       status: args.decision,
       decisionNote: args.note?.trim() || undefined,
       decidedBy: actor._id,
@@ -263,7 +272,7 @@ export const cancelByStaff = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const actor = await requireRole(ctx, ["officer", "admin"])
-    const reservation = await ctx.db.get(args.reservationId)
+    const reservation = await ctx.db.get("reservations", args.reservationId)
 
     if (!reservation || !["pending", "approved"].includes(reservation.status)) {
       throw new ConvexError("Reservasi tidak dapat dibatalkan")
@@ -274,7 +283,7 @@ export const cancelByStaff = mutation({
     }
 
     const now = Date.now()
-    await ctx.db.patch(reservation._id, {
+    await ctx.db.patch("reservations", reservation._id, {
       status: "cancelled",
       decisionNote: args.reason.trim(),
       cancelledBy: actor._id,

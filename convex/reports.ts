@@ -4,6 +4,7 @@ import { mutation, query } from "./_generated/server"
 import { recordAuditEvent } from "./lib/audit"
 import { requireRole } from "./lib/authz"
 import { reportStatusValidator } from "./lib/validators"
+import { assertReportTransition } from "./lib/workflows"
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024
 const PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
@@ -40,7 +41,7 @@ export const create = mutation({
   returns: v.id("reports"),
   handler: async (ctx, args) => {
     const profile = await requireRole(ctx, ["user"])
-    const facility = await ctx.db.get(args.facilityId)
+    const facility = await ctx.db.get("facilities", args.facilityId)
 
     if (!facility || facility.status === "inactive") {
       throw new ConvexError("Fasilitas tidak ditemukan")
@@ -108,7 +109,7 @@ export const listMine = query({
     return Promise.all(
       reports.map(async (report) => {
         const [facility, photoUrl] = await Promise.all([
-          ctx.db.get(report.facilityId),
+          ctx.db.get("facilities", report.facilityId),
           report.photoStorageId
             ? ctx.storage.getUrl(report.photoStorageId)
             : Promise.resolve(null),
@@ -154,8 +155,8 @@ export const listQueue = query({
     return Promise.all(
       reports.map(async (report) => {
         const [facility, reporter, photoUrl] = await Promise.all([
-          ctx.db.get(report.facilityId),
-          ctx.db.get(report.reporterId),
+          ctx.db.get("facilities", report.facilityId),
+          ctx.db.get("profiles", report.reporterId),
           report.photoStorageId
             ? ctx.storage.getUrl(report.photoStorageId)
             : Promise.resolve(null),
@@ -193,7 +194,7 @@ export const updateStatus = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const actor = await requireRole(ctx, ["officer", "admin"])
-    const report = await ctx.db.get(args.reportId)
+    const report = await ctx.db.get("reports", args.reportId)
 
     if (!report) {
       throw new ConvexError("Laporan tidak ditemukan")
@@ -203,8 +204,10 @@ export const updateStatus = mutation({
       throw new ConvexError("Catatan penanganan wajib diisi")
     }
 
+    assertReportTransition(report.status, args.status)
+
     const now = Date.now()
-    await ctx.db.patch(report._id, {
+    await ctx.db.patch("reports", report._id, {
       status: args.status,
       resolutionNote: args.note.trim(),
       handledBy: actor._id,
@@ -213,10 +216,10 @@ export const updateStatus = mutation({
     })
 
     if (args.facilityMaintenance !== undefined) {
-      const facility = await ctx.db.get(report.facilityId)
+      const facility = await ctx.db.get("facilities", report.facilityId)
       if (facility) {
         const nextStatus = args.facilityMaintenance ? "maintenance" : "active"
-        await ctx.db.patch(facility._id, {
+        await ctx.db.patch("facilities", facility._id, {
           status: nextStatus,
           updatedAt: now,
         })
