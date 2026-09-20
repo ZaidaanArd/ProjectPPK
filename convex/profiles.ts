@@ -1,4 +1,4 @@
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 
 import { mutation, query } from "./_generated/server"
 import { authComponent, createAuth } from "./auth"
@@ -49,10 +49,10 @@ export const completeRegistration = mutation({
     const institutionalId = args.institutionalId.trim()
 
     if (!institutionalId) {
-      throw new Error("NIM/NIP wajib diisi")
+      throw new ConvexError("NIM/NIP wajib diisi")
     }
 
-    await ctx.db.patch(profile._id, {
+    await ctx.db.patch("profiles", profile._id, {
       userKind: args.userKind,
       institutionalId,
       updatedAt: Date.now(),
@@ -69,12 +69,11 @@ export const changePassword = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const profile = await requireProfile(ctx)
-
     if (args.newPassword.length < 8) {
-      throw new Error("Password baru minimal 8 karakter")
+      throw new ConvexError("Password baru minimal 8 karakter")
     }
 
+    const profile = await requireProfile(ctx)
     const { auth, headers } = await authComponent.getAuth(createAuth, ctx)
     await auth.api.changePassword({
       body: {
@@ -86,7 +85,7 @@ export const changePassword = mutation({
     })
 
     if (profile.mustChangePassword) {
-      await ctx.db.patch(profile._id, {
+      await ctx.db.patch("profiles", profile._id, {
         mustChangePassword: false,
         updatedAt: Date.now(),
       })

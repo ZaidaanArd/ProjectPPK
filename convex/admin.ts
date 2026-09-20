@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values"
 
-import { mutation, query } from "./_generated/server"
+import { env, mutation, query } from "./_generated/server"
 import { authComponent, createAuth } from "./auth"
 import { recordAuditEvent } from "./lib/audit"
 import { requireRole } from "./lib/authz"
@@ -61,7 +61,7 @@ export const reviewAccount = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const actor = await requireRole(ctx, ["admin"])
-    const profile = await ctx.db.get(args.profileId)
+    const profile = await ctx.db.get("profiles", args.profileId)
 
     if (!profile || profile.status !== "pending") {
       throw new ConvexError("Akun tidak tersedia untuk diverifikasi")
@@ -71,7 +71,7 @@ export const reviewAccount = mutation({
       throw new ConvexError("Alasan penolakan wajib diisi")
     }
 
-    await ctx.db.patch(profile._id, {
+    await ctx.db.patch("profiles", profile._id, {
       status: args.decision,
       rejectionReason:
         args.decision === "rejected" ? args.reason?.trim() : undefined,
@@ -102,7 +102,7 @@ export const setAccountStatus = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const actor = await requireRole(ctx, ["admin"])
-    const profile = await ctx.db.get(args.profileId)
+    const profile = await ctx.db.get("profiles", args.profileId)
 
     if (!profile) {
       throw new ConvexError("Akun tidak ditemukan")
@@ -116,7 +116,7 @@ export const setAccountStatus = mutation({
       throw new ConvexError("Alasan penonaktifan wajib diisi")
     }
 
-    await ctx.db.patch(profile._id, {
+    await ctx.db.patch("profiles", profile._id, {
       status: args.status,
       rejectionReason:
         args.status === "disabled" ? args.reason?.trim() : undefined,
@@ -182,7 +182,7 @@ export const createAccount = mutation({
       throw new ConvexError("Profil akun gagal dibuat")
     }
 
-    await ctx.db.patch(profile._id, {
+    await ctx.db.patch("profiles", profile._id, {
       role: args.role,
       status: "active",
       mustChangePassword: true,
@@ -207,8 +207,7 @@ export const bootstrapFirstAdmin = mutation({
   args: { email: v.string(), secret: v.string() },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const expectedSecret = process.env.BOOTSTRAP_SECRET
-    if (!expectedSecret || args.secret !== expectedSecret) {
+    if (args.secret !== env.BOOTSTRAP_SECRET) {
       throw new ConvexError("Bootstrap secret tidak valid")
     }
 
@@ -230,7 +229,7 @@ export const bootstrapFirstAdmin = mutation({
       throw new ConvexError("Daftarkan akun terlebih dahulu")
     }
 
-    await ctx.db.patch(profile._id, {
+    await ctx.db.patch("profiles", profile._id, {
       role: "admin",
       status: "active",
       updatedAt: Date.now(),
@@ -377,8 +376,8 @@ export const exportData = query({
         rows: await Promise.all(
           reservations.map(async (item) => {
             const [facility, applicant] = await Promise.all([
-              ctx.db.get(item.facilityId),
-              ctx.db.get(item.userId),
+              ctx.db.get("facilities", item.facilityId),
+              ctx.db.get("profiles", item.userId),
             ])
             return {
               id: item._id,
@@ -401,8 +400,8 @@ export const exportData = query({
       rows: await Promise.all(
         reports.map(async (item) => {
           const [facility, reporter] = await Promise.all([
-            ctx.db.get(item.facilityId),
-            ctx.db.get(item.reporterId),
+            ctx.db.get("facilities", item.facilityId),
+            ctx.db.get("profiles", item.reporterId),
           ])
           return {
             id: item._id,

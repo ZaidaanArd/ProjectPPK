@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values"
 
-import { mutation } from "./_generated/server"
+import { env, mutation } from "./_generated/server"
 
 const demoFacilities = [
   {
@@ -55,10 +55,7 @@ export const demo = mutation({
   args: { secret: v.string() },
   returns: v.object({ inserted: v.number(), skipped: v.number() }),
   handler: async (ctx, args) => {
-    if (
-      !process.env.BOOTSTRAP_SECRET ||
-      args.secret !== process.env.BOOTSTRAP_SECRET
-    ) {
+    if (args.secret !== env.BOOTSTRAP_SECRET) {
       throw new ConvexError("Bootstrap secret tidak valid")
     }
 
@@ -75,21 +72,23 @@ export const demo = mutation({
         (facility) => facility.name
       )
     )
-    let inserted = 0
     const now = Date.now()
-
-    for (const facility of demoFacilities) {
-      if (existingNames.has(facility.name)) continue
-      await ctx.db.insert("facilities", {
-        ...facility,
-        status:
-          facility.name === "Studio Multimedia" ? "maintenance" : "active",
-        createdBy: admin._id,
-        createdAt: now,
-        updatedAt: now,
-      })
-      inserted += 1
-    }
+    const facilitiesToInsert = demoFacilities.filter(
+      (facility) => !existingNames.has(facility.name)
+    )
+    await Promise.all(
+      facilitiesToInsert.map((facility) =>
+        ctx.db.insert("facilities", {
+          ...facility,
+          status:
+            facility.name === "Studio Multimedia" ? "maintenance" : "active",
+          createdBy: admin._id,
+          createdAt: now,
+          updatedAt: now,
+        })
+      )
+    )
+    const inserted = facilitiesToInsert.length
 
     return { inserted, skipped: demoFacilities.length - inserted }
   },

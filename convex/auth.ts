@@ -8,6 +8,7 @@ import { betterAuth } from "better-auth/minimal"
 
 import { components, internal } from "./_generated/api"
 import type { DataModel } from "./_generated/dataModel"
+import { env } from "./_generated/server"
 import authConfig from "./auth.config"
 
 const authFunctions: AuthFunctions = internal.auth
@@ -37,7 +38,7 @@ export const authComponent = createClient<DataModel>(components.betterAuth, {
           .unique()
 
         if (profile) {
-          await ctx.db.patch(profile._id, {
+          await ctx.db.patch("profiles", profile._id, {
             name: user.name.trim(),
             email: user.email.trim().toLowerCase(),
             updatedAt: Date.now(),
@@ -51,7 +52,7 @@ export const authComponent = createClient<DataModel>(components.betterAuth, {
           .unique()
 
         if (profile) {
-          await ctx.db.patch(profile._id, {
+          await ctx.db.patch("profiles", profile._id, {
             status: "disabled",
             updatedAt: Date.now(),
           })
@@ -61,14 +62,13 @@ export const authComponent = createClient<DataModel>(components.betterAuth, {
   },
 })
 
-const siteUrl = process.env.SITE_URL ?? "http://localhost:3000"
-
 export const createAuth = (ctx: GenericCtx<DataModel>) =>
   betterAuth({
     appName: "Sthana Kampus",
-    baseURL: siteUrl,
+    baseURL: env.SITE_URL,
+    secret: env.BETTER_AUTH_SECRET,
     database: authComponent.adapter(ctx),
-    trustedOrigins: [siteUrl],
+    trustedOrigins: [env.SITE_URL],
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,

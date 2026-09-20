@@ -76,7 +76,7 @@ export const getPublicAvailability = query({
     ),
   }),
   handler: async (ctx, args) => {
-    const facility = await ctx.db.get(args.facilityId)
+    const facility = await ctx.db.get("facilities", args.facilityId)
 
     if (!facility || facility.status === "inactive") {
       throw new ConvexError("Fasilitas tidak ditemukan")
@@ -194,14 +194,14 @@ export const update = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const actor = await requireRole(ctx, ["admin"])
-    const facility = await ctx.db.get(args.facilityId)
+    const facility = await ctx.db.get("facilities", args.facilityId)
 
     if (!facility) {
       throw new ConvexError("Fasilitas tidak ditemukan")
     }
 
     validateFacilityInput(args)
-    await ctx.db.patch(facility._id, {
+    await ctx.db.patch("facilities", facility._id, {
       name: args.name.trim(),
       type: args.type.trim(),
       location: args.location.trim(),
@@ -231,13 +231,13 @@ export const setStatus = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const actor = await requireRole(ctx, ["admin"])
-    const facility = await ctx.db.get(args.facilityId)
+    const facility = await ctx.db.get("facilities", args.facilityId)
 
     if (!facility) {
       throw new ConvexError("Fasilitas tidak ditemukan")
     }
 
-    await ctx.db.patch(facility._id, {
+    await ctx.db.patch("facilities", facility._id, {
       status: args.status,
       updatedAt: Date.now(),
     })

@@ -61,8 +61,6 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_user", ["userId"])
-    .index("by_user_and_status", ["userId", "status"])
-    .index("by_facility", ["facilityId"])
     .index("by_facility_status_start", ["facilityId", "status", "startAt"])
     .index("by_status", ["status"])
     .index("by_start", ["startAt"]),
@@ -83,8 +81,6 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_reporter", ["reporterId"])
-    .index("by_reporter_and_status", ["reporterId", "status"])
-    .index("by_facility", ["facilityId"])
     .index("by_facility_and_status", ["facilityId", "status"])
     .index("by_status", ["status"])
     .index("by_created", ["createdAt"]),

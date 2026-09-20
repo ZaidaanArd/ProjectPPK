@@ -16,6 +16,7 @@ import type * as lib_audit from "../lib/audit.js";
 import type * as lib_authz from "../lib/authz.js";
 import type * as lib_reservationTime from "../lib/reservationTime.js";
 import type * as lib_validators from "../lib/validators.js";
+import type * as lib_workflows from "../lib/workflows.js";
 import type * as profiles from "../profiles.js";
 import type * as reports from "../reports.js";
 import type * as reservations from "../reservations.js";
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   "lib/authz": typeof lib_authz;
   "lib/reservationTime": typeof lib_reservationTime;
   "lib/validators": typeof lib_validators;
+  "lib/workflows": typeof lib_workflows;
   profiles: typeof profiles;
   reports: typeof reports;
   reservations: typeof reservations;
