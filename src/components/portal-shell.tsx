@@ -62,11 +62,12 @@ const navigation = {
 
 function PasswordDialog({ required }: { required: boolean }) {
   const changePassword = useMutation(api.profiles.changePassword)
-  const [open, setOpen] = useState(required)
+  const [openedByUser, setOpenedByUser] = useState(false)
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [message, setMessage] = useState("")
   const [pending, setPending] = useState(false)
+  const open = required || openedByUser
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -77,7 +78,7 @@ function PasswordDialog({ required }: { required: boolean }) {
       setMessage("Password berhasil diperbarui.")
       setCurrentPassword("")
       setNewPassword("")
-      setOpen(false)
+      setOpenedByUser(false)
     } catch {
       setMessage("Password lama tidak sesuai atau password baru tidak valid.")
     } finally {
@@ -91,7 +92,7 @@ function PasswordDialog({ required }: { required: boolean }) {
         variant="ghost"
         size="sm"
         className="w-full justify-start"
-        onClick={() => setOpen(true)}
+        onClick={() => setOpenedByUser(true)}
       >
         <IconKey aria-hidden="true" />
         Ganti password
@@ -99,7 +100,7 @@ function PasswordDialog({ required }: { required: boolean }) {
       <Dialog
         open={open}
         onClose={() => {
-          if (!required) setOpen(false)
+          if (!required) setOpenedByUser(false)
         }}
         labelledBy="password-dialog-title"
         size="md"
@@ -115,7 +116,9 @@ function PasswordDialog({ required }: { required: boolean }) {
                 : "Gunakan minimal 8 karakter untuk password baru."}
             </DialogDescription>
           </div>
-          {!required && <DialogCloseButton onClose={() => setOpen(false)} />}
+          {!required && (
+            <DialogCloseButton onClose={() => setOpenedByUser(false)} />
+          )}
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-1.5">

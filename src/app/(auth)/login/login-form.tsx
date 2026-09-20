@@ -64,14 +64,18 @@ export function LoginForm() {
     setError("")
     setLoading(true)
 
-    const result = await authClient.signIn.email({
-      email: email.trim().toLowerCase(),
-      password,
-      rememberMe,
-    })
+    try {
+      const result = await authClient.signIn.email({
+        email: email.trim().toLowerCase(),
+        password,
+        rememberMe,
+      })
 
-    if (result.error) {
+      if (!result.error) return
       setError("Email atau password tidak sesuai.")
+      setLoading(false)
+    } catch {
+      setError("Tidak dapat terhubung. Silakan coba lagi.")
       setLoading(false)
     }
   }
@@ -119,14 +123,8 @@ export function LoginForm() {
             </div>
 
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
+              <div>
                 <Label htmlFor="password">Password</Label>
-                <a
-                  href="#"
-                  className="text-xs text-muted-foreground transition-opacity hover:opacity-70"
-                >
-                  Lupa password?
-                </a>
               </div>
               <div className="relative">
                 <Input

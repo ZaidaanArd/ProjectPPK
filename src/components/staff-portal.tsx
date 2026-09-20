@@ -20,12 +20,14 @@ const labels: Record<string, string> = {
   resolved: "Selesai",
 }
 
+const jakartaDateTime = new Intl.DateTimeFormat("id-ID", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "Asia/Jakarta",
+})
+
 function formatDate(value: number) {
-  return new Intl.DateTimeFormat("id-ID", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "Asia/Jakarta",
-  }).format(value)
+  return jakartaDateTime.format(value)
 }
 
 export function StaffDashboard() {
@@ -264,8 +266,12 @@ export function StaffReports() {
                   }))
                 }
               />
-              <label className="flex items-center gap-2 text-sm">
+              <label
+                htmlFor={`maintenance-${report.id}`}
+                className="flex items-center gap-2 text-sm"
+              >
                 <Checkbox
+                  id={`maintenance-${report.id}`}
                   checked={maintenance[report.id] ?? false}
                   onCheckedChange={(checked) =>
                     setMaintenance((current) => ({
@@ -277,26 +283,33 @@ export function StaffReports() {
                 Tandai fasilitas dalam perbaikan
               </label>
               <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  onClick={() => process(report.id, "in_progress")}
-                >
-                  Mulai tangani
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => process(report.id, "resolved", false)}
-                >
-                  Selesaikan + aktifkan fasilitas
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => process(report.id, "rejected")}
-                >
-                  Tolak
-                </Button>
+                {report.status === "pending" && (
+                  <Button
+                    size="sm"
+                    onClick={() => process(report.id, "in_progress")}
+                  >
+                    Mulai tangani
+                  </Button>
+                )}
+                {report.status === "in_progress" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => process(report.id, "resolved", false)}
+                  >
+                    Selesaikan + aktifkan fasilitas
+                  </Button>
+                )}
+                {(report.status === "pending" ||
+                  report.status === "in_progress") && (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => process(report.id, "rejected")}
+                  >
+                    Tolak
+                  </Button>
+                )}
               </div>
             </Card>
           ))}

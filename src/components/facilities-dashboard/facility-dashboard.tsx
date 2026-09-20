@@ -147,12 +147,9 @@ export function FacilityDashboard({
   return (
     <div className="mx-auto w-full max-w-6xl space-y-4 px-4 py-6 sm:px-6">
       {notice && (
-        <p
-          role="status"
-          className="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-2.5 text-sm text-emerald-800 dark:text-emerald-200"
-        >
+        <output className="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-2.5 text-sm text-emerald-800 dark:text-emerald-200">
           {notice}
-        </p>
+        </output>
       )}
 
       <DashboardControls

@@ -142,23 +142,28 @@ export function RegisterForm() {
     setError("")
     setSubmitting(true)
 
-    const result = await authClient.signUp.email({
-      name: nama.trim(),
-      email: email.trim().toLowerCase(),
-      password,
-    })
+    try {
+      const result = await authClient.signUp.email({
+        name: nama.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+      })
 
-    if (result.error) {
+      if (!result.error) {
+        setAwaitingProfile(true)
+        return
+      }
+
       setError(
         result.error.status === 422
           ? "Email sudah terdaftar."
           : "Pendaftaran gagal. Periksa kembali data Anda."
       )
       setSubmitting(false)
-      return
+    } catch {
+      setError("Tidak dapat terhubung. Silakan coba lagi.")
+      setSubmitting(false)
     }
-
-    setAwaitingProfile(true)
   }
 
   return (

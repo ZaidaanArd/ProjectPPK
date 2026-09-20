@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useState, type FormEvent, type ReactNode } from "react"
 import { useMutation, useQuery } from "convex/react"
 import { IconDownload, IconPlus } from "@tabler/icons-react"
@@ -35,18 +36,20 @@ export function AdminDashboard() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <a
+          <Link
             href="/api/admin/export?kind=reservations"
+            prefetch={false}
             className={buttonVariants({ variant: "outline", size: "sm" })}
           >
             <IconDownload aria-hidden="true" /> Reservasi CSV
-          </a>
-          <a
+          </Link>
+          <Link
             href="/api/admin/export?kind=reports"
+            prefetch={false}
             className={buttonVariants({ variant: "outline", size: "sm" })}
           >
             <IconDownload aria-hidden="true" /> Laporan CSV
-          </a>
+          </Link>
         </div>
       </div>
       {!analytics ? (

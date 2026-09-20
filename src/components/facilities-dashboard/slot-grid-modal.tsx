@@ -73,71 +73,64 @@ export function SlotGridModal({
           </DialogHeader>
 
           {facility.status === "Dalam Perbaikan" && (
-            <p
-              role="status"
-              className="mb-3 flex items-center gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200"
-            >
+            <output className="mb-3 flex items-center gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
               <IconLock size={15} aria-hidden="true" />
               Fasilitas dalam perbaikan — seluruh slot terkunci otomatis.
-            </p>
+            </output>
           )}
           {facility.status === "Nonaktif" && (
-            <p
-              role="status"
-              className="mb-3 rounded-2xl border bg-muted px-3 py-2 text-sm text-muted-foreground"
-            >
+            <output className="mb-3 rounded-2xl border bg-muted px-3 py-2 text-sm text-muted-foreground">
               Fasilitas nonaktif — tidak menerima reservasi baru.
-            </p>
+            </output>
           )}
 
-          <div
-            role="list"
+          <ul
             aria-label={`Grid slot ${facility.nama}`}
             className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4"
           >
             {slots.map((slot) => {
               const bisaKlik = slot.status === "tersedia"
               return (
-                <button
-                  key={slot.id}
-                  type="button"
-                  role="listitem"
-                  disabled={!bisaKlik}
-                  onClick={() => onPilihSlot?.(facility, slot)}
-                  title={
-                    bisaKlik
-                      ? `Slot ${slot.mulai}–${slot.selesai} tersedia`
-                      : slot.status === "terkunci"
-                        ? "Terkunci (maintenance)"
-                        : "Tidak tersedia"
-                  }
-                  style={
-                    slot.status === "terkunci"
-                      ? {
-                          backgroundImage:
-                            "repeating-linear-gradient(135deg, rgba(245,158,11,.22) 0 8px, rgba(245,158,11,.08) 8px 16px)",
-                        }
-                      : undefined
-                  }
-                  className={cn(
-                    "rounded-2xl border px-2 py-2.5 text-center transition-all",
-                    slotClass(slot.status)
-                  )}
-                >
-                  <span className="block text-xs font-semibold tabular-nums">
-                    {slot.mulai}–{slot.selesai}
-                  </span>
-                  <span className="mt-0.5 block text-[11px] font-medium">
-                    {slot.status === "tersedia"
-                      ? "Tersedia"
-                      : slot.status === "terkunci"
-                        ? "Terkunci"
-                        : "Tidak Tersedia"}
-                  </span>
-                </button>
+                <li key={slot.id}>
+                  <button
+                    type="button"
+                    disabled={!bisaKlik}
+                    onClick={() => onPilihSlot?.(facility, slot)}
+                    title={
+                      bisaKlik
+                        ? `Slot ${slot.mulai}–${slot.selesai} tersedia`
+                        : slot.status === "terkunci"
+                          ? "Terkunci (maintenance)"
+                          : "Tidak tersedia"
+                    }
+                    style={
+                      slot.status === "terkunci"
+                        ? {
+                            backgroundImage:
+                              "repeating-linear-gradient(135deg, rgba(245,158,11,.22) 0 8px, rgba(245,158,11,.08) 8px 16px)",
+                          }
+                        : undefined
+                    }
+                    className={cn(
+                      "w-full rounded-2xl border px-2 py-2.5 text-center transition-colors",
+                      slotClass(slot.status)
+                    )}
+                  >
+                    <span className="block text-xs font-semibold tabular-nums">
+                      {slot.mulai}–{slot.selesai}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] font-medium">
+                      {slot.status === "tersedia"
+                        ? "Tersedia"
+                        : slot.status === "terkunci"
+                          ? "Terkunci"
+                          : "Tidak Tersedia"}
+                    </span>
+                  </button>
+                </li>
               )
             })}
-          </div>
+          </ul>
 
           <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">

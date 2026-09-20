@@ -11,6 +11,13 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 
+const jakartaTime = new Intl.DateTimeFormat("id-ID", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+  timeZone: "Asia/Jakarta",
+})
+
 function tomorrowInJakarta() {
   const now = new Date(Date.now() + 7 * 60 * 60 * 1000)
   now.setUTCDate(now.getUTCDate() + 1)
@@ -45,12 +52,7 @@ function Availability({
           (item) => item.startAt < endAt && startAt < item.endAt
         )
         return {
-          label: new Intl.DateTimeFormat("id-ID", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-            timeZone: "Asia/Jakarta",
-          }).format(startAt),
+          label: jakartaTime.format(startAt),
           booked,
         }
       }),

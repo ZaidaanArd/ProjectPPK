@@ -1,7 +1,7 @@
 "use client"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { IconArrowRight, IconMenu2, IconX } from "@tabler/icons-react"
 import { BrandLogo } from "@/components/brand-logo"
 const nav = [
@@ -12,13 +12,18 @@ const nav = [
 export function SiteHeader() {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
+
+  useEffect(() => {
+    if (!open) return
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false)
+    }
+    document.addEventListener("keydown", closeOnEscape)
+    return () => document.removeEventListener("keydown", closeOnEscape)
+  }, [open])
+
   return (
-    <header
-      className="sthana-header"
-      onKeyDown={(e) => {
-        if (e.key === "Escape") setOpen(false)
-      }}
-    >
+    <header className="sthana-header">
       <div className="sthana-container header-row">
         <Link
           href="/"

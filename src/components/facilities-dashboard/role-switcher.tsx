@@ -18,11 +18,8 @@ export function RoleSwitcher({
   onChange: (role: DemoRole) => void
 }) {
   return (
-    <div
-      role="group"
-      aria-label="Simulasi peran pengguna"
-      className="inline-flex items-center gap-1 rounded-full bg-muted p-1"
-    >
+    <fieldset className="inline-flex items-center gap-1 rounded-full bg-muted p-1">
+      <legend className="sr-only">Simulasi peran pengguna</legend>
       {ROLES.map(({ value: r, label, icon: Icon }) => {
         const aktif = r === value
         return (
@@ -43,6 +40,6 @@ export function RoleSwitcher({
           </button>
         )
       })}
-    </div>
+    </fieldset>
   )
 }

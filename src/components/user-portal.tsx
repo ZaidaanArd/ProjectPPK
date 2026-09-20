@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, useState, type FormEvent } from "react"
+import { useMemo, useRef, useState, type FormEvent } from "react"
 import { useMutation, useQuery } from "convex/react"
 import { IconCalendarPlus, IconFilePlus } from "@tabler/icons-react"
 
@@ -24,12 +24,14 @@ const statusLabel: Record<string, string> = {
   resolved: "Selesai",
 }
 
+const jakartaDateTime = new Intl.DateTimeFormat("id-ID", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "Asia/Jakarta",
+})
+
 function formatDate(value: number) {
-  return new Intl.DateTimeFormat("id-ID", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "Asia/Jakarta",
-  }).format(value)
+  return jakartaDateTime.format(value)
 }
 
 function tomorrow() {
@@ -400,13 +402,15 @@ export function ReportForm() {
   const [facilityId, setFacilityId] = useState("")
   const [category, setCategory] = useState("")
   const [description, setDescription] = useState("")
-  const [photo, setPhoto] = useState<File | null>(null)
+  const photoRef = useRef<File | null>(null)
   const [message, setMessage] = useState("")
   const [pending, setPending] = useState(false)
 
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (!facilityId) return
+    const form = event.currentTarget as HTMLFormElement
+    const photo = photoRef.current
     setPending(true)
     setMessage("")
     try {
@@ -431,7 +435,8 @@ export function ReportForm() {
       })
       setCategory("")
       setDescription("")
-      setPhoto(null)
+      photoRef.current = null
+      form.reset()
       setMessage("Laporan berhasil dikirim.")
     } catch (error) {
       setMessage(
@@ -496,7 +501,9 @@ export function ReportForm() {
               id="photo"
               type="file"
               accept="image/jpeg,image/png,image/webp"
-              onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
+              onChange={(e) => {
+                photoRef.current = e.target.files?.[0] ?? null
+              }}
             />
           </div>
           {message && (
