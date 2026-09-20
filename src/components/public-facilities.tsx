@@ -86,7 +86,7 @@ export function PublicFacilities() {
   const [selectedId, setSelectedId] = useState<Id<"facilities"> | null>(null)
 
   const filtered = (facilities ?? []).filter((facility) =>
-    `${facility.name} ${facility.type} ${facility.location}`
+    `${facility.name} ${facility.type} ${facility.location} ${facility.capacity}`
       .toLowerCase()
       .includes(search.toLowerCase())
   )

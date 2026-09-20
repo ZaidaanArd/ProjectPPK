@@ -93,8 +93,9 @@ export function AdminDashboard() {
                   >
                     <span className="truncate">{item.name}</span>
                     <span className="shrink-0 text-muted-foreground">
-                      {item.approvedReservations} reservasi · {item.reports}{" "}
-                      laporan
+                      {item.approvedReservations} reservasi /{" "}
+                      {Math.round(item.reservedMinutes / 60)} jam ·{" "}
+                      {item.reports} laporan
                     </span>
                   </div>
                 ))}

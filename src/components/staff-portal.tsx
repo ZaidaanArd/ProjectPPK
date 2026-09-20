@@ -195,7 +195,8 @@ export function StaffReports() {
 
   async function process(
     reportId: Id<"reports">,
-    status: "in_progress" | "resolved" | "rejected"
+    status: "in_progress" | "resolved" | "rejected",
+    maintenanceOverride?: boolean
   ) {
     setMessage("")
     try {
@@ -203,7 +204,7 @@ export function StaffReports() {
         reportId,
         status,
         note: notes[reportId] ?? "",
-        facilityMaintenance: maintenance[reportId],
+        facilityMaintenance: maintenanceOverride ?? maintenance[reportId],
       })
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Pembaruan gagal")
@@ -285,9 +286,9 @@ export function StaffReports() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => process(report.id, "resolved")}
+                  onClick={() => process(report.id, "resolved", false)}
                 >
-                  Selesaikan
+                  Selesaikan + aktifkan fasilitas
                 </Button>
                 <Button
                   size="sm"

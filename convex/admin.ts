@@ -266,6 +266,7 @@ export const analytics = query({
         facilityId: v.id("facilities"),
         name: v.string(),
         approvedReservations: v.number(),
+        reservedMinutes: v.number(),
         reports: v.number(),
       })
     ),
@@ -313,6 +314,15 @@ export const analytics = query({
             (item) =>
               item.facilityId === facility._id && item.status === "approved"
           ).length,
+          reservedMinutes: reservations
+            .filter(
+              (item) =>
+                item.facilityId === facility._id && item.status === "approved"
+            )
+            .reduce(
+              (minutes, item) => minutes + (item.endAt - item.startAt) / 60_000,
+              0
+            ),
           reports: reports.filter((item) => item.facilityId === facility._id)
             .length,
         }))
