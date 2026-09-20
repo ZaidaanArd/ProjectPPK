@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { FormEvent } from "react"
 import Link from "next/link"
+import { useConvexAuth, useMutation } from "convex/react"
 import {
   IconArrowLeft,
   IconCheck,
@@ -21,6 +22,8 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
+import { api } from "../../../../convex/_generated/api"
+import { authClient } from "@/lib/auth-client"
 
 function Field({
   label,
@@ -88,6 +91,8 @@ const userTypes = [
 ] as const
 
 export function RegisterForm() {
+  const { isAuthenticated } = useConvexAuth()
+  const completeRegistration = useMutation(api.profiles.completeRegistration)
   const [nama, setNama] = useState("")
   const [nomorInduk, setNomorInduk] = useState("")
   const [email, setEmail] = useState("")
@@ -97,6 +102,9 @@ export function RegisterForm() {
   const [showKonfirmasi, setShowKonfirmasi] = useState(false)
   const [tipe, setTipe] = useState<string>("mahasiswa")
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [awaitingProfile, setAwaitingProfile] = useState(false)
+  const [error, setError] = useState("")
 
   const passwordTooShort = password.length > 0 && password.length < 8
   const passwordMismatch = konfirmasi.length > 0 && password !== konfirmasi
@@ -108,10 +116,54 @@ export function RegisterForm() {
     konfirmasi.length > 0 &&
     !passwordMismatch
 
-  function handleSubmit(e: FormEvent) {
+  useEffect(() => {
+    if (!awaitingProfile || !isAuthenticated) return
+
+    void completeRegistration({
+      userKind: tipe === "dosen" ? "lecturer" : "student",
+      institutionalId: nomorInduk,
+    })
+      .then(() => authClient.signOut())
+      .then(() => {
+        setSubmitted(true)
+        setAwaitingProfile(false)
+      })
+      .catch(() => {
+        setError(
+          "Akun dibuat, tetapi profil belum lengkap. Silakan hubungi admin."
+        )
+      })
+      .finally(() => setSubmitting(false))
+  }, [awaitingProfile, completeRegistration, isAuthenticated, nomorInduk, tipe])
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (passwordMismatch) return
-    setSubmitted(true)
+    setError("")
+    setSubmitting(true)
+
+    try {
+      const result = await authClient.signUp.email({
+        name: nama.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+      })
+
+      if (!result.error) {
+        setAwaitingProfile(true)
+        return
+      }
+
+      setError(
+        result.error.status === 422
+          ? "Email sudah terdaftar."
+          : "Pendaftaran gagal. Periksa kembali data Anda."
+      )
+      setSubmitting(false)
+    } catch {
+      setError("Tidak dapat terhubung. Silakan coba lagi.")
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -328,11 +380,16 @@ export function RegisterForm() {
               <div className="flex flex-col gap-2.5">
                 <Button
                   type="submit"
-                  disabled={!canSubmit}
+                  disabled={!canSubmit || submitting}
                   className="login-pink-accent w-full rounded-lg"
                 >
-                  Daftar Sekarang
+                  {submitting ? "Mendaftarkan…" : "Daftar Sekarang"}
                 </Button>
+                {error && (
+                  <p role="alert" className="text-sm text-destructive">
+                    {error}
+                  </p>
+                )}
               </div>
             </form>
           )}

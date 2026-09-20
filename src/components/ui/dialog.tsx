@@ -21,19 +21,22 @@ function Dialog({
   size = "lg",
   labelledBy,
 }: DialogProps) {
+  const dialogRef = React.useRef<HTMLDialogElement>(null)
+
   React.useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose()
-    }
-    document.addEventListener("keydown", onKey)
     const prev = document.body.style.overflow
     document.body.style.overflow = "hidden"
     return () => {
-      document.removeEventListener("keydown", onKey)
       document.body.style.overflow = prev
     }
-  }, [open, onClose])
+  }, [open])
+
+  React.useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog || !open || dialog.open) return
+    dialog.showModal()
+  }, [open])
 
   if (!open) return null
   // Komponen "use client" tetap di-render di server — jangan sentuh document di sana.
@@ -43,29 +46,23 @@ function Dialog({
     size === "xl" ? "max-w-3xl" : size === "md" ? "max-w-md" : "max-w-lg"
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
-      role="presentation"
+    <dialog
+      ref={dialogRef}
+      aria-labelledby={labelledBy}
+      className={cn(
+        "fixed inset-0 z-50 m-auto max-h-[90vh] w-[calc(100%-2rem)] overflow-y-auto rounded-3xl border-0 bg-card p-6 text-card-foreground shadow-xl ring-1 ring-foreground/10 backdrop:bg-foreground/40 backdrop:backdrop-blur-[2px]",
+        maxWidth
+      )}
+      onCancel={(event) => {
+        event.preventDefault()
+        onClose()
+      }}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div
-        aria-hidden="true"
-        className="fixed inset-0 bg-foreground/40 backdrop-blur-[2px]"
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={labelledBy}
-        className={cn(
-          "relative z-10 max-h-[90vh] w-full overflow-y-auto rounded-3xl bg-card p-6 text-card-foreground shadow-xl ring-1 ring-foreground/10",
-          maxWidth
-        )}
-      >
-        {children}
-      </div>
-    </div>,
+      {children}
+    </dialog>,
     document.body
   )
 }

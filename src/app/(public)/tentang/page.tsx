@@ -28,6 +28,37 @@ const roles = [
   },
 ]
 
+const teamMembers = [
+  {
+    name: "Muchammad Yuda Tri Ananda",
+    role: "Tech Team & Backend Lead",
+    focus:
+      "Arsitektur, kontrak, API/service, autentikasi, integrasi, quality gate, dan deployment.",
+    primary: true,
+  },
+  {
+    name: "Muhammad Hafidh Zufar Dewantara",
+    role: "QA & Testing Lead",
+    focus:
+      "Skenario pengujian, validasi user story, regression testing, dan pencatatan temuan.",
+    primary: false,
+  },
+  {
+    name: "Muhammad Zaidaan Ardiyansyah",
+    role: "Brand & UI Lead",
+    focus:
+      "Identitas visual, shared UI, public experience, auth UI, dan tampilan responsif.",
+    primary: false,
+  },
+  {
+    name: "Nayla Husna",
+    role: "Database Lead",
+    focus:
+      "Schema Convex, relasi dan index data, integritas data, seed, dan dokumentasi database.",
+    primary: false,
+  },
+] as const
+
 export default function AboutPage() {
   return (
     <main id="main-content" className="sthana-about">
@@ -51,6 +82,11 @@ export default function AboutPage() {
                 name: site.creator.name,
                 url: site.creator.url,
               },
+              contributor: teamMembers.map((member) => ({
+                "@type": "Person",
+                name: member.name,
+                jobTitle: member.role,
+              })),
             }).replace(/</g, "\\u003c"),
           }}
         />
@@ -114,6 +150,33 @@ export default function AboutPage() {
           </div>
         </aside>
       </div>
+
+      <section
+        className="sthana-container about-team"
+        aria-labelledby="team-heading"
+      >
+        <h2 id="team-heading">Tim project</h2>
+        <ol className="about-team-grid">
+          {teamMembers.map((member, index) => (
+            <li
+              key={member.name}
+              className={member.primary ? "about-team-primary" : undefined}
+            >
+              <span className="about-team-number" aria-hidden="true">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <div className="about-team-copy">
+                <div className="about-team-heading">
+                  <h3>{member.name}</h3>
+                  {member.primary && <span>Primary lead</span>}
+                </div>
+                <p className="about-team-role">{member.role}</p>
+                <p className="about-team-focus">{member.focus}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
     </main>
   )
 }

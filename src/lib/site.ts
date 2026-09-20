@@ -15,6 +15,7 @@ function productionUrl() {
   )
     return undefined
   if (!process.env.SITE_URL) return undefined
+  if (!URL.canParse(process.env.SITE_URL)) return undefined
   const url = new URL(process.env.SITE_URL)
   if (
     url.protocol !== "https:" ||

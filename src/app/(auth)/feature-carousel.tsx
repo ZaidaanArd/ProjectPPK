@@ -182,8 +182,8 @@ export function FeatureCarousel() {
             aria-current={index === activeSlide ? "true" : undefined}
             className={
               index === activeSlide
-                ? "h-1 w-10 rounded-full bg-white transition-all duration-300"
-                : "h-1 w-5 rounded-full bg-white/25 transition-all duration-300"
+                ? "h-1 w-10 rounded-full bg-white transition-[width,background-color] duration-300"
+                : "h-1 w-5 rounded-full bg-white/25 transition-[width,background-color] duration-300"
             }
           />
         ))}

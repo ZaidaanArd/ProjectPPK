@@ -1,6 +1,6 @@
 # Roadmap Implementasi
 
-> Dokumen ini adalah rencana kerja, bukan daftar fitur yang sudah tersedia. Kondisi repository saat ini masih berupa scaffold Next.js dengan halaman placeholder dan `GET /api/health`.
+> Fondasi dan seluruh user story sudah diimplementasikan pada branch Convex. Tabel berikut dipertahankan sebagai breakdown pekerjaan dan bahan review; status resmi ada di [REQUIREMENTS.md](./REQUIREMENTS.md).
 
 ## Cara memakai roadmap
 
@@ -204,4 +204,4 @@ Sebuah item baru boleh ditandai selesai jika:
 
 ## Pekerjaan berikutnya yang direkomendasikan
 
-Setelah paket dokumentasi `D-01` disetujui tim, mulai dari `C-01` (enum dan tipe domain). Sementara Tech Lead mengerjakan kontrak, Anggota 2–4 dapat mengambil `Q-01`, `Q-02`, dan `Q-03` secara paralel karena batas foldernya tidak saling bertabrakan.
+Fokus berikutnya adalah review silang, browser test untuk tiga role, accessibility/responsive pass, penyiapan akun demo final, lalu deployment production terkontrol.

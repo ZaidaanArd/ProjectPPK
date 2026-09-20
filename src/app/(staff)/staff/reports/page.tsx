@@ -1,5 +1,5 @@
-import { ScaffoldPage } from "@/components/scaffold-page"
+import { StaffReports } from "@/components/staff-portal"
 
 export default function ReportQueuePage() {
-  return <ScaffoldPage area="Staff" title="Antrean laporan" />
+  return <StaffReports />
 }

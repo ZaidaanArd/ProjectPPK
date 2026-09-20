@@ -1,5 +1,5 @@
-import { ScaffoldPage } from "@/components/scaffold-page"
+import { AdminDashboard } from "@/components/admin-portal"
 
 export default function AdminDashboardPage() {
-  return <ScaffoldPage area="Admin" title="Dashboard admin" />
+  return <AdminDashboard />
 }

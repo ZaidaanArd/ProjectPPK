@@ -1,11 +1,15 @@
 import type { Metadata } from "next"
 export const metadata: Metadata = { robots: { index: false, follow: false } }
 import type { ReactNode } from "react"
+import { PortalShell } from "@/components/portal-shell"
+import { requirePortalRole } from "@/lib/require-portal-role"
 
-export default function StaffPortalLayout({
+export default async function StaffPortalLayout({
   children,
 }: {
   children: ReactNode
 }) {
-  return children
+  const profile = await requirePortalRole(["officer", "admin"])
+
+  return <PortalShell profile={profile}>{children}</PortalShell>
 }

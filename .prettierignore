@@ -1,7 +1,0 @@
-dist/
-.next/
-next-env.d.ts
-node_modules/
-coverage/
-pnpm-lock.yaml
-.pnpm-store/

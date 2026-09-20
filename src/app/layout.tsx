@@ -3,8 +3,10 @@ import "./globals.css"
 import type { Metadata } from "next"
 import localFont from "next/font/local"
 import type { ReactNode } from "react"
+import { ConvexClientProvider } from "./convex-client-provider"
 import { cn } from "@/lib/utils"
 import { site, siteUrl } from "@/lib/site"
+import { getToken } from "@/lib/auth-server"
 
 const robotoHeading = localFont({
   src: "./fonts/roboto.woff2",
@@ -55,13 +57,19 @@ export const metadata: Metadata = {
   },
 }
 
-export default function AppLayout({ children }: { children: ReactNode }) {
+export default async function AppLayout({ children }: { children: ReactNode }) {
+  const token = process.env.NEXT_PUBLIC_CONVEX_SITE_URL
+    ? await getToken()
+    : null
+
   return (
     <html lang="id" className={cn(robotoHeading.variable)}>
       <body
         className={`${inter.variable} min-h-screen bg-background font-sans text-foreground`}
       >
-        {children}
+        <ConvexClientProvider initialToken={token}>
+          {children}
+        </ConvexClientProvider>
       </body>
     </html>
   )

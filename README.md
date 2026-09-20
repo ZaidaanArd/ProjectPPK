@@ -1,66 +1,82 @@
 # Sthana Kampus — Project PPK 2026
 
-Sthana Kampus adalah sistem reservasi dan pelaporan fasilitas kampus untuk project Pengembangan Platform Khusus sebelum UTS.
+Sthana Kampus adalah aplikasi reservasi dan pelaporan fasilitas kampus. Aplikasi memakai Next.js App Router untuk web, Convex untuk data real-time/functions/storage, dan Better Auth untuk email/password session.
 
-> **Status:** pengembangan aktif. Beberapa halaman dan alur UI sudah tersedia, sementara data masih banyak menggunakan mock dan integrasi backend masih dikembangkan.
+## Fitur
 
-## Yang sudah tersedia
+- Daftar fasilitas dan ketersediaan slot publik tanpa membocorkan pemohon atau tujuan.
+- Registrasi mandiri dengan verifikasi admin, login, logout, role guard, dan ganti password sementara.
+- Pengajuan, riwayat, dan pembatalan reservasi pengguna.
+- Approval/rejection/cancellation petugas dengan pencegahan bentrok atomik.
+- Laporan fasilitas dengan foto, status penanganan, catatan resolusi, dan sinkronisasi status perawatan.
+- Pengelolaan akun/fasilitas, rekap, dan export CSV untuk admin.
 
-- Single Next.js App Router project dengan React dan TypeScript.
-- Tailwind CSS v4 dan komponen dasar shadcn preset `b7Br7GOGm`.
-- Placeholder route untuk area public, auth, user, staff, dan admin.
-- Contoh backend Route Handler: `GET /api/health`.
-- ESLint, Prettier, typecheck, production build, dan CI.
+## Menjalankan lokal
 
-## Menjalankan project
+Prasyarat: Node.js 20+, pnpm, dan akun Convex.
 
 ```bash
 pnpm install
+pnpm convex dev
+```
+
+CLI membuat atau memperbarui `.env.local`. Pada terminal kedua:
+
+```bash
 pnpm dev
 ```
 
 Buka <http://localhost:3000>. Health check tersedia di <http://localhost:3000/api/health>.
 
+Environment yang diperlukan:
+
+```dotenv
+CONVEX_DEPLOYMENT=dev:...
+NEXT_PUBLIC_CONVEX_URL=https://....convex.cloud
+NEXT_PUBLIC_CONVEX_SITE_URL=https://....convex.site
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+
+Set environment di deployment Convex:
+
 ```bash
-pnpm format:check
-pnpm lint
-pnpm typecheck
-pnpm build
+pnpm convex env set BETTER_AUTH_SECRET <random-32-byte-secret>
+pnpm convex env set SITE_URL http://localhost:3000
+pnpm convex env set BOOTSTRAP_SECRET <one-time-bootstrap-secret>
+```
+
+## Bootstrap admin dan data demo
+
+1. Daftarkan akun pertama melalui `/register`.
+2. Promosikan akun sekali saja dengan function `admin:bootstrapFirstAdmin`, memakai nilai `BOOTSTRAP_SECRET`.
+3. Jalankan `seed:demo` dengan secret yang sama bila membutuhkan enam fasilitas demo.
+
+Kedua function menolak secret salah. Bootstrap admin berhenti bekerja setelah admin pertama tersedia; seed bersifat idempotent.
+
+## Quality gate
+
+```bash
 pnpm check
 ```
 
-## Struktur awal
+`pnpm check` menjalankan Oxfmt, Oxlint, aturan khusus Convex, TypeScript,
+Vitest, peer-dependency validation, React Doctor, lalu production build.
+Gunakan `pnpm doctor` untuk audit React interaktif yang lebih lengkap.
+
+## Struktur
 
 ```text
+convex/
+  schema.ts             schema dan index domain
+  auth.ts               Better Auth + profile trigger
+  facilities.ts         query publik dan administrasi fasilitas
+  reservations.ts       lifecycle reservasi
+  reports.ts            lifecycle laporan dan storage foto
+  admin.ts              akun, analytics, export data, bootstrap
 src/
-  app/
-    (public)/       halaman umum
-    (auth)/         login dan registrasi
-    (user)/         portal pengguna
-    (staff)/        portal petugas
-    (admin)/        portal admin
-    api/             backend Route Handlers
-  components/
-    ui/              primitives shadcn
-  lib/               helper, schema, dan type bersama nanti
+  app/                  halaman dan Route Handlers Next.js
+  components/           UI publik dan portal per role
+  lib/                  auth client/server dan shared helpers
 ```
 
-Folder route dibuat untuk membagi ownership. Placeholder bukan implementasi fitur dan tidak boleh dicatat sebagai user story yang selesai.
-
-## Dokumentasi tim
-
-| Dokumen                              | Isi                                                              |
-| ------------------------------------ | ---------------------------------------------------------------- |
-| [Requirements](docs/REQUIREMENTS.md) | Ketentuan tugas, aktor, dan user story 1–17                      |
-| [Architecture](docs/ARCHITECTURE.md) | Diagram sistem, request flow, route map, dan aturan arsitektur   |
-| [Data & API](docs/DATA-AND-API.md)   | Rancangan ERD, status, validasi, dan endpoint yang direncanakan  |
-| [Team Work](docs/TEAM-WORK.md)       | Porsi, ownership folder, pembagian user story, dan review silang |
-| [Roadmap](docs/ROADMAP.md)           | Urutan milestone dan daftar pekerjaan atomic                     |
-
-## Aturan singkat kontribusi
-
-1. Satu branch untuk satu pekerjaan kecil.
-2. Jangan mengubah folder milik anggota lain tanpa koordinasi.
-3. Setiap anggota membuat minimal tiga commit bermakna.
-4. Jalankan `pnpm check` sebelum merge.
-5. Setiap pull request mendapat minimal satu review silang.
+Dokumentasi kebutuhan, arsitektur, kontrak data, dan pembagian anggota berada di folder [`docs`](docs).
