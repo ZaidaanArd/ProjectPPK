@@ -13,7 +13,8 @@ Sthana Kampus adalah aplikasi reservasi dan pelaporan fasilitas kampus. Aplikasi
 
 ## Menjalankan lokal
 
-Prasyarat: Node.js 20+, pnpm, dan akun Convex.
+Prasyarat: Node.js 24 LTS, pnpm, dan akun Convex. pnpm memakai runtime
+Node.js 24.19.0 yang dipin oleh project agar local auth sama dengan Vercel.
 
 ```bash
 pnpm install

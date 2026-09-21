@@ -57,7 +57,14 @@
     "vitest": "^4.1.11"
   },
   "packageManager": "pnpm@11.3.0",
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "24.19.0",
+      "onFail": "download"
+    }
+  },
   "engines": {
-    "node": ">=20"
+    "node": ">=20 <25"
   }
 }
