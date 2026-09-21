@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useState, type FormEvent, type ReactNode } from "react"
-import { useMutation, useQuery } from "convex/react"
+import { useMutation } from "convex/react"
 import { IconDownload, IconPlus } from "@tabler/icons-react"
 
 import { api } from "../../convex/_generated/api"
@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { useAuthenticatedQuery } from "@/lib/use-authenticated-query"
 
 const statusLabel: Record<string, string> = {
   pending: "Menunggu",
@@ -24,7 +25,7 @@ const statusLabel: Record<string, string> = {
 }
 
 export function AdminDashboard() {
-  const analytics = useQuery(api.admin.analytics)
+  const analytics = useAuthenticatedQuery(api.admin.analytics, {})
 
   return (
     <div className="space-y-6">
@@ -129,7 +130,7 @@ const emptyFacility: FacilityDraft = {
 }
 
 export function AdminFacilities() {
-  const facilities = useQuery(api.facilities.listManaged)
+  const facilities = useAuthenticatedQuery(api.facilities.listManaged, {})
   const createFacility = useMutation(api.facilities.create)
   const updateFacility = useMutation(api.facilities.update)
   const setStatus = useMutation(api.facilities.setStatus)
@@ -333,7 +334,7 @@ function Field({
 }
 
 export function AdminUsers() {
-  const accounts = useQuery(api.admin.listAccounts, {})
+  const accounts = useAuthenticatedQuery(api.admin.listAccounts, {})
   const review = useMutation(api.admin.reviewAccount)
   const setStatus = useMutation(api.admin.setAccountStatus)
   const createAccount = useMutation(api.admin.createAccount)

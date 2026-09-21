@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
+import { useAuthenticatedQuery } from "@/lib/use-authenticated-query"
 
 const statusLabel: Record<string, string> = {
   pending: "Menunggu",
@@ -45,8 +46,8 @@ function toTimestamp(date: string, time: string) {
 }
 
 export function UserDashboard() {
-  const reservations = useQuery(api.reservations.listMine)
-  const reports = useQuery(api.reports.listMine)
+  const reservations = useAuthenticatedQuery(api.reservations.listMine, {})
+  const reports = useAuthenticatedQuery(api.reports.listMine, {})
   const [now] = useState(() => Date.now())
   const upcoming = (reservations ?? []).filter(
     (item) => item.status === "approved" && item.endAt > now
@@ -101,7 +102,7 @@ export function UserDashboard() {
 }
 
 export function ReservationList() {
-  const reservations = useQuery(api.reservations.listMine)
+  const reservations = useAuthenticatedQuery(api.reservations.listMine, {})
   const cancel = useMutation(api.reservations.cancelMine)
   const [message, setMessage] = useState("")
 
@@ -335,7 +336,7 @@ export function ReservationForm() {
 }
 
 export function ReportList() {
-  const reports = useQuery(api.reports.listMine)
+  const reports = useAuthenticatedQuery(api.reports.listMine, {})
 
   return (
     <div className="space-y-6">

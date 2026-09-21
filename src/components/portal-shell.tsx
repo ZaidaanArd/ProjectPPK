@@ -2,8 +2,8 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useState, type FormEvent, type ReactNode } from "react"
-import { useMutation } from "convex/react"
+import { useEffect, useState, type FormEvent, type ReactNode } from "react"
+import { useConvexAuth, useMutation } from "convex/react"
 import {
   IconBuilding,
   IconCalendar,
@@ -60,7 +60,13 @@ const navigation = {
   Array<{ href: string; label: string; icon: typeof IconHome }>
 >
 
-function PasswordDialog({ required }: { required: boolean }) {
+function PasswordDialog({
+  required,
+  onPasswordChanged,
+}: {
+  required: boolean
+  onPasswordChanged: () => void
+}) {
   const changePassword = useMutation(api.profiles.changePassword)
   const [openedByUser, setOpenedByUser] = useState(false)
   const [currentPassword, setCurrentPassword] = useState("")
@@ -79,6 +85,7 @@ function PasswordDialog({ required }: { required: boolean }) {
       setCurrentPassword("")
       setNewPassword("")
       setOpenedByUser(false)
+      onPasswordChanged()
     } catch {
       setMessage("Password lama tidak sesuai atau password baru tidak valid.")
     } finally {
@@ -170,7 +177,31 @@ export function PortalShell({
 }) {
   const pathname = usePathname()
   const router = useRouter()
+  const { isLoading, isAuthenticated } = useConvexAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [passwordChangeRequired, setPasswordChangeRequired] = useState(
+    profile.mustChangePassword
+  )
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/login")
+      router.refresh()
+    }
+  }, [isAuthenticated, isLoading, router])
+
+  if (isLoading || !isAuthenticated) {
+    return (
+      <div className="flex min-h-svh items-center justify-center bg-muted/30 px-4">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <BrandLogo markOnly />
+          <p className="text-sm text-muted-foreground">
+            {isLoading ? "Memeriksa sesi…" : "Mengalihkan ke halaman masuk…"}
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   async function logout() {
     await authClient.signOut()
@@ -179,6 +210,11 @@ export function PortalShell({
   }
 
   const links = navigation[profile.role]
+
+  function handlePasswordChanged() {
+    setPasswordChangeRequired(false)
+    router.refresh()
+  }
 
   return (
     <div className="min-h-svh bg-muted/30">
@@ -236,7 +272,10 @@ export function PortalShell({
             })}
           </nav>
           <div className="mt-6 space-y-1 border-t pt-4">
-            <PasswordDialog required={profile.mustChangePassword} />
+            <PasswordDialog
+              required={passwordChangeRequired}
+              onPasswordChanged={handlePasswordChanged}
+            />
             <Button
               variant="ghost"
               size="sm"

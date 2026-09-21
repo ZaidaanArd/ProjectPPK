@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useMutation, useQuery } from "convex/react"
+import { useMutation } from "convex/react"
 
 import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
+import { useAuthenticatedQuery } from "@/lib/use-authenticated-query"
 
 const labels: Record<string, string> = {
   pending: "Menunggu",
@@ -31,8 +32,8 @@ function formatDate(value: number) {
 }
 
 export function StaffDashboard() {
-  const reservations = useQuery(api.reservations.listQueue)
-  const reports = useQuery(api.reports.listQueue)
+  const reservations = useAuthenticatedQuery(api.reservations.listQueue, {})
+  const reports = useAuthenticatedQuery(api.reports.listQueue, {})
 
   return (
     <div className="space-y-6">
@@ -73,7 +74,7 @@ export function StaffDashboard() {
 }
 
 export function StaffReservations() {
-  const reservations = useQuery(api.reservations.listQueue)
+  const reservations = useAuthenticatedQuery(api.reservations.listQueue, {})
   const decide = useMutation(api.reservations.decide)
   const cancel = useMutation(api.reservations.cancelByStaff)
   const [notes, setNotes] = useState<Record<string, string>>({})
@@ -189,7 +190,7 @@ export function StaffReservations() {
 }
 
 export function StaffReports() {
-  const reports = useQuery(api.reports.listQueue)
+  const reports = useAuthenticatedQuery(api.reports.listQueue, {})
   const updateStatus = useMutation(api.reports.updateStatus)
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [maintenance, setMaintenance] = useState<Record<string, boolean>>({})
