@@ -56,43 +56,51 @@ const colors = [
 
 const teamMembers = [
   {
-    initials: "MY",
     name: "Muchammad Yuda Tri Ananda",
     role: "Tech Team & Backend Lead",
     focus:
       "Arsitektur, kontrak, API/service, autentikasi, integrasi, quality gate, dan deployment.",
     profile: "https://github.com/myudak",
     handle: "@myudak",
+    image: "/images/team/muchammad-yuda-tri-ananda.png",
+    badge: "Project Manager",
+    portraitSide: "left",
     primary: true,
   },
   {
-    initials: "HZ",
     name: "Muhammad Hafidh Zufar Dewantara",
     role: "QA & Testing Lead",
     focus:
       "Skenario pengujian, validasi user story, regression testing, dan pencatatan temuan.",
     profile: "https://github.com/hafidhzufar05-web",
     handle: "@hafidhzufar05-web",
+    image: "/images/team/muhammad-hafidh-zufar-dewantara.png",
+    badge: null,
+    portraitSide: "right",
     primary: false,
   },
   {
-    initials: "ZA",
     name: "Muhammad Zaidaan Ardiyansyah",
     role: "Brand & UI Lead",
     focus:
       "Identitas visual, shared UI, public experience, auth UI, dan tampilan responsif.",
     profile: "https://github.com/ZaidaanArd",
     handle: "@ZaidaanArd",
+    image: "/images/team/muhammad-zaidaan-ardiyansyah.png",
+    badge: null,
+    portraitSide: "left",
     primary: false,
   },
   {
-    initials: "NH",
     name: "Nayla Husna",
     role: "Database Lead",
     focus:
       "Schema Convex, relasi dan index data, integritas data, seed, dan dokumentasi database.",
     profile: "https://github.com/naylahusna",
     handle: "@naylahusna",
+    image: "/images/team/nayla-husna.png",
+    badge: null,
+    portraitSide: "right",
     primary: false,
   },
 ] as const
@@ -121,7 +129,9 @@ export default function AboutPage() {
                     contributor: teamMembers.map((member) => ({
                       "@type": "Person",
                       name: member.name,
-                      jobTitle: member.role,
+                      jobTitle: member.badge
+                        ? `${member.badge}; ${member.role}`
+                        : member.role,
                       url: member.profile,
                     })),
                   },
@@ -299,15 +309,28 @@ export default function AboutPage() {
             {teamMembers.map((member) => (
               <li
                 key={member.name}
-                className={member.primary ? "about-team-primary" : undefined}
+                className={[
+                  member.primary ? "about-team-primary" : "",
+                  member.portraitSide === "right"
+                    ? "about-team-portrait-right"
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
               >
-                <div className="about-team-avatar" aria-hidden="true">
-                  {member.initials}
+                <div className="about-team-avatar">
+                  <Image
+                    src={member.image}
+                    alt={`Ilustrasi profil ${member.name}`}
+                    width={256}
+                    height={256}
+                    sizes="(max-width: 600px) 84px, 124px"
+                  />
                 </div>
                 <div className="about-team-copy">
                   <div className="about-team-heading">
                     <h3>{member.name}</h3>
-                    {member.primary ? <span>Primary lead</span> : null}
+                    {member.badge ? <span>{member.badge}</span> : null}
                   </div>
                   <p className="about-team-role">{member.role}</p>
                   <p className="about-team-focus">{member.focus}</p>
