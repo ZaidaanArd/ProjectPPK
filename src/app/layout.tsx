@@ -58,7 +58,19 @@ export const metadata: Metadata = {
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="id" className={cn(robotoHeading.variable)}>
+    <html
+      lang="id"
+      className={cn(robotoHeading.variable)}
+      suppressHydrationWarning
+    >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              'try{if(localStorage.getItem("theme")==="dark")document.documentElement.classList.add("dark")}catch{}',
+          }}
+        />
+      </head>
       <body
         className={`${inter.variable} min-h-screen bg-background font-sans text-foreground`}
       >
