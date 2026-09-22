@@ -2174,3 +2174,240 @@
     transition: none !important;
   }
 }
+
+.sthana-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border: 1px solid #f3dce9;
+  border-radius: 11px;
+  color: #9d1b56;
+  background: rgb(255 255 255 / 72%);
+  transition:
+    color 180ms,
+    border-color 180ms,
+    background 180ms;
+}
+.sthana-theme-toggle:hover {
+  color: #c90060;
+  border-color: #eeb7d0;
+  background: #fff1f8;
+}
+.sthana-theme-toggle svg {
+  width: 17px;
+  height: 17px;
+}
+.public-facilities-page {
+  background:
+    radial-gradient(ellipse at 75% 0%, #ffe2f1 0, transparent 55%),
+    radial-gradient(ellipse at 5% 15%, #fff0f8 0, transparent 55%), #fffcfd;
+}
+
+.dark .sthana-header {
+  background: rgb(28 19 29 / 90%);
+  border-bottom-color: rgb(255 173 213 / 12%);
+}
+.dark .desktop-nav a,
+.dark .header-login {
+  color: #cfb9c7;
+}
+.dark .desktop-nav a:hover,
+.dark .header-login:hover,
+.dark .desktop-nav a[aria-current="page"] {
+  color: #fff0f7;
+}
+.dark .sthana-theme-toggle {
+  color: #ffd3e7;
+  border-color: rgb(255 172 211 / 18%);
+  background: rgb(255 255 255 / 5%);
+}
+.dark .sthana-theme-toggle:hover {
+  color: white;
+  border-color: rgb(255 172 211 / 38%);
+  background: rgb(255 128 187 / 14%);
+}
+.dark .mobile-navigation {
+  color: #f4e7ee;
+  border-top-color: rgb(255 188 221 / 12%);
+  background: #201722;
+}
+.dark .sthana-landing,
+.dark .sthana-about {
+  color: #f7edf3;
+  background: #17131a;
+}
+.dark .landing-hero {
+  background:
+    radial-gradient(ellipse at 75% 30%, rgb(155 22 93 / 30%), transparent 55%),
+    radial-gradient(ellipse at 5% 65%, rgb(87 25 62 / 38%), transparent 55%),
+    #17131a;
+}
+.dark .hero-copy h1 span,
+.dark .about-section-number {
+  color: #ff80ba;
+}
+.dark .hero-copy > p,
+.dark .section-heading p,
+.dark .feature-strip p,
+.dark .facility-info > p,
+.dark .facility-meta,
+.dark .demo-note,
+.dark .steps-grid p,
+.dark .portal-grid p,
+.dark .about-hero p,
+.dark .about-origin-copy p,
+.dark .about-system-heading > p,
+.dark .about-role-list p,
+.dark .about-team-intro > p,
+.dark .about-team-focus {
+  color: #c6b3c0;
+}
+.dark .sthana-button.secondary {
+  color: #f7e5ef;
+  border-color: rgb(255 169 212 / 20%);
+  background: #2d202b;
+}
+.dark .dashboard-window {
+  border-color: #5a2a44;
+  background: #241c27;
+  box-shadow: 0 24px 75px rgb(0 0 0 / 28%);
+}
+.dark .preview-sidebar {
+  background: #211a24;
+}
+.dark .preview-sidebar .text-\[17px\] {
+  color: #ffe7f2;
+}
+.dark .preview-nav,
+.dark .preview-avatar span,
+.dark .preview-greeting p,
+.dark .preview-stats span,
+.dark .preview-schedule small,
+.dark .preview-schedule p > span,
+.dark .preview-confirmed {
+  color: #b6a4b0;
+}
+.dark .preview-nav > div:first-child {
+  color: #ff9bc9;
+  background: #4d243b;
+}
+.dark .preview-topbar > span,
+.dark .preview-stats > div,
+.dark .preview-facilities > div {
+  border-color: rgb(255 194 224 / 13%);
+  background: rgb(255 255 255 / 3%);
+}
+.dark .preview-stats b {
+  color: #ffc4e0;
+}
+.dark .preview-schedule {
+  color: #f8eaf1;
+  border-color: #54243f;
+  background: #2c202e;
+  box-shadow: 0 16px 42px rgb(0 0 0 / 32%);
+}
+.dark .feature-strip > div,
+.dark .facility-card,
+.dark .steps-grid > article,
+.dark .portal-grid article,
+.dark .about-team-grid li:not(.about-team-primary) {
+  color: #f7edf3;
+  border-color: rgb(255 188 221 / 13%);
+  background: #241d28;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 12%);
+}
+.dark .feature-icon {
+  color: #ff8ebf;
+  background: #472239;
+}
+.dark .facility-tags > span {
+  color: #e9d7e2;
+  background: #3c303e;
+}
+.dark .facility-tags .status-tersedia {
+  color: #7de2bc;
+  background: #173b31;
+}
+.dark .facility-tags .status-perawatan {
+  color: #ff9ab8;
+  background: #4a2138;
+}
+.dark .facility-tags .status-penuh {
+  color: #c4bcc9;
+  background: #39333d;
+}
+.dark .facility-info > a,
+.dark .portal-grid a,
+.dark .step-arrow,
+.dark .about-source-link,
+.dark .about-text-link,
+.dark .about-team-copy > a {
+  color: #ff8fbd;
+}
+.dark .step-arrow {
+  background: #17131a;
+}
+.dark .portal-grid article:first-child {
+  border-color: rgb(255 141 190 / 38%);
+  background: #30202d;
+}
+.dark .portal-grid article:not(:first-child) .feature-icon {
+  color: #d7c6d4;
+  background: #39313f;
+}
+.dark .sthana-footer {
+  color: #f7edf3;
+  border-top-color: rgb(255 188 221 / 12%);
+  background: #1d1720;
+}
+.dark .footer-grid p,
+.dark .footer-grid a:not(:has(.inline-flex)),
+.dark .footer-bottom {
+  color: #c7b5c1;
+}
+.dark .footer-bottom {
+  border-top-color: rgb(255 188 221 / 12%);
+}
+.dark .footer-bottom a {
+  color: #ff91be;
+}
+.dark .about-hero {
+  border-bottom-color: rgb(255 188 221 / 12%);
+  background:
+    radial-gradient(
+      circle at 92% 12%,
+      rgb(175 37 104 / 28%),
+      transparent 27rem
+    ),
+    radial-gradient(circle at 66% 90%, rgb(110 31 77 / 28%), transparent 30rem),
+    #1b1520;
+}
+.dark .about-role-list,
+.dark .about-role-list li,
+.dark .about-role-list li:first-child {
+  border-color: rgb(255 188 221 / 13%);
+}
+.dark .about-role-list li > span,
+.dark .about-team-number {
+  color: #ff91be;
+}
+.dark .about-team-heading span {
+  color: #ffb8d6;
+  background: #4a263b;
+}
+.dark .about-team-primary .about-team-heading span {
+  color: #710033;
+  background: #ffbfde;
+}
+.dark .about-team-primary .about-team-copy > a {
+  color: white;
+}
+.dark .public-facilities-page {
+  background:
+    radial-gradient(ellipse at 75% 0%, rgb(141 25 83 / 23%) 0, transparent 55%),
+    radial-gradient(ellipse at 5% 15%, rgb(87 25 62 / 25%) 0, transparent 55%),
+    #17131a;
+}

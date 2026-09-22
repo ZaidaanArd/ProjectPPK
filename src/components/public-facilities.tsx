@@ -71,7 +71,7 @@ function Availability({
           className={`rounded-md border px-2 py-1.5 text-center text-xs ${
             slot.booked
               ? "border-muted bg-muted text-muted-foreground line-through"
-              : "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200"
           }`}
         >
           {slot.label}

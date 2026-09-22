@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
 import { IconArrowRight, IconMenu2, IconX } from "@tabler/icons-react"
 import { BrandLogo } from "@/components/brand-logo"
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler"
 const nav = [
   { href: "/", label: "Beranda" },
   { href: "/facilities", label: "Fasilitas" },
@@ -44,6 +45,11 @@ export function SiteHeader() {
           ))}
         </nav>
         <div className="header-actions">
+          <AnimatedThemeToggler
+            className="sthana-theme-toggle"
+            aria-label="Ganti tema terang atau gelap"
+            title="Ganti tema"
+          />
           <Link href="/login" className="header-login">
             Masuk
           </Link>
