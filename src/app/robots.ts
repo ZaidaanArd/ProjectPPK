@@ -15,7 +15,6 @@ export default function robots(): MetadataRoute.Robots {
             "/staff",
             "/admin",
             "/forbidden",
-            "/facilities",
           ],
         },
         sitemap: `${siteUrl}/sitemap.xml`,

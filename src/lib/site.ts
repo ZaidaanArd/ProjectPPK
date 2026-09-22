@@ -1,11 +1,14 @@
 export const site = {
   name: "Sthana Kampus",
   description:
-    "Cari fasilitas kampus, ajukan reservasi ruangan, pantau persetujuan, dan laporkan kerusakan dalam satu tempat.",
+    "Sthana Kampus adalah aplikasi web untuk mencari fasilitas, mengajukan reservasi ruangan, memantau persetujuan, dan melaporkan kerusakan kampus.",
   creator: {
     name: "Myudak",
     url: "https://www.myudak.com/",
+    sameAs: ["https://github.com/myudak"],
   },
+  repository: "https://github.com/ZaidaanArd/ProjectPPK",
+  lastUpdated: "2026-09-22",
 }
 
 function productionUrl() {

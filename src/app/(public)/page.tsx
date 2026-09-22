@@ -101,6 +101,7 @@ export default function HomePage() {
                   "@id": `${siteUrl}/#creator`,
                   name: site.creator.name,
                   url: site.creator.url,
+                  sameAs: site.creator.sameAs,
                 },
                 {
                   "@type": "WebSite",
@@ -121,8 +122,16 @@ export default function HomePage() {
                   applicationCategory: "BusinessApplication",
                   operatingSystem: "Web",
                   inLanguage: "id-ID",
+                  isAccessibleForFree: true,
+                  featureList: [
+                    "Pencarian fasilitas kampus",
+                    "Reservasi fasilitas kampus",
+                    "Pelaporan kerusakan fasilitas",
+                    "Portal pengguna, petugas, dan admin",
+                  ],
                   creator: { "@id": `${siteUrl}/#creator` },
                   isPartOf: { "@id": `${siteUrl}/#website` },
+                  sameAs: site.repository,
                 },
               ],
             }).replace(/</g, "\\u003c"),
@@ -137,8 +146,8 @@ export default function HomePage() {
                 Pinjam ruangan kampus <span>tanpa drama antre.</span>
               </h1>
               <p>
-                Cari fasilitas, ajukan reservasi, dan pantau persetujuan. Semua
-                kebutuhan ruang kampusmu, dalam satu tempat.
+                Sthana Kampus membantu mencari fasilitas, mengajukan reservasi,
+                dan memantau persetujuan dalam satu tempat.
               </p>
               <div className="hero-actions">
                 <Link href="/facilities" className="sthana-button primary">
