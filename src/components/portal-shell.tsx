@@ -4,23 +4,32 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState, type FormEvent, type ReactNode } from "react"
 import { useConvexAuth, useMutation } from "convex/react"
-import {
-  IconBuilding,
-  IconCalendar,
-  IconChartBar,
-  IconClipboardCheck,
-  IconFileAlert,
-  IconHome,
-  IconKey,
-  IconLogout,
-  IconMenu2,
-  IconUsers,
-  IconX,
-} from "@tabler/icons-react"
+import { IconLogout } from "@tabler/icons-react"
 
 import { api } from "../../convex/_generated/api"
-import { BrandLogo } from "@/components/brand-logo"
+import { AppSidebar } from "@/components/app-sidebar"
+import { PortalShellLoading } from "@/components/portal-skeletons"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
 import { Button } from "@/components/ui/button"
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler"
 import {
   Dialog,
   DialogCloseButton,
@@ -30,158 +39,173 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import { authClient } from "@/lib/auth-client"
-import { cn } from "@/lib/utils"
+import {
+  getActivePortalItem,
+  portalRoleMeta,
+  type PortalRole,
+} from "@/lib/portal-navigation"
 
-type Role = "user" | "officer" | "admin"
-
-const navigation = {
-  user: [
-    { href: "/app", label: "Beranda", icon: IconHome },
-    { href: "/app/reservations", label: "Reservasi", icon: IconCalendar },
-    { href: "/app/reports", label: "Laporan", icon: IconFileAlert },
-  ],
-  officer: [
-    { href: "/staff", label: "Beranda", icon: IconHome },
-    {
-      href: "/staff/reservations",
-      label: "Antrean reservasi",
-      icon: IconClipboardCheck,
-    },
-    { href: "/staff/reports", label: "Laporan", icon: IconFileAlert },
-  ],
-  admin: [
-    { href: "/admin", label: "Ringkasan", icon: IconChartBar },
-    { href: "/admin/facilities", label: "Fasilitas", icon: IconBuilding },
-    { href: "/admin/users", label: "Akun", icon: IconUsers },
-  ],
-} satisfies Record<
-  Role,
-  Array<{ href: string; label: string; icon: typeof IconHome }>
->
+type PortalProfile = {
+  name: string
+  email: string
+  role: PortalRole
+  mustChangePassword: boolean
+}
 
 function PasswordDialog({
+  open,
   required,
+  onOpenChange,
   onPasswordChanged,
 }: {
+  open: boolean
   required: boolean
+  onOpenChange: (open: boolean) => void
   onPasswordChanged: () => void
 }) {
   const changePassword = useMutation(api.profiles.changePassword)
-  const [openedByUser, setOpenedByUser] = useState(false)
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
+  const [confirmation, setConfirmation] = useState("")
   const [message, setMessage] = useState("")
   const [pending, setPending] = useState(false)
-  const open = required || openedByUser
 
   async function submit(event: FormEvent) {
     event.preventDefault()
     setMessage("")
+
+    if (newPassword !== confirmation) {
+      setMessage("Konfirmasi password baru belum sama.")
+      return
+    }
+
     setPending(true)
     try {
       await changePassword({ currentPassword, newPassword })
-      setMessage("Password berhasil diperbarui.")
       setCurrentPassword("")
       setNewPassword("")
-      setOpenedByUser(false)
+      setConfirmation("")
       onPasswordChanged()
-    } catch {
-      setMessage("Password lama tidak sesuai atau password baru tidak valid.")
+      onOpenChange(false)
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Password lama tidak sesuai atau password baru tidak valid."
+      )
     } finally {
       setPending(false)
     }
   }
 
   return (
-    <>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="w-full justify-start"
-        onClick={() => setOpenedByUser(true)}
-      >
-        <IconKey aria-hidden="true" />
-        Ganti password
-      </Button>
-      <Dialog
-        open={open}
-        onClose={() => {
-          if (!required) setOpenedByUser(false)
-        }}
-        labelledBy="password-dialog-title"
-        size="md"
-      >
-        <DialogHeader>
-          <div>
-            <DialogTitle id="password-dialog-title">
-              {required ? "Buat password baru" : "Ganti password"}
-            </DialogTitle>
-            <DialogDescription>
-              {required
-                ? "Password sementara harus diganti sebelum melanjutkan."
-                : "Gunakan minimal 8 karakter untuk password baru."}
-            </DialogDescription>
-          </div>
-          {!required && (
-            <DialogCloseButton onClose={() => setOpenedByUser(false)} />
-          )}
-        </DialogHeader>
-        <form onSubmit={submit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="current-password">Password saat ini</Label>
-            <Input
-              id="current-password"
-              type="password"
-              value={currentPassword}
-              onChange={(event) => setCurrentPassword(event.target.value)}
-              autoComplete="current-password"
-              required
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="new-password">Password baru</Label>
-            <Input
-              id="new-password"
-              type="password"
-              minLength={8}
-              value={newPassword}
-              onChange={(event) => setNewPassword(event.target.value)}
-              autoComplete="new-password"
-              required
-            />
-          </div>
-          {message && (
-            <p className="text-sm text-muted-foreground">{message}</p>
-          )}
-          <Button type="submit" disabled={pending} className="w-full">
-            {pending ? "Menyimpan…" : "Simpan password"}
-          </Button>
-        </form>
-      </Dialog>
-    </>
+    <Dialog
+      open={open}
+      onClose={() => {
+        if (!required && !pending) onOpenChange(false)
+      }}
+      labelledBy="password-dialog-title"
+      size="md"
+    >
+      <DialogHeader>
+        <div>
+          <DialogTitle id="password-dialog-title">
+            {required ? "Amankan akun Anda" : "Ganti password"}
+          </DialogTitle>
+          <DialogDescription>
+            {required
+              ? "Password sementara wajib diganti sebelum Anda menggunakan portal."
+              : "Sesi lain akan dikeluarkan setelah password diperbarui."}
+          </DialogDescription>
+        </div>
+        {!required ? (
+          <DialogCloseButton onClose={() => onOpenChange(false)} />
+        ) : null}
+      </DialogHeader>
+      <form onSubmit={submit} className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="current-password">Password saat ini</Label>
+          <Input
+            id="current-password"
+            type="password"
+            value={currentPassword}
+            onChange={(event) => setCurrentPassword(event.target.value)}
+            autoComplete="current-password"
+            required
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="new-password">Password baru</Label>
+          <Input
+            id="new-password"
+            type="password"
+            minLength={8}
+            value={newPassword}
+            onChange={(event) => setNewPassword(event.target.value)}
+            autoComplete="new-password"
+            aria-describedby="password-hint"
+            required
+          />
+          <p id="password-hint" className="text-xs text-muted-foreground">
+            Gunakan minimal 8 karakter yang tidak mudah ditebak.
+          </p>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="confirm-password">Ulangi password baru</Label>
+          <Input
+            id="confirm-password"
+            type="password"
+            minLength={8}
+            value={confirmation}
+            onChange={(event) => setConfirmation(event.target.value)}
+            autoComplete="new-password"
+            required
+          />
+        </div>
+        {message ? (
+          <p role="alert" className="text-sm text-destructive">
+            {message}
+          </p>
+        ) : null}
+        <Button type="submit" disabled={pending} className="w-full">
+          {pending ? "Menyimpan…" : "Perbarui password"}
+        </Button>
+      </form>
+    </Dialog>
   )
 }
 
 export function PortalShell({
   children,
   profile,
+  sidebarDefaultOpen = true,
 }: {
   children: ReactNode
-  profile: {
-    name: string
-    email: string
-    role: Role
-    mustChangePassword: boolean
-  }
+  profile: PortalProfile
+  sidebarDefaultOpen?: boolean
 }) {
   const pathname = usePathname()
   const router = useRouter()
   const { isLoading, isAuthenticated } = useConvexAuth()
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const [passwordChangeRequired, setPasswordChangeRequired] = useState(
-    profile.mustChangePassword
-  )
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
+  const [passwordChangedLocally, setPasswordChangedLocally] = useState(false)
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
+  const [logoutPending, setLogoutPending] = useState(false)
+  const role = portalRoleMeta[profile.role]
+  const activeItem = getActivePortalItem(profile.role, pathname)
+  const passwordChangeRequired =
+    !isLoading &&
+    isAuthenticated &&
+    profile.mustChangePassword &&
+    !passwordChangedLocally
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -190,106 +214,122 @@ export function PortalShell({
     }
   }, [isAuthenticated, isLoading, router])
 
-  if (isLoading || !isAuthenticated) {
-    return (
-      <div className="flex min-h-svh items-center justify-center bg-muted/30 px-4">
-        <div className="flex flex-col items-center gap-4 text-center">
-          <BrandLogo markOnly />
-          <p className="text-sm text-muted-foreground">
-            {isLoading ? "Memeriksa sesi…" : "Mengalihkan ke halaman masuk…"}
-          </p>
-        </div>
-      </div>
-    )
+  if ((!isLoading && !isAuthenticated) || logoutPending) {
+    return <PortalShellLoading />
   }
 
   async function logout() {
-    await authClient.signOut()
-    router.replace("/login")
-    router.refresh()
+    setLogoutPending(true)
+    try {
+      await authClient.signOut()
+      router.replace("/login")
+      router.refresh()
+    } finally {
+      setLogoutPending(false)
+    }
   }
 
-  const links = navigation[profile.role]
-
   function handlePasswordChanged() {
-    setPasswordChangeRequired(false)
+    setPasswordChangedLocally(true)
     router.refresh()
   }
 
   return (
-    <div className="min-h-svh bg-muted/30">
-      <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-          <Link href={links[0].href} aria-label="Sthana Kampus">
-            <BrandLogo className="h-9 w-auto" />
-          </Link>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            onClick={() => setMobileOpen((value) => !value)}
-            aria-label="Buka navigasi"
-          >
-            {mobileOpen ? <IconX /> : <IconMenu2 />}
-          </Button>
-        </div>
-      </header>
+    <TooltipProvider delay={250}>
+      <SidebarProvider
+        defaultOpen={sidebarDefaultOpen}
+        style={
+          {
+            "--sidebar-width": "17.5rem",
+            "--sidebar-width-icon": "4.25rem",
+          } as React.CSSProperties
+        }
+        className="bg-[#f7f4f6] dark:bg-[#17131a]"
+      >
+        <AppSidebar
+          profile={profile}
+          onChangePassword={() => setPasswordDialogOpen(true)}
+          onLogout={() => setLogoutDialogOpen(true)}
+        />
+        <SidebarInset className="min-h-svh overflow-hidden bg-[radial-gradient(circle_at_top_right,rgba(255,229,242,0.55),transparent_32%),#fbfafb] dark:bg-[radial-gradient(circle_at_top_right,rgba(135,25,84,0.18),transparent_32%),#17131a]">
+          <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-pink-950/5 bg-white/80 px-4 backdrop-blur-xl sm:px-6 dark:border-white/10 dark:bg-[#201a23]/85">
+            <div className="flex min-w-0 items-center gap-2">
+              <SidebarTrigger
+                className="-ml-1 rounded-xl"
+                aria-label="Buka atau tutup navigasi"
+              />
+              <Separator
+                orientation="vertical"
+                className="mx-1 data-vertical:h-4 data-vertical:self-auto"
+              />
+              <Breadcrumb>
+                <BreadcrumbList>
+                  <BreadcrumbItem className="hidden sm:block">
+                    <BreadcrumbLink render={<Link href={role.home} />}>
+                      Portal {role.label}
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator className="hidden sm:block" />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>{activeItem.label}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="hidden rounded-full bg-pink-100 px-3 py-1 text-xs font-semibold text-[#9f004c] sm:inline-flex dark:bg-pink-900/40 dark:text-pink-200">
+                {role.label}
+              </span>
+              <AnimatedThemeToggler
+                className="flex size-9 items-center justify-center rounded-xl border border-transparent text-[#8a2958] transition-colors hover:border-pink-200 hover:bg-pink-50 dark:text-pink-200 dark:hover:border-pink-800 dark:hover:bg-pink-950/50 [&_svg]:size-4"
+                aria-label="Ganti tema terang atau gelap"
+                title="Ganti tema"
+              />
+            </div>
+          </header>
+          <main className="mx-auto w-full max-w-7xl min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
+            {children}
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
 
-      <div className="mx-auto grid max-w-7xl md:grid-cols-[240px_1fr]">
-        <aside
-          className={cn(
-            "border-r bg-background p-4 md:block md:min-h-[calc(100svh-4rem)]",
-            mobileOpen ? "block" : "hidden"
-          )}
-        >
-          <div className="mb-5 px-3">
-            <p className="truncate text-sm font-semibold">{profile.name}</p>
-            <p className="truncate text-xs text-muted-foreground">
-              {profile.email}
-            </p>
-          </div>
-          <nav className="space-y-1" aria-label="Portal">
-            {links.map((item) => {
-              const active =
-                pathname === item.href ||
-                (item.href !== links[0].href && pathname.startsWith(item.href))
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileOpen(false)}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                    active
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  <item.icon className="size-4" aria-hidden="true" />
-                  {item.label}
-                </Link>
-              )
-            })}
-          </nav>
-          <div className="mt-6 space-y-1 border-t pt-4">
-            <PasswordDialog
-              required={passwordChangeRequired}
-              onPasswordChanged={handlePasswordChanged}
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start text-destructive"
-              onClick={logout}
-            >
+      <PasswordDialog
+        open={passwordDialogOpen || passwordChangeRequired}
+        required={passwordChangeRequired}
+        onOpenChange={setPasswordDialogOpen}
+        onPasswordChanged={handlePasswordChanged}
+      />
+
+      <AlertDialog
+        open={logoutDialogOpen}
+        onOpenChange={(open) => {
+          if (!logoutPending) setLogoutDialogOpen(open)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia className="bg-red-50 text-destructive">
               <IconLogout aria-hidden="true" />
-              Keluar
-            </Button>
-          </div>
-        </aside>
-
-        <main className="min-w-0 p-4 sm:p-6 lg:p-8">{children}</main>
-      </div>
-    </div>
+            </AlertDialogMedia>
+            <AlertDialogTitle>Keluar dari Sthana?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Anda perlu masuk kembali untuk mengakses portal dan data akun.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={logoutPending}>
+              Tetap di sini
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={logoutPending}
+              onClick={() => void logout()}
+            >
+              {logoutPending ? "Mengeluarkan…" : "Ya, keluar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </TooltipProvider>
   )
 }

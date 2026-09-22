@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { cookies } from "next/headers"
 export const metadata: Metadata = { robots: { index: false, follow: false } }
 import type { ReactNode } from "react"
 import { PortalShell } from "@/components/portal-shell"
@@ -10,6 +11,12 @@ export default async function AdminPortalLayout({
   children: ReactNode
 }) {
   const profile = await requirePortalRole(["admin"])
+  const sidebarDefaultOpen =
+    (await cookies()).get("sidebar_state")?.value !== "false"
 
-  return <PortalShell profile={profile}>{children}</PortalShell>
+  return (
+    <PortalShell profile={profile} sidebarDefaultOpen={sidebarDefaultOpen}>
+      {children}
+    </PortalShell>
+  )
 }
