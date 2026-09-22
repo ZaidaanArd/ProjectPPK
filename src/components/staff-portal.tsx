@@ -1,12 +1,21 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
 import { useMutation } from "convex/react"
+import {
+  IconChecklist,
+  IconClockHour4,
+  IconFileAlert,
+  IconProgress,
+} from "@tabler/icons-react"
 
 import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
+import { DashboardMetricCard } from "@/components/dashboard-metric-card"
+import { PortalListSkeleton } from "@/components/portal-skeletons"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -36,39 +45,87 @@ export function StaffDashboard() {
   const reports = useAuthenticatedQuery(api.reports.listQueue, {})
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-2xl font-bold">Dashboard petugas</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Antrean kerja diperbarui secara real-time.
-        </p>
+    <div className="space-y-7">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="mb-2 text-xs font-semibold tracking-[0.16em] text-[#b00055] uppercase dark:text-pink-300">
+            Portal petugas
+          </p>
+          <h1 className="font-heading text-3xl font-bold tracking-tight">
+            Antrean operasional
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Prioritaskan permohonan dan kendala yang perlu ditangani.
+          </p>
+        </div>
+        <span className="inline-flex items-center gap-2 rounded-full border bg-white px-3 py-1.5 text-xs text-muted-foreground shadow-sm dark:bg-card">
+          <span className="size-2 animate-pulse rounded-full bg-emerald-500" />
+          Sinkron real-time
+        </span>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="p-5">
-          <p className="text-sm text-muted-foreground">Reservasi menunggu</p>
-          <p className="text-3xl font-bold">
-            {
-              (reservations ?? []).filter((item) => item.status === "pending")
-                .length
-            }
-          </p>
-        </Card>
-        <Card className="p-5">
-          <p className="text-sm text-muted-foreground">Laporan baru</p>
-          <p className="text-3xl font-bold">
-            {(reports ?? []).filter((item) => item.status === "pending").length}
-          </p>
-        </Card>
-        <Card className="p-5">
-          <p className="text-sm text-muted-foreground">Sedang ditangani</p>
-          <p className="text-3xl font-bold">
-            {
-              (reports ?? []).filter((item) => item.status === "in_progress")
-                .length
-            }
-          </p>
-        </Card>
+        <DashboardMetricCard
+          label="Reservasi menunggu"
+          value={
+            reservations
+              ? reservations.filter((item) => item.status === "pending").length
+              : undefined
+          }
+          description="Permohonan yang membutuhkan keputusan."
+          icon={IconClockHour4}
+          tone="amber"
+        />
+        <DashboardMetricCard
+          label="Laporan baru"
+          value={
+            reports
+              ? reports.filter((item) => item.status === "pending").length
+              : undefined
+          }
+          description="Laporan yang belum diambil petugas."
+          icon={IconFileAlert}
+          tone="pink"
+        />
+        <DashboardMetricCard
+          label="Sedang ditangani"
+          value={
+            reports
+              ? reports.filter((item) => item.status === "in_progress").length
+              : undefined
+          }
+          description="Pekerjaan aktif yang perlu dituntaskan."
+          icon={IconProgress}
+          tone="emerald"
+        />
       </div>
+      <Card className="p-5 sm:p-6">
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+          <div className="flex items-start gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-pink-100 text-[#b00055] dark:bg-pink-900/40 dark:text-pink-200">
+              <IconChecklist className="size-5" aria-hidden="true" />
+            </span>
+            <div>
+              <h2 className="font-heading text-base font-bold">
+                Lanjutkan antrean kerja
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Buka antrean sesuai jenis pekerjaan yang ingin diproses.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/staff/reservations" className={buttonVariants()}>
+              Reservasi
+            </Link>
+            <Link
+              href="/staff/reports"
+              className={buttonVariants({ variant: "outline" })}
+            >
+              Laporan
+            </Link>
+          </div>
+        </div>
+      </Card>
     </div>
   )
 }
@@ -114,7 +171,7 @@ export function StaffReservations() {
         </p>
       )}
       {!reservations ? (
-        <p className="text-sm text-muted-foreground">Memuat antrean…</p>
+        <PortalListSkeleton />
       ) : reservations.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground">
           Belum ada reservasi.
@@ -228,7 +285,7 @@ export function StaffReports() {
         </p>
       )}
       {!reports ? (
-        <p className="text-sm text-muted-foreground">Memuat laporan…</p>
+        <PortalListSkeleton />
       ) : reports.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground">
           Belum ada laporan.

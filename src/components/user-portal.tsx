@@ -3,10 +3,18 @@
 import Link from "next/link"
 import { useMemo, useRef, useState, type FormEvent } from "react"
 import { useMutation, useQuery } from "convex/react"
-import { IconCalendarPlus, IconFilePlus } from "@tabler/icons-react"
+import {
+  IconCalendarCheck,
+  IconCalendarPlus,
+  IconClockHour4,
+  IconFilePlus,
+  IconTool,
+} from "@tabler/icons-react"
 
 import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
+import { DashboardMetricCard } from "@/components/dashboard-metric-card"
+import { PortalListSkeleton } from "@/components/portal-skeletons"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -54,49 +62,88 @@ export function UserDashboard() {
   )
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-2xl font-bold">Dashboard pengguna</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Ringkasan reservasi dan laporan fasilitas Anda.
-        </p>
+    <div className="space-y-7">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="mb-2 text-xs font-semibold tracking-[0.16em] text-[#b00055] uppercase dark:text-pink-300">
+            Portal pengguna
+          </p>
+          <h1 className="font-heading text-3xl font-bold tracking-tight">
+            Aktivitas kampus Anda
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            Pantau reservasi dan laporan fasilitas dari satu tempat.
+          </p>
+        </div>
+        <span className="inline-flex items-center gap-2 rounded-full border bg-white px-3 py-1.5 text-xs text-muted-foreground shadow-sm dark:bg-card">
+          <span className="size-2 rounded-full bg-emerald-500" />
+          Data diperbarui otomatis
+        </span>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="p-5">
-          <p className="text-sm text-muted-foreground">Reservasi mendatang</p>
-          <p className="text-3xl font-bold">{upcoming.length}</p>
-        </Card>
-        <Card className="p-5">
-          <p className="text-sm text-muted-foreground">Menunggu persetujuan</p>
-          <p className="text-3xl font-bold">
-            {
-              (reservations ?? []).filter((item) => item.status === "pending")
-                .length
-            }
-          </p>
-        </Card>
-        <Card className="p-5">
-          <p className="text-sm text-muted-foreground">Laporan aktif</p>
-          <p className="text-3xl font-bold">
-            {
-              (reports ?? []).filter((item) =>
-                ["pending", "in_progress"].includes(item.status)
-              ).length
-            }
-          </p>
-        </Card>
+        <DashboardMetricCard
+          label="Reservasi mendatang"
+          value={reservations ? upcoming.length : undefined}
+          description="Jadwal yang sudah disetujui dan belum selesai."
+          icon={IconCalendarCheck}
+          tone="berry"
+        />
+        <DashboardMetricCard
+          label="Menunggu persetujuan"
+          value={
+            reservations
+              ? reservations.filter((item) => item.status === "pending").length
+              : undefined
+          }
+          description="Pengajuan yang sedang diperiksa petugas."
+          icon={IconClockHour4}
+          tone="amber"
+        />
+        <DashboardMetricCard
+          label="Laporan aktif"
+          value={
+            reports
+              ? reports.filter((item) =>
+                  ["pending", "in_progress"].includes(item.status)
+                ).length
+              : undefined
+          }
+          description="Kendala yang belum dinyatakan selesai."
+          icon={IconTool}
+          tone="pink"
+        />
       </div>
-      <div className="flex flex-wrap gap-3">
-        <Link href="/app/reservations/new" className={buttonVariants()}>
-          <IconCalendarPlus aria-hidden="true" /> Ajukan reservasi
-        </Link>
-        <Link
-          href="/app/reports/new"
-          className={buttonVariants({ variant: "outline" })}
-        >
-          <IconFilePlus aria-hidden="true" /> Buat laporan
-        </Link>
-      </div>
+      <Card className="border-0 bg-gradient-to-br from-[#52082b] via-[#8e0045] to-[#d00064] p-6 text-white shadow-[0_18px_50px_rgba(82,8,43,0.2)] ring-0 sm:p-7">
+        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="font-heading text-xl font-bold">Mulai dari sini</h2>
+            <p className="mt-1 text-sm text-pink-100/80">
+              Ajukan kebutuhan ruang atau beri tahu petugas jika ada kendala.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/app/reservations/new"
+              className={buttonVariants({
+                className:
+                  "!bg-white !text-[#8e0045] hover:!bg-pink-50 hover:!text-[#8e0045]",
+              })}
+            >
+              <IconCalendarPlus aria-hidden="true" /> Ajukan reservasi
+            </Link>
+            <Link
+              href="/app/reports/new"
+              className={buttonVariants({
+                variant: "outline",
+                className:
+                  "border-white/25 bg-white/10 text-white hover:bg-white/20 hover:text-white",
+              })}
+            >
+              <IconFilePlus aria-hidden="true" /> Buat laporan
+            </Link>
+          </div>
+        </div>
+      </Card>
     </div>
   )
 }
@@ -134,7 +181,7 @@ export function ReservationList() {
         </p>
       )}
       {!reservations ? (
-        <p className="text-sm text-muted-foreground">Memuat reservasi…</p>
+        <PortalListSkeleton />
       ) : reservations.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground">
           Belum ada reservasi.
@@ -352,7 +399,7 @@ export function ReportList() {
         </Link>
       </div>
       {!reports ? (
-        <p className="text-sm text-muted-foreground">Memuat laporan…</p>
+        <PortalListSkeleton />
       ) : reports.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground">
           Belum ada laporan.

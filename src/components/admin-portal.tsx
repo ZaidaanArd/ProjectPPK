@@ -3,10 +3,19 @@
 import Link from "next/link"
 import { useState, type FormEvent, type ReactNode } from "react"
 import { useMutation } from "convex/react"
-import { IconDownload, IconPlus } from "@tabler/icons-react"
+import {
+  IconBuilding,
+  IconCalendar,
+  IconDownload,
+  IconFileAlert,
+  IconPlus,
+  IconUsers,
+} from "@tabler/icons-react"
 
 import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
+import { DashboardMetricCard } from "@/components/dashboard-metric-card"
+import { PortalListSkeleton } from "@/components/portal-skeletons"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -28,12 +37,17 @@ export function AdminDashboard() {
   const analytics = useAuthenticatedQuery(api.admin.analytics, {})
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-heading text-2xl font-bold">Ringkasan sistem</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Data reservasi, laporan, dan penggunaan fasilitas.
+          <p className="mb-2 text-xs font-semibold tracking-[0.16em] text-[#b00055] uppercase dark:text-pink-300">
+            Portal admin
+          </p>
+          <h1 className="font-heading text-3xl font-bold tracking-tight">
+            Ringkasan sistem
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Kondisi akun, fasilitas, reservasi, dan laporan saat ini.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -53,60 +67,85 @@ export function AdminDashboard() {
           </Link>
         </div>
       </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <DashboardMetricCard
+          label="Akun"
+          value={analytics?.accounts}
+          description="Seluruh profil yang tercatat."
+          icon={IconUsers}
+          tone="berry"
+        />
+        <DashboardMetricCard
+          label="Fasilitas"
+          value={analytics?.facilities}
+          description="Ruang dan fasilitas terkelola."
+          icon={IconBuilding}
+          tone="pink"
+        />
+        <DashboardMetricCard
+          label="Reservasi"
+          value={analytics?.reservations}
+          description="Total permohonan reservasi."
+          icon={IconCalendar}
+          tone="amber"
+        />
+        <DashboardMetricCard
+          label="Laporan"
+          value={analytics?.reports}
+          description="Total laporan fasilitas."
+          icon={IconFileAlert}
+          tone="emerald"
+        />
+      </div>
       {!analytics ? (
-        <p className="text-sm text-muted-foreground">Memuat ringkasan…</p>
+        <PortalListSkeleton rows={2} />
       ) : (
-        <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              ["Akun", analytics.accounts],
-              ["Fasilitas", analytics.facilities],
-              ["Reservasi", analytics.reservations],
-              ["Laporan", analytics.reports],
-            ].map(([label, value]) => (
-              <Card key={label} className="p-5">
-                <p className="text-sm text-muted-foreground">{label}</p>
-                <p className="text-3xl font-bold">{value}</p>
-              </Card>
-            ))}
-          </div>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card className="p-5">
-              <h2 className="font-semibold">Status reservasi</h2>
-              <div className="mt-4 space-y-2">
-                {analytics.reservationsByStatus.map((item) => (
-                  <div
-                    key={item.status}
-                    className="flex justify-between text-sm"
-                  >
-                    <span className="capitalize">
-                      {item.status.replace("_", " ")}
-                    </span>
-                    <strong>{item.count}</strong>
-                  </div>
-                ))}
-              </div>
-            </Card>
-            <Card className="p-5">
-              <h2 className="font-semibold">Penggunaan fasilitas</h2>
-              <div className="mt-4 space-y-3">
-                {analytics.facilityUsage.slice(0, 8).map((item) => (
-                  <div
-                    key={item.facilityId}
-                    className="flex items-center justify-between gap-3 text-sm"
-                  >
-                    <span className="truncate">{item.name}</span>
-                    <span className="shrink-0 text-muted-foreground">
-                      {item.approvedReservations} reservasi /{" "}
-                      {Math.round(item.reservedMinutes / 60)} jam ·{" "}
-                      {item.reports} laporan
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </div>
-        </>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card className="p-5 sm:p-6">
+            <h2 className="font-heading font-bold">Status reservasi</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Distribusi keputusan untuk seluruh pengajuan.
+            </p>
+            <div className="mt-5 space-y-3">
+              {analytics.reservationsByStatus.map((item) => (
+                <div
+                  key={item.status}
+                  className="flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-3 text-sm"
+                >
+                  <span className="capitalize">
+                    {item.status.replace("_", " ")}
+                  </span>
+                  <strong className="rounded-full bg-white px-2.5 py-1 text-xs shadow-sm">
+                    {item.count}
+                  </strong>
+                </div>
+              ))}
+            </div>
+          </Card>
+          <Card className="p-5 sm:p-6">
+            <h2 className="font-heading font-bold">Penggunaan fasilitas</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Delapan fasilitas dengan aktivitas terbaru.
+            </p>
+            <div className="mt-5 space-y-4">
+              {analytics.facilityUsage.slice(0, 8).map((item) => (
+                <div
+                  key={item.facilityId}
+                  className="flex items-center justify-between gap-3 text-sm"
+                >
+                  <span className="min-w-0 truncate font-medium">
+                    {item.name}
+                  </span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {item.approvedReservations} reservasi ·{" "}
+                    {Math.round(item.reservedMinutes / 60)} jam · {item.reports}{" "}
+                    laporan
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
       )}
     </div>
   )
@@ -243,7 +282,7 @@ export function AdminFacilities() {
       )}
 
       {!facilities ? (
-        <p className="text-sm text-muted-foreground">Memuat fasilitas…</p>
+        <PortalListSkeleton />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {facilities.map((facility) => (
@@ -431,7 +470,7 @@ export function AdminUsers() {
       )}
 
       {!accounts ? (
-        <p className="text-sm text-muted-foreground">Memuat akun…</p>
+        <PortalListSkeleton />
       ) : (
         <div className="space-y-3">
           {accounts.map((account) => (
