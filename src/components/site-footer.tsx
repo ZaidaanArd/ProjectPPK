@@ -12,17 +12,17 @@ const team = [
   },
   {
     id: 2,
-    name: "Muhammad Hafidh Zufar Dewantara",
-    designation: "QA & Testing Lead",
-    image: "/images/team/muhammad-hafidh-zufar-dewantara.png",
-    href: "https://github.com/hafidhzufar05-web",
-  },
-  {
-    id: 3,
     name: "Muhammad Zaidaan Ardiyansyah",
     designation: "Brand & UI Lead",
     image: "/images/team/muhammad-zaidaan-ardiyansyah.png",
     href: "https://github.com/ZaidaanArd",
+  },
+    {
+    id: 3,
+    name: "Muhammad Hafidh Zufar Dewantara",
+    designation: "QA & Testing Lead",
+    image: "/images/team/muhammad-hafidh-zufar-dewantara.png",
+    href: "https://github.com/hafidhzufar05-web",
   },
   {
     id: 4,
