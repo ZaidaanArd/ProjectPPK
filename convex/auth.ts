@@ -5,6 +5,7 @@ import {
 } from "@convex-dev/better-auth"
 import { convex } from "@convex-dev/better-auth/plugins"
 import { betterAuth } from "better-auth/minimal"
+import { APIError } from "better-auth/api"
 import { multiSession } from "better-auth/plugins"
 
 import { components, internal } from "./_generated/api"
@@ -63,8 +64,10 @@ export const authComponent = createClient<DataModel>(components.betterAuth, {
   },
 })
 
-export const createAuth = (ctx: GenericCtx<DataModel>) =>
-  betterAuth({
+export const createAuth = (ctx: GenericCtx<DataModel>) => {
+  // Keep the old sign-up route working until the new frontend is promoted.
+  const pendingGateEnabled = env.PENDING_SESSION_GATE !== "false"
+  return betterAuth({
     appName: "Sthana Kampus",
     baseURL: env.SITE_URL,
     secret: env.BETTER_AUTH_SECRET,
@@ -73,7 +76,40 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,
+      autoSignIn: !pendingGateEnabled,
       minPasswordLength: 8,
+    },
+    databaseHooks: {
+      session: {
+        create: {
+          before: async (session) => {
+            if (!pendingGateEnabled) return { data: session }
+            if (!("runQuery" in ctx)) {
+              throw new APIError("INTERNAL_SERVER_ERROR", {
+                message: "Tidak dapat memeriksa status akun.",
+              })
+            }
+
+            const status = await ctx.runQuery(
+              internal.profiles.statusByAuthUserId,
+              { authUserId: session.userId }
+            )
+            if (status !== "active") {
+              const code =
+                status === "pending"
+                  ? "ACCOUNT_PENDING"
+                  : status === "rejected"
+                    ? "ACCOUNT_REJECTED"
+                    : "ACCOUNT_DISABLED"
+              throw new APIError("FORBIDDEN", {
+                code,
+                message: code,
+              })
+            }
+            return { data: session }
+          },
+        },
+      },
     },
     session: {
       expiresIn: 60 * 60 * 24 * 7,
@@ -81,5 +117,6 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
     },
     plugins: [convex({ authConfig }), multiSession({ maximumSessions: 5 })],
   })
+}
 
 export const { onCreate, onUpdate, onDelete } = authComponent.triggersApi()

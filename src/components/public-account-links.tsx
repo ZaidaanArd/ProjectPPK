@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useConvexAuth } from "convex/react"
+import { useAppAuth as useConvexAuth } from "@/lib/data-hooks"
 import { IconArrowRight } from "@tabler/icons-react"
 
 export function PublicAccountLinks({

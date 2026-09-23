@@ -8,6 +8,7 @@ import { BrandLogo } from "@/components/brand-logo"
 import { Card } from "@/components/ui/card"
 import { accountStatusMessage } from "@/lib/account-routing"
 import { fetchAuthQuery, isAuthenticated } from "@/lib/auth-server"
+import { isStaticMode } from "@/lib/data-mode"
 
 export const metadata: Metadata = {
   title: "Status akun",
@@ -15,6 +16,7 @@ export const metadata: Metadata = {
 }
 
 export default async function AccountStatusPage() {
+  if (isStaticMode) redirect("/login")
   if (!(await isAuthenticated())) redirect("/login")
   const profile = await fetchAuthQuery(api.profiles.current)
 

@@ -2,7 +2,12 @@
 
 import Link from "next/link"
 import { useMemo, useRef, useState, type FormEvent } from "react"
-import { useMutation, useQuery } from "convex/react"
+import {
+  useAppMutation as useMutation,
+  useAppQuery as useQuery,
+} from "@/lib/data-hooks"
+import { isStaticMode } from "@/lib/data-mode"
+import { saveStaticPhoto } from "@/lib/static-data"
 import {
   IconBuilding,
   IconCalendarCheck,
@@ -624,15 +629,21 @@ export function ReportForm() {
     try {
       let photoStorageId: Id<"_storage"> | undefined
       if (photo) {
-        const uploadUrl = await generateUploadUrl()
-        const upload = await fetch(uploadUrl, {
-          method: "POST",
-          headers: { "Content-Type": photo.type },
-          body: photo,
-        })
-        if (!upload.ok) throw new Error("Unggah foto gagal")
-        const uploaded = (await upload.json()) as { storageId: Id<"_storage"> }
-        photoStorageId = uploaded.storageId
+        if (isStaticMode) {
+          photoStorageId = (await saveStaticPhoto(photo)) as Id<"_storage">
+        } else {
+          const uploadUrl = await generateUploadUrl()
+          const upload = await fetch(uploadUrl, {
+            method: "POST",
+            headers: { "Content-Type": photo.type },
+            body: photo,
+          })
+          if (!upload.ok) throw new Error("Unggah foto gagal")
+          const uploaded = (await upload.json()) as {
+            storageId: Id<"_storage">
+          }
+          photoStorageId = uploaded.storageId
+        }
       }
       await createReport({
         facilityId: facilityId as Id<"facilities">,

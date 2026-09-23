@@ -10,7 +10,10 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react"
-import { useConvexAuth, useMutation } from "convex/react"
+import {
+  useAppAuth as useConvexAuth,
+  useAppMutation as useMutation,
+} from "@/lib/data-hooks"
 import { IconInfoCircle } from "@tabler/icons-react"
 
 import { api } from "../../convex/_generated/api"
@@ -54,6 +57,7 @@ import {
 } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import {
+  accountErrorMessage,
   leaveAllAccounts,
   leaveCurrentAccount,
   removeDeviceAccount,
@@ -293,9 +297,11 @@ export function PortalShell({
     try {
       await switchDeviceAccount(token)
       window.location.replace("/portal")
-    } catch {
+    } catch (cause) {
       setNavigationPending(false)
-      setAccountError("Tidak dapat mengganti akun. Coba lagi.")
+      setAccountError(
+        accountErrorMessage(cause, "Tidak dapat mengganti akun. Coba lagi.")
+      )
     }
   }
 
@@ -313,10 +319,12 @@ export function PortalShell({
         // Storage may be unavailable; leaving the account should still succeed.
       }
       window.location.replace(kind === "all" ? "/login" : "/portal")
-    } catch {
+    } catch (cause) {
       setNavigationPending(false)
       setLogoutKind(null)
-      setAccountError("Tidak dapat keluar dari akun. Coba lagi.")
+      setAccountError(
+        accountErrorMessage(cause, "Tidak dapat keluar dari akun. Coba lagi.")
+      )
     }
   }
 
@@ -326,9 +334,11 @@ export function PortalShell({
     try {
       await removeDeviceAccount(removeTarget.token)
       setRemoveTarget(null)
-    } catch {
+    } catch (cause) {
       setRemoveTarget(null)
-      setAccountError("Akun tidak dapat dilepas. Coba lagi.")
+      setAccountError(
+        accountErrorMessage(cause, "Akun tidak dapat dilepas. Coba lagi.")
+      )
     } finally {
       setRemovePending(false)
     }

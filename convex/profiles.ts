@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values"
 
-import { mutation, query } from "./_generated/server"
+import { internalQuery, mutation, query } from "./_generated/server"
 import { authComponent, createAuth } from "./auth"
 import { getCurrentProfile, requireProfile } from "./lib/authz"
 import { accountStatusValidator, roleValidator } from "./lib/validators"
@@ -35,6 +35,63 @@ export const current = query({
       status: profile.status,
       mustChangePassword: profile.mustChangePassword,
     }
+  },
+})
+
+export const statusByAuthUserId = internalQuery({
+  args: { authUserId: v.string() },
+  returns: v.union(accountStatusValidator, v.null()),
+  handler: async (ctx, { authUserId }) => {
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_auth_user_id", (q) => q.eq("authUserId", authUserId))
+      .unique()
+    return profile?.status ?? null
+  },
+})
+
+export const register = mutation({
+  args: {
+    name: v.string(),
+    email: v.string(),
+    password: v.string(),
+    userKind: v.union(v.literal("student"), v.literal("lecturer")),
+    institutionalId: v.string(),
+  },
+  returns: v.union(v.literal("created"), v.literal("exists")),
+  handler: async (ctx, args) => {
+    const name = args.name.trim()
+    const email = args.email.trim().toLowerCase()
+    const institutionalId = args.institutionalId.trim()
+    if (!name || !email || !institutionalId) {
+      throw new ConvexError("Nama, email, dan NIM/NIP wajib diisi")
+    }
+    if (args.password.length < 8) {
+      throw new ConvexError("Password minimal 8 karakter")
+    }
+
+    const existing = await ctx.db
+      .query("profiles")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .unique()
+    if (existing) return "exists"
+
+    const { auth } = await authComponent.getAuth(createAuth, ctx)
+    const result = await auth.api.signUpEmail({
+      body: { name, email, password: args.password },
+    })
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_auth_user_id", (q) => q.eq("authUserId", result.user.id))
+      .unique()
+    if (!profile) return "exists"
+
+    await ctx.db.patch("profiles", profile._id, {
+      userKind: args.userKind,
+      institutionalId,
+      updatedAt: Date.now(),
+    })
+    return "created"
   },
 })
 

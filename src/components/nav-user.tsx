@@ -9,6 +9,7 @@ import {
   IconLogout,
   IconMoonStars,
   IconPlus,
+  IconRefresh,
   IconSelector,
   IconSettings,
   IconUsers,
@@ -33,6 +34,7 @@ import {
 } from "@/components/ui/sidebar"
 import { MAX_DEVICE_ACCOUNTS } from "@/lib/account-routing"
 import {
+  accountErrorMessage,
   getActiveSessionToken,
   getDeviceAccounts,
   isLegacySession,
@@ -84,6 +86,7 @@ export function NavUser({
   const [activeToken, setActiveToken] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [retryKey, setRetryKey] = useState(0)
   const legacy = isLegacySession(activeToken, accounts)
 
   useEffect(() => {
@@ -96,8 +99,11 @@ export function NavUser({
         setActiveToken(token)
         setError("")
       })
-      .catch(() => {
-        if (!cancelled) setError("Daftar akun tidak dapat dimuat.")
+      .catch((cause: unknown) => {
+        if (!cancelled)
+          setError(
+            accountErrorMessage(cause, "Daftar akun tidak dapat dimuat.")
+          )
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -105,7 +111,7 @@ export function NavUser({
     return () => {
       cancelled = true
     }
-  }, [open])
+  }, [open, retryKey])
 
   return (
     <SidebarMenu>
@@ -201,12 +207,22 @@ export function NavUser({
                   </p>
                 ) : null}
                 {!loading && error ? (
-                  <p
+                  <div
                     role="alert"
-                    className="px-3 py-2 text-xs text-destructive"
+                    className="space-y-1 px-3 py-2 text-xs text-destructive"
                   >
-                    {error}
-                  </p>
+                    <p>{error}</p>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 font-semibold underline"
+                      onClick={() => {
+                        setLoading(true)
+                        setRetryKey((value) => value + 1)
+                      }}
+                    >
+                      <IconRefresh className="size-3" /> Coba lagi
+                    </button>
+                  </div>
                 ) : null}
                 {!loading && !error ? (
                   <>
