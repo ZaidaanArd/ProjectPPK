@@ -64,8 +64,10 @@ export const authComponent = createClient<DataModel>(components.betterAuth, {
   },
 })
 
-export const createAuth = (ctx: GenericCtx<DataModel>) =>
-  betterAuth({
+export const createAuth = (ctx: GenericCtx<DataModel>) => {
+  // Keep the old sign-up route working until the new frontend is promoted.
+  const pendingGateEnabled = env.PENDING_SESSION_GATE !== "false"
+  return betterAuth({
     appName: "Sthana Kampus",
     baseURL: env.SITE_URL,
     secret: env.BETTER_AUTH_SECRET,
@@ -74,13 +76,14 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,
-      autoSignIn: false,
+      autoSignIn: !pendingGateEnabled,
       minPasswordLength: 8,
     },
     databaseHooks: {
       session: {
         create: {
           before: async (session) => {
+            if (!pendingGateEnabled) return { data: session }
             if (!("runQuery" in ctx)) {
               throw new APIError("INTERNAL_SERVER_ERROR", {
                 message: "Tidak dapat memeriksa status akun.",
@@ -114,5 +117,6 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
     },
     plugins: [convex({ authConfig }), multiSession({ maximumSessions: 5 })],
   })
+}
 
 export const { onCreate, onUpdate, onDelete } = authComponent.triggersApi()

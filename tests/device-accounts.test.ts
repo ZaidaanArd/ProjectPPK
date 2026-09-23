@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const auth = vi.hoisted(() => ({
-  getSession: vi.fn(),
-  listDeviceSessions: vi.fn(),
-  revoke: vi.fn(),
-  revokeSession: vi.fn(),
-  signOut: vi.fn(),
+  getSession: vi.fn<() => Promise<unknown>>(),
+  listDeviceSessions: vi.fn<() => Promise<unknown>>(),
+  revoke: vi.fn<(args: unknown) => Promise<unknown>>(),
+  revokeSession: vi.fn<(args: unknown) => Promise<unknown>>(),
+  signOut: vi.fn<() => Promise<unknown>>(),
 }))
 
 vi.mock("@/lib/auth-client", () => ({
