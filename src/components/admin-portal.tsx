@@ -10,6 +10,7 @@ import {
   IconCalendar,
   IconDownload,
   IconFileAlert,
+  IconPencil,
   IconPlus,
   IconUsers,
 } from "@tabler/icons-react"
@@ -21,8 +22,23 @@ import { PortalListSkeleton } from "@/components/portal-skeletons"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogCloseButton,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuthenticatedQuery } from "@/lib/use-authenticated-query"
 
@@ -174,7 +190,6 @@ export function AdminDashboard() {
 }
 
 type FacilityDraft = {
-  id?: Id<"facilities">
   name: string
   type: string
   location: string
@@ -190,31 +205,207 @@ const emptyFacility: FacilityDraft = {
   description: "",
 }
 
+type FacilityEditDraft = FacilityDraft & {
+  id: Id<"facilities">
+  originalName: string
+}
+
+function FacilityForm({
+  mode,
+  draft,
+  message,
+  pending,
+  onChange,
+  onClose,
+  onSubmit,
+}: {
+  mode: "create" | "edit"
+  draft: FacilityDraft
+  message: string
+  pending: boolean
+  onChange: (draft: FacilityDraft) => void
+  onClose: () => void
+  onSubmit: (event: FormEvent) => void
+}) {
+  const prefix = mode === "create" ? "create-facility" : "edit-facility"
+
+  return (
+    <form onSubmit={onSubmit} className="grid gap-4 sm:grid-cols-2">
+      {mode === "edit" && (
+        <div className="flex items-center gap-3 rounded-2xl border border-pink-200/80 bg-pink-50/70 p-4 sm:col-span-2 dark:border-pink-300/15 dark:bg-pink-400/5">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-pink-100 text-pink-700 dark:bg-pink-400/15 dark:text-pink-200">
+            <IconBuilding size={19} aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold tracking-[0.12em] text-pink-800 uppercase dark:text-pink-200">
+              Data fasilitas terpilih
+            </p>
+            <p className="mt-1 truncate font-heading font-semibold">
+              {draft.name || "Fasilitas tanpa nama"}
+            </p>
+          </div>
+        </div>
+      )}
+      <Field label="Nama fasilitas" id={`${prefix}-name`}>
+        <Input
+          id={`${prefix}-name`}
+          value={draft.name}
+          onChange={(event) => onChange({ ...draft, name: event.target.value })}
+          placeholder="Contoh: Aula Gedung A"
+          disabled={pending}
+          required
+        />
+      </Field>
+      <Field label="Tipe" id={`${prefix}-type`}>
+        <Input
+          id={`${prefix}-type`}
+          value={draft.type}
+          onChange={(event) => onChange({ ...draft, type: event.target.value })}
+          placeholder="Contoh: Aula"
+          disabled={pending}
+          required
+        />
+      </Field>
+      <Field label="Lokasi" id={`${prefix}-location`}>
+        <Input
+          id={`${prefix}-location`}
+          value={draft.location}
+          onChange={(event) =>
+            onChange({ ...draft, location: event.target.value })
+          }
+          placeholder="Contoh: Gedung A · Lantai 2"
+          disabled={pending}
+          required
+        />
+      </Field>
+      <Field label="Kapasitas" id={`${prefix}-capacity`}>
+        <Input
+          id={`${prefix}-capacity`}
+          type="number"
+          min="1"
+          step="1"
+          value={draft.capacity}
+          onChange={(event) =>
+            onChange({ ...draft, capacity: event.target.value })
+          }
+          placeholder="Jumlah orang"
+          disabled={pending}
+          required
+        />
+      </Field>
+      <div className="space-y-1.5 sm:col-span-2">
+        <Label htmlFor={`${prefix}-description`}>Deskripsi</Label>
+        <Textarea
+          id={`${prefix}-description`}
+          value={draft.description}
+          onChange={(event) =>
+            onChange({ ...draft, description: event.target.value })
+          }
+          placeholder="Jelaskan fungsi, perlengkapan, atau informasi penting fasilitas."
+          rows={4}
+          disabled={pending}
+          required
+        />
+      </div>
+      {message && (
+        <p
+          role="alert"
+          className="text-sm font-medium text-destructive sm:col-span-2"
+        >
+          {message}
+        </p>
+      )}
+      <DialogFooter className="border-t pt-5 sm:col-span-2 dark:border-white/10">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onClose}
+          disabled={pending}
+        >
+          Batal
+        </Button>
+        <Button type="submit" disabled={pending}>
+          {pending
+            ? mode === "create"
+              ? "Menambahkan…"
+              : "Menyimpan…"
+            : mode === "create"
+              ? "Tambah fasilitas"
+              : "Simpan perubahan"}
+        </Button>
+      </DialogFooter>
+    </form>
+  )
+}
+
 export function AdminFacilities() {
   const facilities = useAuthenticatedQuery(api.facilities.listManaged, {})
   const createFacility = useMutation(api.facilities.create)
   const updateFacility = useMutation(api.facilities.update)
   const setStatus = useMutation(api.facilities.setStatus)
-  const [draft, setDraft] = useState<FacilityDraft | null>(null)
-  const [message, setMessage] = useState("")
+  const [createDraft, setCreateDraft] = useState<FacilityDraft | null>(null)
+  const [editDraft, setEditDraft] = useState<FacilityEditDraft | null>(null)
+  const [createMessage, setCreateMessage] = useState("")
+  const [editMessage, setEditMessage] = useState("")
+  const [creating, setCreating] = useState(false)
+  const [updating, setUpdating] = useState(false)
 
-  async function submit(event: FormEvent) {
-    event.preventDefault()
-    if (!draft) return
-    setMessage("")
-    const values = {
+  function valuesFrom(draft: FacilityDraft) {
+    return {
       name: draft.name,
       type: draft.type,
       location: draft.location,
       capacity: Number(draft.capacity),
       description: draft.description,
     }
+  }
+
+  function closeCreateDialog() {
+    if (creating) return
+    setCreateDraft(null)
+    setCreateMessage("")
+  }
+
+  function closeEditDialog() {
+    if (updating) return
+    setEditDraft(null)
+    setEditMessage("")
+  }
+
+  async function submitCreate(event: FormEvent) {
+    event.preventDefault()
+    if (!createDraft) return
+    setCreating(true)
+    setCreateMessage("")
     try {
-      if (draft.id) await updateFacility({ facilityId: draft.id, ...values })
-      else await createFacility(values)
-      setDraft(null)
+      await createFacility(valuesFrom(createDraft))
+      setCreateDraft(null)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Penyimpanan gagal")
+      setCreateMessage(
+        error instanceof Error ? error.message : "Fasilitas gagal ditambahkan"
+      )
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  async function submitEdit(event: FormEvent) {
+    event.preventDefault()
+    if (!editDraft) return
+    setUpdating(true)
+    setEditMessage("")
+    try {
+      await updateFacility({
+        facilityId: editDraft.id,
+        ...valuesFrom(editDraft),
+      })
+      setEditDraft(null)
+    } catch (error) {
+      setEditMessage(
+        error instanceof Error ? error.message : "Perubahan gagal disimpan"
+      )
+    } finally {
+      setUpdating(false)
     }
   }
 
@@ -227,81 +418,96 @@ export function AdminFacilities() {
             Tambah, ubah, dan atur visibilitas fasilitas.
           </p>
         </div>
-        <Button onClick={() => setDraft({ ...emptyFacility })}>
+        <Button
+          onClick={() => {
+            setEditDraft(null)
+            setCreateMessage("")
+            setCreateDraft({ ...emptyFacility })
+          }}
+        >
           <IconPlus aria-hidden="true" /> Tambah fasilitas
         </Button>
       </div>
 
-      {draft && (
-        <Card className="p-6">
-          <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
-            <Field label="Nama" id="facility-name">
-              <Input
-                id="facility-name"
-                value={draft.name}
-                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                required
-              />
-            </Field>
-            <Field label="Tipe" id="facility-type">
-              <Input
-                id="facility-type"
-                value={draft.type}
-                onChange={(e) => setDraft({ ...draft, type: e.target.value })}
-                required
-              />
-            </Field>
-            <Field label="Lokasi" id="facility-location">
-              <Input
-                id="facility-location"
-                value={draft.location}
-                onChange={(e) =>
-                  setDraft({ ...draft, location: e.target.value })
-                }
-                required
-              />
-            </Field>
-            <Field label="Kapasitas" id="facility-capacity">
-              <Input
-                id="facility-capacity"
-                type="number"
-                min="1"
-                value={draft.capacity}
-                onChange={(e) =>
-                  setDraft({ ...draft, capacity: e.target.value })
-                }
-                required
-              />
-            </Field>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="facility-description">Deskripsi</Label>
-              <Textarea
-                id="facility-description"
-                value={draft.description}
-                onChange={(e) =>
-                  setDraft({ ...draft, description: e.target.value })
-                }
-                required
-              />
-            </div>
-            {message && (
-              <p className="text-sm text-destructive sm:col-span-2">
-                {message}
-              </p>
-            )}
-            <div className="flex gap-2 sm:col-span-2">
-              <Button type="submit">Simpan</Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setDraft(null)}
+      <Dialog
+        open={Boolean(createDraft)}
+        onClose={closeCreateDialog}
+        size="lg"
+        labelledBy="create-facility-title"
+      >
+        <DialogHeader className="mb-6">
+          <div className="flex items-start gap-3">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <IconPlus size={21} aria-hidden="true" />
+            </span>
+            <div>
+              <DialogTitle
+                id="create-facility-title"
+                className="text-xl font-bold"
               >
-                Batal
-              </Button>
+                Tambah fasilitas
+              </DialogTitle>
+              <DialogDescription className="leading-relaxed">
+                Lengkapi informasi fasilitas baru agar dapat ditemukan oleh
+                pengguna.
+              </DialogDescription>
             </div>
-          </form>
-        </Card>
-      )}
+          </div>
+          <DialogCloseButton onClose={closeCreateDialog} />
+        </DialogHeader>
+        {createDraft && (
+          <FacilityForm
+            mode="create"
+            draft={createDraft}
+            message={createMessage}
+            pending={creating}
+            onChange={setCreateDraft}
+            onClose={closeCreateDialog}
+            onSubmit={submitCreate}
+          />
+        )}
+      </Dialog>
+
+      <Dialog
+        open={Boolean(editDraft)}
+        onClose={closeEditDialog}
+        size="lg"
+        labelledBy="edit-facility-title"
+      >
+        <DialogHeader className="mb-6">
+          <div className="flex items-start gap-3">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-pink-100 text-pink-700 dark:bg-pink-400/15 dark:text-pink-200">
+              <IconPencil size={20} aria-hidden="true" />
+            </span>
+            <div>
+              <p className="mb-1 text-xs font-semibold tracking-[0.14em] text-pink-700 uppercase dark:text-pink-200">
+                Mode ubah
+              </p>
+              <DialogTitle
+                id="edit-facility-title"
+                className="text-xl font-bold"
+              >
+                {editDraft ? editDraft.originalName : "Ubah fasilitas"}
+              </DialogTitle>
+              <DialogDescription className="leading-relaxed">
+                Perbarui informasi fasilitas tanpa mengubah statusnya.
+              </DialogDescription>
+            </div>
+          </div>
+          <DialogCloseButton onClose={closeEditDialog} />
+        </DialogHeader>
+        {editDraft && (
+          <FacilityForm
+            mode="edit"
+            draft={editDraft}
+            message={editMessage}
+            pending={updating}
+            onChange={(draft) => setEditDraft({ ...editDraft, ...draft })}
+            onClose={closeEditDialog}
+            onSubmit={submitEdit}
+          />
+        )}
+      </Dialog>
 
       {!facilities ? (
         <PortalListSkeleton />
@@ -316,9 +522,33 @@ export function AdminFacilities() {
                     {facility.location}
                   </p>
                 </div>
-                <Badge variant="secondary">
-                  {statusLabel[facility.status]}
-                </Badge>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Badge variant="secondary">
+                    {statusLabel[facility.status]}
+                  </Badge>
+                  <Button
+                    type="button"
+                    size="icon-sm"
+                    variant="outline"
+                    aria-label={`Ubah ${facility.name}`}
+                    title={`Ubah ${facility.name}`}
+                    onClick={() => {
+                      setCreateDraft(null)
+                      setEditMessage("")
+                      setEditDraft({
+                        id: facility.id,
+                        originalName: facility.name,
+                        name: facility.name,
+                        type: facility.type,
+                        location: facility.location,
+                        capacity: String(facility.capacity),
+                        description: facility.description,
+                      })
+                    }}
+                  >
+                    <IconPencil aria-hidden="true" />
+                  </Button>
+                </div>
               </div>
               <p className="text-sm">
                 {facility.type} · {facility.capacity} orang
@@ -327,22 +557,6 @@ export function AdminFacilities() {
                 {facility.description}
               </p>
               <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    setDraft({
-                      id: facility.id,
-                      name: facility.name,
-                      type: facility.type,
-                      location: facility.location,
-                      capacity: String(facility.capacity),
-                      description: facility.description,
-                    })
-                  }
-                >
-                  Ubah
-                </Button>
                 <Button
                   size="sm"
                   variant="outline"
@@ -406,9 +620,17 @@ export function AdminUsers() {
   const [password, setPassword] = useState("")
   const [role, setRole] = useState<"user" | "officer" | "admin">("officer")
   const [message, setMessage] = useState("")
+  const [creating, setCreating] = useState(false)
+
+  function closeCreateDialog() {
+    if (creating) return
+    setCreateOpen(false)
+    setMessage("")
+  }
 
   async function submitAccount(event: FormEvent) {
     event.preventDefault()
+    setCreating(true)
     setMessage("")
     try {
       await createAccount({ name, email, temporaryPassword: password, role })
@@ -420,6 +642,8 @@ export function AdminUsers() {
       setMessage(
         error instanceof Error ? error.message : "Pembuatan akun gagal"
       )
+    } finally {
+      setCreating(false)
     }
   }
 
@@ -432,66 +656,125 @@ export function AdminUsers() {
             Verifikasi pendaftaran dan buat akun petugas.
           </p>
         </div>
-        <Button onClick={() => setCreateOpen((value) => !value)}>
+        <Button
+          onClick={() => {
+            setMessage("")
+            setCreateOpen(true)
+          }}
+        >
           <IconPlus aria-hidden="true" /> Buat akun
         </Button>
       </div>
 
-      {createOpen && (
-        <Card className="p-6">
-          <form onSubmit={submitAccount} className="grid gap-4 sm:grid-cols-2">
-            <Field label="Nama" id="account-name">
+      <Dialog
+        open={createOpen}
+        onClose={closeCreateDialog}
+        size="lg"
+        labelledBy="create-account-title"
+      >
+        <DialogHeader>
+          <div>
+            <DialogTitle
+              id="create-account-title"
+              className="text-xl font-bold"
+            >
+              Buat akun baru
+            </DialogTitle>
+            <DialogDescription className="leading-relaxed">
+              Akun langsung aktif. Pengguna perlu mengganti password sementara
+              setelah login pertama.
+            </DialogDescription>
+          </div>
+          <DialogCloseButton onClose={closeCreateDialog} />
+        </DialogHeader>
+        <form onSubmit={submitAccount} className="grid gap-4 sm:grid-cols-2">
+          <Field label="Nama" id="account-name">
+            <Input
+              id="account-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoComplete="name"
+              disabled={creating}
+              required
+            />
+          </Field>
+          <Field label="Email" id="account-email">
+            <Input
+              id="account-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              disabled={creating}
+              required
+            />
+          </Field>
+          {!isStaticMode && (
+            <Field label="Password sementara" id="account-password">
               <Input
-                id="account-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                id="account-password"
+                type="text"
+                minLength={8}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
+                disabled={creating}
                 required
               />
             </Field>
-            <Field label="Email" id="account-email">
-              <Input
-                id="account-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </Field>
-            {!isStaticMode && (
-              <Field label="Password sementara" id="account-password">
-                <Input
-                  id="account-password"
-                  type="text"
-                  minLength={8}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </Field>
-            )}
-            <Field label="Role" id="account-role">
-              <select
+          )}
+          <div className="space-y-1.5">
+            <Label id="account-role-label">Role</Label>
+            <Select
+              value={role}
+              onValueChange={(value) => value && setRole(value as typeof role)}
+              disabled={creating}
+            >
+              <SelectTrigger
                 id="account-role"
-                value={role}
-                onChange={(e) => setRole(e.target.value as typeof role)}
-                className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                aria-labelledby="account-role-label"
+                className="w-full"
               >
-                <option value="user">Pengguna</option>
-                <option value="officer">Petugas</option>
-                <option value="admin">Admin</option>
-              </select>
-            </Field>
-            {message && (
-              <p className="text-sm text-destructive sm:col-span-2">
-                {message}
-              </p>
-            )}
-            <Button type="submit" className="sm:col-span-2">
-              Buat akun aktif
+                <SelectValue>
+                  {(value: string | null) =>
+                    value === "user"
+                      ? "Pengguna"
+                      : value === "admin"
+                        ? "Admin"
+                        : "Petugas"
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent portalled={false}>
+                <SelectItem value="user">Pengguna</SelectItem>
+                <SelectItem value="officer">Petugas</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {message && (
+            <p
+              role="alert"
+              className="text-sm font-medium text-destructive sm:col-span-2"
+            >
+              {message}
+            </p>
+          )}
+          <DialogFooter className="sm:col-span-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeCreateDialog}
+              disabled={creating}
+            >
+              Batal
             </Button>
-          </form>
-        </Card>
-      )}
+            <Button type="submit" disabled={creating}>
+              {creating ? "Membuat akun…" : "Buat akun aktif"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </Dialog>
 
       {!accounts ? (
         <PortalListSkeleton />
