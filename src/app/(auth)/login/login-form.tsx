@@ -81,7 +81,15 @@ export function LoginForm({ addAccount = false }: { addAccount?: boolean }) {
         window.location.replace("/portal")
         return
       }
-      setError("Email atau password tidak sesuai.")
+      const statusMessage: Record<string, string> = {
+        ACCOUNT_PENDING: "Akun ini masih menunggu persetujuan admin.",
+        ACCOUNT_REJECTED: "Pendaftaran akun ini ditolak. Hubungi admin.",
+        ACCOUNT_DISABLED: "Akun ini dinonaktifkan. Hubungi admin.",
+      }
+      setError(
+        statusMessage[result.error?.code ?? ""] ??
+          "Email atau password tidak sesuai."
+      )
       setLoading(false)
     } catch {
       setError("Tidak dapat terhubung. Silakan coba lagi.")
