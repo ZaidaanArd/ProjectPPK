@@ -1,13 +1,22 @@
 "use client"
 
 import Link from "next/link"
+import dynamic from "next/dynamic"
 import { usePathname, useRouter } from "next/navigation"
-import { useEffect, useState, type FormEvent, type ReactNode } from "react"
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react"
 import { useConvexAuth, useMutation } from "convex/react"
-import { IconLogout } from "@tabler/icons-react"
+import { IconInfoCircle } from "@tabler/icons-react"
 
 import { api } from "../../convex/_generated/api"
 import { AppSidebar } from "@/components/app-sidebar"
+import { DialogMascot } from "@/components/dialog-mascot"
+import { PortalOnboarding } from "@/components/portal-onboarding"
 import { PortalShellLoading } from "@/components/portal-skeletons"
 import {
   AlertDialog,
@@ -16,8 +25,6 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogMedia,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import {
@@ -57,8 +64,16 @@ import {
   portalRoleMeta,
   type PortalRole,
 } from "@/lib/portal-navigation"
+import { resolveOnboardingVisit } from "@/lib/portal-onboarding-storage"
+
+const UserOnboardingTour = dynamic(() =>
+  import("@/components/user-onboarding-tour").then(
+    (module) => module.UserOnboardingTour
+  )
+)
 
 type PortalProfile = {
+  id: string
   name: string
   email: string
   role: PortalRole
@@ -120,19 +135,25 @@ function PasswordDialog({
       labelledBy="password-dialog-title"
       size="md"
     >
-      <DialogHeader>
-        <div>
-          <DialogTitle id="password-dialog-title">
+      <DialogHeader className="relative mb-7 flex-col items-center gap-5 pt-2 text-center sm:flex-row sm:text-left">
+        <DialogMascot mood="secure" className="size-28 sm:size-32" />
+        <div className="min-w-0 sm:pr-6">
+          <DialogTitle
+            id="password-dialog-title"
+            className="text-xl font-semibold"
+          >
             {required ? "Amankan akun Anda" : "Ganti password"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="mt-2 leading-relaxed">
             {required
               ? "Password sementara wajib diganti sebelum Anda menggunakan portal."
               : "Sesi lain akan dikeluarkan setelah password diperbarui."}
           </DialogDescription>
         </div>
         {!required ? (
-          <DialogCloseButton onClose={() => onOpenChange(false)} />
+          <div className="absolute -top-2 -right-1">
+            <DialogCloseButton onClose={() => onOpenChange(false)} />
+          </div>
         ) : null}
       </DialogHeader>
       <form onSubmit={submit} className="space-y-4">
@@ -210,6 +231,9 @@ export function PortalShell({
     email: string
   } | null>(null)
   const [removePending, setRemovePending] = useState(false)
+  const [onboardingOpen, setOnboardingOpen] = useState(false)
+  const [repeatOnboarding, setRepeatOnboarding] = useState(false)
+  const onboardingKey = `sthana:onboarding:v1:${profile.id}:${profile.role}`
   const role = portalRoleMeta[profile.role]
   const activeItem = getActivePortalItem(profile.role, pathname)
   const passwordChangeRequired =
@@ -224,6 +248,40 @@ export function PortalShell({
       router.refresh()
     }
   }, [isAuthenticated, isLoading, navigationPending, router])
+
+  useEffect(() => {
+    if (isLoading || !isAuthenticated || passwordChangeRequired) return
+
+    const timer = window.setTimeout(() => {
+      try {
+        const { repeat, shouldShow } = resolveOnboardingVisit(
+          onboardingKey,
+          localStorage,
+          sessionStorage
+        )
+        setRepeatOnboarding(repeat)
+        if (shouldShow) setOnboardingOpen(true)
+      } catch {
+        setOnboardingOpen(true)
+      }
+    }, 0)
+
+    return () => window.clearTimeout(timer)
+  }, [isAuthenticated, isLoading, onboardingKey, passwordChangeRequired])
+
+  const closeOnboarding = useCallback(() => setOnboardingOpen(false), [])
+
+  const handleRepeatOnboardingChange = useCallback(
+    (repeat: boolean) => {
+      setRepeatOnboarding(repeat)
+      try {
+        localStorage.setItem(`${onboardingKey}:repeat`, repeat ? "1" : "0")
+      } catch {
+        // The toggle remains usable for this visit when storage is unavailable.
+      }
+    },
+    [onboardingKey]
+  )
 
   if ((!isLoading && !isAuthenticated) || navigationPending) {
     return <PortalShellLoading />
@@ -249,6 +307,11 @@ export function PortalShell({
     try {
       if (kind === "all") await leaveAllAccounts()
       else await leaveCurrentAccount()
+      try {
+        sessionStorage.removeItem(`${onboardingKey}:session`)
+      } catch {
+        // Storage may be unavailable; leaving the account should still succeed.
+      }
       window.location.replace(kind === "all" ? "/login" : "/portal")
     } catch {
       setNavigationPending(false)
@@ -322,6 +385,23 @@ export function PortalShell({
               </Breadcrumb>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setOnboardingOpen((open) => !open)}
+                disabled={passwordChangeRequired}
+                aria-label={
+                  onboardingOpen
+                    ? "Tutup panduan portal"
+                    : "Buka panduan portal"
+                }
+                aria-pressed={onboardingOpen}
+                title="Panduan portal"
+                className="rounded-xl text-[#8a2958] hover:bg-pink-50 dark:text-pink-200 dark:hover:bg-pink-950/50"
+              >
+                <IconInfoCircle size={17} aria-hidden="true" />
+                <span className="hidden sm:inline">Panduan</span>
+              </Button>
               <span className="hidden rounded-full bg-pink-100 px-3 py-1 text-xs font-semibold text-[#9f004c] sm:inline-flex dark:bg-pink-900/40 dark:text-pink-200">
                 {role.label}
               </span>
@@ -345,34 +425,52 @@ export function PortalShell({
         onPasswordChanged={handlePasswordChanged}
       />
 
+      {onboardingOpen && !passwordChangeRequired && profile.role === "user" ? (
+        <UserOnboardingTour
+          pathname={pathname}
+          repeat={repeatOnboarding}
+          onRepeatChange={handleRepeatOnboardingChange}
+          onClose={closeOnboarding}
+        />
+      ) : null}
+
+      {onboardingOpen && !passwordChangeRequired && profile.role !== "user" ? (
+        <PortalOnboarding
+          role={profile.role}
+          repeat={repeatOnboarding}
+          onRepeatChange={handleRepeatOnboardingChange}
+          onClose={closeOnboarding}
+        />
+      ) : null}
+
       <AlertDialog
         open={logoutKind !== null}
         onOpenChange={(open) => {
           if (!navigationPending && !open) setLogoutKind(null)
         }}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogMedia className="bg-red-50 text-destructive">
-              <IconLogout aria-hidden="true" />
-            </AlertDialogMedia>
-            <AlertDialogTitle>
-              {logoutKind === "all"
-                ? "Keluar dari semua akun?"
-                : "Keluar dari akun ini?"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {logoutKind === "all"
-                ? "Semua akun tersimpan di browser ini akan dikeluarkan."
-                : "Akun lain di browser ini tetap tersedia untuk dipilih."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+        <AlertDialogContent className="w-[calc(100%-2rem)] max-w-lg gap-5 bg-card p-6 text-card-foreground shadow-2xl ring-foreground/10 sm:p-7 data-[size=default]:sm:max-w-lg dark:bg-[#251d28] dark:text-[#f8ecf3] dark:ring-white/10">
+          <div className="flex flex-col items-center gap-5 text-center sm:flex-row sm:text-left">
+            <DialogMascot mood="goodbye" className="size-28 sm:size-32" />
+            <div className="min-w-0">
+              <AlertDialogTitle className="text-xl font-semibold">
+                {logoutKind === "all"
+                  ? "Keluar dari semua akun?"
+                  : "Keluar dari akun ini?"}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="mt-2 leading-relaxed">
+                {logoutKind === "all"
+                  ? "Semua akun tersimpan di browser ini akan dikeluarkan."
+                  : "Akun lain di browser ini tetap tersedia untuk dipilih."}
+              </AlertDialogDescription>
+            </div>
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={navigationPending}>
               Tetap di sini
             </AlertDialogCancel>
             <AlertDialogAction
-              variant="destructive"
+              className="bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-500/15 dark:text-rose-200 dark:hover:bg-rose-500/25"
               disabled={navigationPending}
               onClick={() => void logout()}
             >
@@ -395,7 +493,9 @@ export function PortalShell({
             browser ini.
           </AlertDialogDescription>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={removePending}>Batal</AlertDialogCancel>
+            <AlertDialogCancel disabled={removePending}>
+              Batal
+            </AlertDialogCancel>
             <AlertDialogAction
               disabled={removePending}
               onClick={() => void removeStoredAccount()}

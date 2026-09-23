@@ -50,7 +50,7 @@ function Dialog({
       ref={dialogRef}
       aria-labelledby={labelledBy}
       className={cn(
-        "fixed inset-0 z-50 m-auto max-h-[90vh] w-[calc(100%-2rem)] overflow-y-auto rounded-3xl border-0 bg-card p-6 text-card-foreground shadow-xl ring-1 ring-foreground/10 backdrop:bg-foreground/40 backdrop:backdrop-blur-[2px]",
+        "fixed inset-0 z-50 m-auto max-h-[90vh] w-[calc(100%-2rem)] overflow-y-auto rounded-3xl border-0 bg-card p-6 text-card-foreground shadow-2xl ring-1 ring-foreground/10 backdrop:bg-[#17101a]/45 backdrop:backdrop-blur-md sm:p-7 dark:bg-[#251d28] dark:text-[#f8ecf3] dark:ring-white/10 dark:backdrop:bg-black/65",
         maxWidth
       )}
       onCancel={(event) => {
