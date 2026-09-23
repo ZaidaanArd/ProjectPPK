@@ -141,6 +141,9 @@ Secret berikut disimpan pada environment deployment Convex, bukan di Git:
 - `BETTER_AUTH_SECRET`
 - `SITE_URL`
 - `BOOTSTRAP_SECRET`
+- `PENDING_SESSION_GATE` (opsional; default aktif). Set `false` hanya saat rollout
+  kompatibilitas dengan frontend lama, lalu kembalikan ke `enabled` setelah
+  frontend baru aktif. Jangan biarkan `false` setelah rilis.
 
 ## Bootstrap data lokal
 

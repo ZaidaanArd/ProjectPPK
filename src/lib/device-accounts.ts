@@ -4,8 +4,19 @@ export type DeviceAccount = NonNullable<
   Awaited<ReturnType<typeof authClient.multiSession.listDeviceSessions>>["data"]
 >[number]
 
-function assertSuccess(error: { message?: string } | null | undefined) {
-  if (error) throw new Error(error.message || "Tindakan akun gagal. Coba lagi.")
+type AuthError = { message?: string; status?: number } | null | undefined
+
+export function accountErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) return error.message
+  return fallback
+}
+
+function assertSuccess(error: AuthError) {
+  if (!error) return
+  if (error.status === 404) {
+    throw new Error("Layanan multi-akun belum tersedia. Muat ulang nanti.")
+  }
+  throw new Error(error.message || "Tindakan akun gagal. Coba lagi.")
 }
 
 export async function getDeviceAccounts() {
@@ -41,24 +52,21 @@ export async function removeDeviceAccount(sessionToken: string) {
 }
 
 export async function leaveCurrentAccount() {
-  const [activeToken, accounts] = await Promise.all([
-    getActiveSessionToken(),
-    getDeviceAccounts(),
-  ])
-
+  const activeToken = await getActiveSessionToken()
   if (!activeToken) return
 
-  if (accounts.some(({ session }) => session.token === activeToken)) {
-    await removeDeviceAccount(activeToken)
+  const result = await authClient.multiSession.revoke({
+    sessionToken: activeToken,
+  })
+  if (!result.error) return
+
+  // Pre-plugin sessions lack a multi-session cookie. Revoke only this token;
+  // signOut would also remove every other account stored in the browser.
+  if (result.error.status === 401 || result.error.status === 404) {
+    const fallback = await authClient.revokeSession({ token: activeToken })
+    assertSuccess(fallback.error)
     return
   }
-
-  // Sessions from before the plugin have no multi-session cookie. Only fall
-  // back to signOut when no other stored accounts could be affected.
-  if (accounts.length > 0) {
-    throw new Error("Sesi akun belum siap. Muat ulang lalu coba lagi.")
-  }
-  const result = await authClient.signOut()
   assertSuccess(result.error)
 }
 

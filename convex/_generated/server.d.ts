@@ -32,6 +32,7 @@ type Env = {
   readonly CONVEX_SITE_URL: string;
   readonly BETTER_AUTH_SECRET: string;
   readonly BOOTSTRAP_SECRET: string;
+  readonly PENDING_SESSION_GATE: string | undefined;
   readonly SITE_URL: string;
 };
 
