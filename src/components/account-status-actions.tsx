@@ -30,7 +30,7 @@ export function AccountStatusActions() {
   const [error, setError] = useState("")
   const [confirmLeave, setConfirmLeave] = useState(false)
   const legacy = isLegacySession(activeToken, accounts)
-  const full = accounts.length >= MAX_DEVICE_ACCOUNTS && !legacy
+  const full = accounts.length >= MAX_DEVICE_ACCOUNTS
 
   useEffect(() => {
     let cancelled = false

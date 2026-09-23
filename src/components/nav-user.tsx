@@ -219,7 +219,7 @@ export function NavUser({
                       Masuk ulang ke akun ini sekali sebelum menambah akun lain.
                     </p>
                   ) : null}
-                  {accounts.length >= MAX_DEVICE_ACCOUNTS && !legacy ? (
+                  {accounts.length >= MAX_DEVICE_ACCOUNTS ? (
                     <p className="px-3 py-2 text-xs text-muted-foreground">
                       Batas {MAX_DEVICE_ACCOUNTS} akun tercapai. Lepas satu akun
                       untuk menambah yang baru.

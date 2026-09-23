@@ -44,14 +44,14 @@ export function LoginForm({ addAccount = false }: { addAccount?: boolean }) {
           return
         }
         const activeToken = current.data.session.token
-        if (isLegacySession(activeToken, accounts)) {
+        if (accounts.length >= MAX_DEVICE_ACCOUNTS) {
+          setAddState("full")
+        } else if (isLegacySession(activeToken, accounts)) {
           const activeEmail = current.data.user.email.toLowerCase()
           setCurrentEmail(activeEmail)
           setEmail(activeEmail)
           setAddState("reconnect")
-        } else {
-          setAddState(accounts.length >= MAX_DEVICE_ACCOUNTS ? "full" : "ready")
-        }
+        } else setAddState("ready")
       })
       .catch(() => {
         if (!cancelled) setAddState("error")
