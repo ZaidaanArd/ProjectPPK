@@ -1,15 +1,9 @@
 import { NextResponse } from "next/server"
 
 import { api } from "../../../../../convex/_generated/api"
-import { fetchAuthQuery } from "@/lib/auth-server"
-import { isStaticMode } from "@/lib/data-mode"
-
-function csvCell(value: string | number) {
-  const stringValue = String(value)
-  return /[",\n]/.test(stringValue)
-    ? `"${stringValue.replaceAll('"', '""')}"`
-    : stringValue
-}
+import { fetchAuthQuery, isAuthenticated } from "../../../../lib/auth-server"
+import { csvDocument } from "../../../../lib/csv"
+import { isStaticMode } from "../../../../lib/data-mode"
 
 export async function GET(request: Request) {
   if (isStaticMode) {
@@ -19,7 +13,7 @@ export async function GET(request: Request) {
     )
   }
   const kind = new URL(request.url).searchParams.get("kind")
-  if (kind !== "reservations" && kind !== "reports") {
+  if (kind !== "reservations" && kind !== "reports" && kind !== "summary") {
     return NextResponse.json(
       { message: "Jenis export tidak valid" },
       { status: 400 }
@@ -27,33 +21,68 @@ export async function GET(request: Request) {
   }
 
   try {
-    const data = await fetchAuthQuery(api.admin.exportData, { kind })
-    const headers =
-      data.kind === "reservations"
-        ? [
-            "ID",
-            "Fasilitas",
-            "Pemohon",
-            "Email",
-            "Tujuan",
-            "Mulai",
-            "Selesai",
-            "Status",
-          ]
-        : [
-            "ID",
-            "Fasilitas",
-            "Pelapor",
-            "Email",
-            "Kategori",
-            "Deskripsi",
-            "Status",
-            "Catatan",
-          ]
-    const rows = data.rows.map((row) =>
-      Object.values(row).map(csvCell).join(",")
-    )
-    const csv = `\uFEFF${headers.join(",")}\n${rows.join("\n")}`
+    if (!(await isAuthenticated())) {
+      return NextResponse.json(
+        { message: "Silakan masuk terlebih dahulu" },
+        { status: 401 }
+      )
+    }
+    const profile = await fetchAuthQuery(api.profiles.current, {})
+    if (!profile) {
+      return NextResponse.json(
+        { message: "Silakan masuk terlebih dahulu" },
+        { status: 401 }
+      )
+    }
+    if (profile.role !== "admin" || profile.status !== "active") {
+      return NextResponse.json({ message: "Tidak diizinkan" }, { status: 403 })
+    }
+
+    let headers: string[]
+    let rows: (string | number)[][]
+    if (kind === "summary") {
+      const data = await fetchAuthQuery(api.admin.analytics, {})
+      headers = [
+        "Fasilitas",
+        "Lokasi",
+        "Reservasi disetujui",
+        "Menit pemakaian",
+        "Laporan",
+      ]
+      rows = data.facilityUsage.map((item) => [
+        item.name,
+        item.location,
+        item.approvedReservations,
+        item.reservedMinutes,
+        item.reports,
+      ])
+    } else {
+      const data = await fetchAuthQuery(api.admin.exportData, { kind })
+      headers =
+        data.kind === "reservations"
+          ? [
+              "ID",
+              "Fasilitas",
+              "Pemohon",
+              "Email",
+              "Tujuan",
+              "Mulai",
+              "Selesai",
+              "Status",
+            ]
+          : [
+              "ID",
+              "Fasilitas",
+              "Pelapor",
+              "Email",
+              "Kategori",
+              "Deskripsi",
+              "Status",
+              "Catatan",
+            ]
+      rows = data.rows.map((row) => Object.values(row))
+    }
+    const csv = csvDocument(headers, rows)
 
     return new NextResponse(csv, {
       headers: {
@@ -62,7 +91,11 @@ export async function GET(request: Request) {
         "Cache-Control": "no-store",
       },
     })
-  } catch {
-    return NextResponse.json({ message: "Tidak diizinkan" }, { status: 403 })
+  } catch (error) {
+    console.error("Admin CSV export failed", error)
+    return NextResponse.json(
+      { message: "Ekspor gagal. Coba lagi nanti." },
+      { status: 500 }
+    )
   }
 }

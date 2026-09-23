@@ -163,7 +163,8 @@ export function RegisterForm() {
                 Buat Akun Sthana Kampus!
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Daftar untuk mulai menggunakan layanan
+                Mahasiswa dan dosen mendaftar di sini. Akun petugas dibuat oleh
+                admin.
               </p>
             </div>
           </div>

@@ -164,7 +164,7 @@ describe("static data mode", () => {
     await staticMutation("reports:updateStatus", {
       reportId: id,
       status: "in_progress",
-      note: "Diperiksa",
+      note: "",
       facilityMaintenance: true,
     })
     expect(
@@ -176,6 +176,24 @@ describe("static data mode", () => {
       getStaticData().facilities.find((facility) => facility.id === "demo-aula")
         ?.status
     ).toBe("maintenance")
+    await expect(
+      staticMutation("reports:updateStatus", {
+        reportId: id,
+        status: "resolved",
+        note: "",
+        facilityMaintenance: false,
+      })
+    ).rejects.toThrow("Catatan wajib diisi")
+    await staticMutation("reports:updateStatus", {
+      reportId: id,
+      status: "resolved",
+      note: "AC sudah diperbaiki",
+      facilityMaintenance: false,
+    })
+    expect(
+      getStaticData().facilities.find((facility) => facility.id === "demo-aula")
+        ?.status
+    ).toBe("active")
     await resetStaticData()
     expect(getStaticData().reports.some((report) => report.id === id)).toBe(
       false
@@ -193,7 +211,9 @@ describe("static data mode", () => {
       description: "Bocor",
     })
     expect(staticCsv("reports")).toContain(
-      "Aula Gedung A,Pengguna Demo,pengguna@demo.local,AC,Bocor"
+      '"Aula Gedung A","Pengguna Demo","pengguna@demo.local","AC","Bocor"'
     )
+    expect(staticCsv("summary")).toContain('"Aula Gedung A"')
+    expect(staticCsv("summary")).toContain('"1"')
   })
 })

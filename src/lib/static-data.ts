@@ -10,6 +10,7 @@ import {
   assertFacilityCanApprove,
   assertReportTransition,
 } from "../../convex/lib/workflows"
+import { csvDocument } from "./csv"
 
 type Role = "user" | "officer" | "admin"
 type AccountStatus = "pending" | "active" | "rejected" | "disabled"
@@ -543,6 +544,7 @@ export function staticQuery(name: string, args: unknown): unknown {
           return {
             facilityId: f.id,
             name: f.name,
+            location: f.location,
             approvedReservations: approved.length,
             reservedMinutes: approved.reduce(
               (sum, r) => sum + (r.endAt - r.startAt) / 60000,
@@ -713,14 +715,18 @@ export async function staticMutation(
         item = required(state.reports, id)
       const status = value(args, "status") as ReportStatus
       assertReportTransition(item.status, status)
-      requireText(value(args, "note"))
+      const note = value(args, "note").trim()
+      if (status !== "in_progress" && !note)
+        throw new Error(
+          "Catatan wajib diisi untuk menyelesaikan atau menolak laporan"
+        )
       change<Report>("reports", (items) =>
         items.map((r) =>
           r.id === id
             ? {
                 ...r,
                 status,
-                resolutionNote: value(args, "note"),
+                resolutionNote: note || r.resolutionNote,
                 updatedAt: now,
               }
             : r
@@ -879,11 +885,35 @@ export function createStaticRegistration(input: {
   ])
 }
 
-function csvCell(value: string | number) {
-  const text = String(value)
-  return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
-}
-export function staticCsv(kind: "reservations" | "reports") {
+export function staticCsv(kind: "reservations" | "reports" | "summary") {
+  if (kind === "summary") {
+    return csvDocument(
+      [
+        "Fasilitas",
+        "Lokasi",
+        "Reservasi disetujui",
+        "Menit pemakaian",
+        "Laporan",
+      ],
+      state.facilities.map((facility) => {
+        const approved = state.reservations.filter(
+          (item) =>
+            item.facilityId === facility.id && item.status === "approved"
+        )
+        return [
+          facility.name,
+          facility.location,
+          approved.length,
+          approved.reduce(
+            (total, item) => total + (item.endAt - item.startAt) / 60000,
+            0
+          ),
+          state.reports.filter((item) => item.facilityId === facility.id)
+            .length,
+        ]
+      })
+    )
+  }
   const headers =
     kind === "reservations"
       ? [
@@ -928,9 +958,11 @@ export function staticCsv(kind: "reservations" | "reports") {
           r.status,
           r.resolutionNote ?? "",
         ])
-  return `\uFEFF${headers.join(",")}\n${rows.map((row) => row.map(csvCell).join(",")).join("\n")}`
+  return csvDocument(headers, rows)
 }
-export function downloadStaticCsv(kind: "reservations" | "reports") {
+export function downloadStaticCsv(
+  kind: "reservations" | "reports" | "summary"
+) {
   const csv = staticCsv(kind)
   const url = URL.createObjectURL(
     new Blob([csv], { type: "text/csv;charset=utf-8" })
