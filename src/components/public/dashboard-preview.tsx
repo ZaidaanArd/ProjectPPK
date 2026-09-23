@@ -19,11 +19,11 @@ const items = [
 ]
 export function DashboardPreview() {
   return (
-    <div
-      className="preview-scene"
-      role="img"
-      aria-label="Ilustrasi dashboard Sthana Kampus dengan fasilitas dan jadwal reservasi contoh"
-    >
+    <figure className="preview-scene">
+      <figcaption className="sr-only">
+        Ilustrasi dashboard Sthana Kampus dengan fasilitas dan jadwal reservasi
+        contoh
+      </figcaption>
       <div className="preview-ribbon" aria-hidden="true" />
       <div className="dashboard-window" aria-hidden="true">
         <div className="preview-sidebar">
@@ -118,6 +118,6 @@ export function DashboardPreview() {
           <em>Akan datang</em>
         </div>
       </div>
-    </div>
+    </figure>
   )
 }

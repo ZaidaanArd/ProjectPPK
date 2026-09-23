@@ -21,8 +21,12 @@ export function BrandLogo({
       />
       {!markOnly && (
         <span className="text-[17px] leading-[1.02] font-bold tracking-tight">
-          <span className="block text-[#52082b]">Sthana</span>
-          <span className="block text-[#d00064]">Kampus</span>
+          <span className="block text-[#52082b] dark:text-[#ffe7f2]">
+            Sthana
+          </span>
+          <span className="block text-[#d00064] dark:text-[#ff80bb]">
+            Kampus
+          </span>
         </span>
       )}
     </span>

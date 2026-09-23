@@ -1,6 +1,4 @@
-# Arsitektur RuangKampus
-
-> Diagram dengan garis putus-putus atau label **planned** menggambarkan target implementasi, bukan fitur yang sudah tersedia.
+# Arsitektur Sthana Kampus
 
 ## System context
 
@@ -8,146 +6,68 @@
 flowchart LR
   visitor[Pengunjung]
   user[Pengguna]
-  staff[Petugas]
+  officer[Petugas]
   admin[Admin]
-  app["RuangKampus<br/>Next.js App"]
-  db[("PostgreSQL<br/>planned")]
-  files["Photo Storage<br/>planned"]
+  next[Next.js App Router]
+  convex[Convex functions + realtime database]
+  storage[Convex file storage]
+  auth[Better Auth component]
 
-  visitor --> app
-  user --> app
-  staff --> app
-  admin --> app
-  app -. planned .-> db
-  app -. planned .-> files
+  visitor --> next
+  user --> next
+  officer --> next
+  admin --> next
+  next <--> convex
+  convex --> storage
+  convex --> auth
 ```
 
-Satu deployment Next.js menangani halaman dan backend Route Handlers. Tidak ada server API terpisah.
+Next.js menangani halaman, auth proxy, dan download CSV. Data domain, authorization, validasi server, transaksi approval, dan storage foto berada di Convex. Browser memakai subscription Convex sehingga antrean dan status berubah real-time.
 
-## Status arsitektur
-
-| Area    | Sekarang                                 | Target                                           |
-| ------- | ---------------------------------------- | ------------------------------------------------ |
-| UI      | Placeholder routes dan primitives shadcn | UI responsive per aktor                          |
-| Backend | `GET /api/health`                        | Route Handlers untuk auth dan fitur bisnis       |
-| Data    | Belum ada database                       | PostgreSQL melalui data-access layer             |
-| Auth    | Belum ada                                | Session server-side, cookie aman, dan role guard |
-| File    | Belum ada                                | Upload foto laporan melalui storage terpilih     |
-| Testing | Lint, typecheck, build                   | Unit, integration, dan browser test              |
-
-## Struktur target
-
-```text
-src/
-  app/
-    (public)/          public pages
-    (auth)/            authentication pages
-    (user)/            user portal
-    (staff)/           staff portal
-    (admin)/           admin portal
-    api/               external HTTP boundary
-  components/
-    ui/                shadcn primitives
-    public/            planned public components
-    user/              planned user components
-    staff/             planned staff components
-    admin/             planned admin components
-  lib/                 shared schema, type, and helpers
-  server/              planned server-only code
-    auth/
-    db/
-    services/
-```
-
-Route groups membagi ownership tanpa muncul pada URL. Contoh: file di `(user)/app/reservations/page.tsx` tetap menghasilkan `/app/reservations`.
-
-## Route map
-
-```mermaid
-flowchart TB
-  root["Next.js App Router"]
-  public["(public)<br/>Anggota 2"]
-  auth["(auth)<br/>Anggota 3"]
-  user["(user)<br/>Anggota 3"]
-  staff["(staff)<br/>Anggota 4"]
-  admin["(admin)<br/>Anggota 4"]
-  api["api<br/>Tech Lead"]
-
-  root --> public
-  root --> auth
-  root --> user
-  root --> staff
-  root --> admin
-  root --> api
-
-  public --> p1["/"]
-  public --> p2["/facilities"]
-  public --> p3["/forbidden"]
-  auth --> a1["/login"]
-  auth --> a2["/register"]
-  user --> u1["/app"]
-  user --> u2["/app/reservations"]
-  user --> u3["/app/reports"]
-  staff --> s1["/staff"]
-  staff --> s2["/staff/reservations"]
-  staff --> s3["/staff/reports"]
-  admin --> m1["/admin"]
-  admin --> m2["/admin/facilities"]
-  admin --> m3["/admin/users"]
-  api --> h1["/api/health"]
-```
-
-## Planned request flow
+## Request flow
 
 ```mermaid
 sequenceDiagram
   actor Browser
-  participant Page as Server/Client Component
-  participant API as Route Handler
-  participant Service as Server Service
-  participant DB as PostgreSQL
+  participant Next as Next.js
+  participant Auth as Better Auth
+  participant Fn as Convex function
+  participant DB as Convex database
 
-  Browser->>Page: Open page
-  Page->>Service: Read data directly on server
-  Service->>DB: Query
-  DB-->>Service: Result
-  Service-->>Page: Typed result
-  Page-->>Browser: Render HTML
-
-  Browser->>API: Submit mutation
-  API->>API: Validate input, session, and role
-  API->>Service: Execute use case
-  Service->>DB: Transaction/query
-  DB-->>Service: Result
-  Service-->>API: Typed result
-  API-->>Browser: JSON response
+  Browser->>Next: POST /api/auth/sign-in/email
+  Next->>Auth: Proxy ke Convex HTTP action
+  Auth-->>Browser: HttpOnly session cookie
+  Browser->>Fn: Query/mutation + JWT
+  Fn->>Fn: Validasi identity, status akun, dan role
+  Fn->>DB: Indexed query / atomic mutation
+  DB-->>Browser: Reactive result
 ```
 
-Server Components nantinya membaca service/data layer langsung. Mereka tidak memanggil Route Handler aplikasi sendiri melalui HTTP. Route Handler digunakan untuk input browser, mutasi, dan integrasi eksternal.
+Server layouts memakai token dari cookie untuk guard `/app`, `/staff`, dan `/admin`. Function tetap memeriksa role; route guard bukan satu-satunya pengamanan.
 
-## Aturan arsitektur
+## Route ownership
 
-1. Komponen client tidak boleh mengimpor modul dari `src/server`.
-2. Route Handler hanya menangani HTTP, validasi boundary, dan pemetaan response; business rules berada di service.
-3. Semua input eksternal divalidasi ulang di server meskipun sudah divalidasi di client.
-4. Pemeriksaan session dan role dilakukan pada setiap operasi sensitif.
-5. Mutasi reservasi/approval yang saling bergantung memakai transaksi database.
-6. Type/schema bersama berada di `src/lib`; jangan menduplikasi status string di banyak fitur.
-7. Gunakan Server Components secara default dan tambahkan `"use client"` hanya saat membutuhkan state, event, atau browser API.
+| Area                | URL                                             | Owner     |
+| ------------------- | ----------------------------------------------- | --------- |
+| Public              | `/`, `/facilities`, `/tentang`                  | Anggota 2 |
+| Auth/user           | `/login`, `/register`, `/app/**`                | Anggota 3 |
+| Staff/admin         | `/staff/**`, `/admin/**`                        | Anggota 4 |
+| Backend/integration | `convex/**`, `src/app/api/**`, `src/lib/auth-*` | Tech Lead |
 
-## Dependency direction
+## Invariants
 
-```mermaid
-flowchart LR
-  pages[Pages and Components] --> contracts[Shared Schemas and Types]
-  routes[Route Handlers] --> contracts
-  pages --> services[Server Services]
-  routes --> services
-  services --> dal[Data Access]
-  dal --> database[(PostgreSQL)]
+1. Seluruh Convex function mendeklarasikan validator argumen dan return value.
+2. Query operasional memakai index; public availability hanya mengirim waktu yang terblokir.
+3. Hanya reservasi `approved` yang memblokir slot. Approval membaca slot yang sama dalam mutation atomik sehingga concurrent approval akan conflict/retry.
+4. Reservasi hanya dapat disetujui ketika fasilitas masih berstatus `active`.
+5. Laporan mengikuti lifecycle `pending → in_progress → resolved`, dengan penolakan hanya dari status nonterminal.
+6. Waktu disimpan sebagai Unix milliseconds dan divalidasi terhadap 07.00–20.00 WIB, satu hari, kelipatan 30 menit.
+7. Foto maksimum 5 MB dan hanya JPEG, PNG, atau WebP; signed URL dibuat setelah authorization.
+8. Data historis tidak dihapus secara destruktif. Akun/fasilitas dinonaktifkan dan aksi penting masuk `auditEvents`.
 
-  classDef planned stroke-dasharray: 5 5
-  class services,dal,database planned
-```
+## Deployment
 
-UI tidak mengakses database secara langsung. Data-access layer tidak mengimpor komponen atau kode HTTP.
+- Source of truth: `ZaidaanArd/ProjectPPK`.
+- `myudak/Sthana-ProjectPPK` hanya mirror deployment.
+- Next.js dapat dideploy di Vercel; production memakai deployment Convex production yang terpisah dari development.
+- Jangan menjalankan `convex deploy` dari branch fitur sebelum review dan environment production siap.

@@ -1,5 +1,5 @@
-import { ScaffoldPage } from "@/components/scaffold-page"
+import { AdminUsers } from "@/components/admin-portal"
 
 export default function UsersAdminPage() {
-  return <ScaffoldPage area="Admin" title="Kelola pengguna" />
+  return <AdminUsers />
 }

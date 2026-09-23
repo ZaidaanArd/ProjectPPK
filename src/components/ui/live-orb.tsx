@@ -519,8 +519,6 @@ export function LiveOrb({
   return (
     <div
       data-slot="live-orb"
-      role="img"
-      aria-label="Orb character"
       className={cn("relative shrink-0", className)}
       style={{ width: size, height: size }}
     >
@@ -552,7 +550,13 @@ export function LiveOrb({
           />
         </div>
       ) : null}
-      <canvas ref={canvasRef} className="absolute inset-0 size-full" />
+      <canvas
+        ref={canvasRef}
+        aria-label="Orb character"
+        className="absolute inset-0 size-full"
+      >
+        Orb character
+      </canvas>
       {appearance === "luminous" ? (
         <div
           aria-hidden="true"

@@ -101,6 +101,7 @@ export default function HomePage() {
                   "@id": `${siteUrl}/#creator`,
                   name: site.creator.name,
                   url: site.creator.url,
+                  sameAs: site.creator.sameAs,
                 },
                 {
                   "@type": "WebSite",
@@ -121,8 +122,16 @@ export default function HomePage() {
                   applicationCategory: "BusinessApplication",
                   operatingSystem: "Web",
                   inLanguage: "id-ID",
+                  isAccessibleForFree: true,
+                  featureList: [
+                    "Pencarian fasilitas kampus",
+                    "Reservasi fasilitas kampus",
+                    "Pelaporan kerusakan fasilitas",
+                    "Portal pengguna, petugas, dan admin",
+                  ],
                   creator: { "@id": `${siteUrl}/#creator` },
                   isPartOf: { "@id": `${siteUrl}/#website` },
+                  sameAs: site.repository,
                 },
               ],
             }).replace(/</g, "\\u003c"),
@@ -137,8 +146,8 @@ export default function HomePage() {
                 Pinjam ruangan kampus <span>tanpa drama antre.</span>
               </h1>
               <p>
-                Cari fasilitas, ajukan reservasi, dan pantau persetujuan. Semua
-                kebutuhan ruang kampusmu, dalam satu tempat.
+                Sthana Kampus membantu mencari fasilitas, mengajukan reservasi,
+                dan memantau persetujuan dalam satu tempat.
               </p>
               <div className="hero-actions">
                 <Link href="/facilities" className="sthana-button primary">
@@ -171,7 +180,11 @@ export default function HomePage() {
           </div>
         </section>
         <div className="sthana-container landing-sections">
-          <section data-reveal aria-labelledby="facilities-heading">
+          <section
+            className="landing-facilities-section"
+            data-reveal
+            aria-labelledby="facilities-heading"
+          >
             <div className="section-heading">
               <div>
                 <h2 id="facilities-heading">Ruang untuk setiap rencana.</h2>
@@ -184,44 +197,50 @@ export default function HomePage() {
                 Semua fasilitas <IconArrowRight size={16} aria-hidden="true" />
               </Link>
             </div>
-            <div className="facility-grid">
+            <div className="public-facilities-grid landing-facilities-grid">
               {facilities.map((f) => (
-                <article className="facility-card" key={f.slug}>
-                  <div className="facility-photo">
+                <article
+                  className="public-facility-card landing-facility-card"
+                  key={f.slug}
+                >
+                  <div className="public-facility-image">
                     <Image
                       src={f.image}
                       alt={f.imageAlt}
                       fill
-                      sizes="(max-width: 600px) 110px, (max-width: 1100px) 140px, 120px"
+                      sizes="(max-width: 700px) 100vw, (max-width: 1100px) 50vw, 33vw"
                     />
+                    <span
+                      className={
+                        f.status === "Perawatan"
+                          ? "public-facility-status public-facility-status-maintenance"
+                          : "public-facility-status"
+                      }
+                    >
+                      <i /> {f.status}
+                    </span>
                   </div>
-                  <div className="facility-info">
-                    <div className="facility-tags">
-                      <span>{f.category}</span>
-                      <span
-                        className={`facility-status status-${f.status.toLowerCase()}`}
-                      >
-                        {f.status}
-                      </span>
-                    </div>
+                  <div className="public-facility-body">
+                    <span className="public-facility-type">{f.category}</span>
                     <h3>{f.name}</h3>
                     <p>{f.description}</p>
-                    <div className="facility-meta">
+                    <div className="public-facility-meta">
                       <span>
-                        <IconMapPin size={13} aria-hidden="true" />
+                        <IconMapPin size={16} aria-hidden="true" />
                         {f.building}
                       </span>
                       <span>
-                        <IconUsers size={13} aria-hidden="true" />
+                        <IconUsers size={16} aria-hidden="true" />
                         {f.capacity} orang
                       </span>
                     </div>
                     <Link
                       href="/facilities"
+                      className="public-facility-action landing-facility-action"
                       aria-label={`Lihat fasilitas ${f.name}`}
                     >
-                      Lihat fasilitas{" "}
-                      <IconArrowRight size={14} aria-hidden="true" />
+                      Lihat fasilitas
+                      <IconArrowRight size={17} aria-hidden="true" />
                     </Link>
                   </div>
                 </article>

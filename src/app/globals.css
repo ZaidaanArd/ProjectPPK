@@ -2,10 +2,12 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @source "../**/*.{ts,tsx}";
+@source "../../node_modules/onborda/dist/**/*.{js,mjs}";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  color-scheme: light;
   --radius: 0.45rem;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.141 0.005 285.823);
@@ -32,8 +34,8 @@
   --sidebar-foreground: oklch(0.141 0.005 285.823);
   --sidebar-primary: oklch(0.592 0.249 0.584);
   --sidebar-primary-foreground: oklch(0.971 0.014 343.198);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
+  --sidebar-accent: oklch(0.954 0.035 353);
+  --sidebar-accent-foreground: oklch(0.43 0.17 353);
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.705 0.015 286.067);
   --background: oklch(1 0 0);
@@ -41,6 +43,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.141 0.005 285.823);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.21 0.006 285.885);
@@ -63,8 +66,8 @@
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.656 0.241 354.308);
   --sidebar-primary-foreground: oklch(0.971 0.014 343.198);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.31 0.085 353);
+  --sidebar-accent-foreground: oklch(0.94 0.035 353);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.552 0.016 285.938);
   --chart-1: oklch(0.81 0.117 11.638);
@@ -320,4 +323,104 @@
   .login-gradient-drift {
     animation: none !important;
   }
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-new(root) {
+  clip-path: var(--magicui-theme-vt-clip-from);
+}
+
+::view-transition-group(root) {
+  animation-duration: var(--magicui-theme-toggle-vt-duration);
+}
+
+.dialog-mascot {
+  display: block;
+  width: 7.5rem;
+  aspect-ratio: 1;
+  flex: none;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 75%);
+  border-radius: 50%;
+  background-color: #ffe5f2;
+  background-repeat: no-repeat;
+  box-shadow:
+    0 12px 30px rgb(208 0 100 / 13%),
+    0 0 0 7px rgb(208 0 100 / 5%);
+}
+
+.dialog-mascot--goodbye {
+  background-image: url("/mascots/sthana-expressions.png");
+  background-size: 714% auto;
+  background-position: 78% 37%;
+}
+
+.dialog-mascot--secure {
+  background-image: url("/mascots/sthana-reactions.png");
+  background-size: 700% auto;
+  background-position: 50% 0;
+}
+
+.dark .dialog-mascot {
+  border-color: rgb(255 190 222 / 22%);
+  box-shadow:
+    0 16px 36px rgb(0 0 0 / 28%),
+    0 0 0 7px rgb(255 130 189 / 8%);
+}
+
+.sthani-face {
+  display: block;
+  width: 118px;
+  aspect-ratio: 1;
+  flex: none;
+  border-radius: 50%;
+  background-image: url("/mascots/sthana-reactions.png");
+  background-repeat: no-repeat;
+  background-size: 808% auto;
+  background-position: var(--face-x) var(--face-y);
+  filter: drop-shadow(0 10px 18px rgb(23 0 13 / 20%));
+}
+
+.sthani-face--senang {
+  --face-x: 96.2%;
+  --face-y: 5.4%;
+}
+
+.sthani-face--bingung {
+  --face-x: 1.5%;
+  --face-y: 53.9%;
+}
+
+.sthani-face--kesal {
+  --face-x: 96.2%;
+  --face-y: 29.9%;
+}
+
+.sthani-face--ngantuk {
+  --face-x: 96.2%;
+  --face-y: 53.9%;
+}
+
+.sthani-face--sedih {
+  --face-x: 33%;
+  --face-y: 29.9%;
+}
+
+.sthani-face--keren {
+  --face-x: 64.5%;
+  --face-y: 53.9%;
+}
+
+.sthani-face--terkejut {
+  --face-x: 17.5%;
+  --face-y: 53.9%;
+}
+
+.sthani-face--sayang {
+  --face-x: 64.5%;
+  --face-y: 5.4%;
 }

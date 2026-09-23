@@ -1,0 +1,40 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "typescript",
+    "unicorn",
+    "oxc",
+    "import",
+    "promise",
+    "react",
+    "react-perf",
+    "jsx-a11y",
+    "nextjs",
+    "vitest"
+  ],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {},
+  "env": {
+    "builtin": true,
+    "browser": true,
+    "node": true
+  },
+  "ignorePatterns": [".next/**", "dist/**", "convex/_generated/**"],
+  "overrides": [
+    {
+      "files": ["src/components/ui/label.tsx"],
+      "rules": {
+        "jsx-a11y/label-has-associated-control": "off"
+      }
+    },
+    {
+      "files": ["src/components/ui/dialog.tsx"],
+      "rules": {
+        "jsx-a11y/heading-has-content": "off",
+        "jsx-a11y/no-noninteractive-element-interactions": "off"
+      }
+    }
+  ]
+}

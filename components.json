@@ -21,6 +21,8 @@
   "menuColor": "default",
   "menuAccent": "subtle",
   "registries": {
-    "@23rd": "https://23rd.dev/r/{name}.json"
+    "@23rd": "https://23rd.dev/r/{name}.json",
+    "@aceternity": "https://ui.aceternity.com/registry/{name}.json",
+    "@magicui": "https://magicui.design/r/{name}"
   }
 }

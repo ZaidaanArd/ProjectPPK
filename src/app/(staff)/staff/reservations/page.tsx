@@ -1,5 +1,5 @@
-import { ScaffoldPage } from "@/components/scaffold-page"
+import { StaffReservations } from "@/components/staff-portal"
 
 export default function ReservationQueuePage() {
-  return <ScaffoldPage area="Staff" title="Antrean reservasi" />
+  return <StaffReservations />
 }

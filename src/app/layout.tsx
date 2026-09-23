@@ -3,6 +3,7 @@ import "./globals.css"
 import type { Metadata } from "next"
 import localFont from "next/font/local"
 import type { ReactNode } from "react"
+import { ConvexClientProvider } from "./convex-client-provider"
 import { cn } from "@/lib/utils"
 import { site, siteUrl } from "@/lib/site"
 
@@ -57,11 +58,23 @@ export const metadata: Metadata = {
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="id" className={cn(robotoHeading.variable)}>
+    <html
+      lang="id"
+      className={cn(robotoHeading.variable)}
+      suppressHydrationWarning
+    >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              'try{if(localStorage.getItem("theme")==="dark")document.documentElement.classList.add("dark")}catch{}',
+          }}
+        />
+      </head>
       <body
         className={`${inter.variable} min-h-screen bg-background font-sans text-foreground`}
       >
-        {children}
+        <ConvexClientProvider>{children}</ConvexClientProvider>
       </body>
     </html>
   )
