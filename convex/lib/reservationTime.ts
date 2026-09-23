@@ -5,6 +5,9 @@ const SLOT_MS = 30 * 60 * 1000
 const OPEN_MINUTE = 7 * 60
 const CLOSE_MINUTE = 20 * 60
 
+export const AUTO_REJECTION_NOTE =
+  "Ditolak otomatis karena slot fasilitas ini sudah disetujui untuk reservasi lain."
+
 function jakartaParts(timestamp: number) {
   const date = new Date(timestamp + JAKARTA_UTC_OFFSET_MS)
 

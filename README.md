@@ -91,6 +91,21 @@ atau hapus variabel tersebut, lalu mulai ulang Next.js dan jalankan
 `pnpm dev:backend`. Nilai default adalah `dynamic`. Build production menolak
 mode `static`.
 
+### Perapian reservasi lama
+
+Setelah fungsi Convex versi terbaru tersedia di deployment, jalankan sekali
+perapian ajuan lama yang masih Menunggu meski slotnya sudah disetujui:
+
+```bash
+pnpm exec convex run reservations:reconcilePendingConflicts '{}'
+```
+
+Perintah tersebut memakai deployment development. Untuk production, tambahkan
+`--prod` setelah argumen. Proses melanjutkan batch berikutnya secara otomatis
+dan aman dijalankan ulang. Hanya ajuan Menunggu yang bentrok yang ditolak;
+reservasi Disetujui tidak diubah. Mode statis merapikan data browser lama saat
+data dimuat.
+
 ### Prasyarat
 
 - Node.js 24 LTS

@@ -162,7 +162,8 @@ export function StaffReservations() {
       <div>
         <h1 className="font-heading text-2xl font-bold">Antrean reservasi</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Persetujuan otomatis ditolak bila slot sudah dipakai reservasi lain.
+          Saat satu reservasi disetujui, ajuan lain yang bentrok otomatis
+          ditolak.
         </p>
       </div>
       {message && (
@@ -197,6 +198,11 @@ export function StaffReservations() {
                 {formatDate(item.startAt)} – {formatDate(item.endAt)}
               </p>
               <p className="text-sm text-muted-foreground">{item.purpose}</p>
+              {item.decisionNote && (
+                <p className="rounded-lg bg-muted p-3 text-sm">
+                  {item.decisionNote}
+                </p>
+              )}
               {(item.status === "pending" || item.status === "approved") && (
                 <div className="space-y-2">
                   <Input

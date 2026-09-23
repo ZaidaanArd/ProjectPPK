@@ -1,7 +1,11 @@
 "use client"
 
 import { useEffect, useSyncExternalStore } from "react"
-import { validateReservationWindow } from "../../convex/lib/reservationTime"
+import {
+  AUTO_REJECTION_NOTE,
+  overlaps,
+  validateReservationWindow,
+} from "../../convex/lib/reservationTime"
 import {
   assertFacilityCanApprove,
   assertReportTransition,
@@ -262,6 +266,34 @@ export function useStaticData() {
     () => initialStaticData
   )
 }
+
+function conflicts(first: Reservation, second: Reservation) {
+  return (
+    first.facilityId === second.facilityId &&
+    overlaps(first.startAt, first.endAt, second.startAt, second.endAt)
+  )
+}
+
+function rejectPendingConflicts(reservations: Reservation[]) {
+  const approved = reservations.filter((item) => item.status === "approved")
+  let changed = false
+  const next = reservations.map((item) => {
+    if (
+      item.status === "pending" &&
+      approved.some((winner) => conflicts(item, winner))
+    ) {
+      changed = true
+      return {
+        ...item,
+        status: "rejected" as const,
+        decisionNote: AUTO_REJECTION_NOTE,
+      }
+    }
+    return item
+  })
+  return changed ? next : null
+}
+
 export async function hydrateStaticData() {
   if (hydrated || typeof window === "undefined") return
   hydrated = true
@@ -288,7 +320,9 @@ export async function hydrateStaticData() {
   } catch {
     /* use seed data */
   }
-  emit()
+  const reconciled = rejectPendingConflicts(state.reservations)
+  if (reconciled) replace({ ...state, reservations: reconciled })
+  else emit()
   await loadPhotos()
 }
 
@@ -559,6 +593,15 @@ export async function staticMutation(
         endAt = Number(field(args, "endAt"))
       validateReservationWindow(startAt, endAt)
       requireText(value(args, "purpose"))
+      if (
+        state.reservations.some(
+          (item) =>
+            item.facilityId === facilityId &&
+            item.status === "approved" &&
+            overlaps(item.startAt, item.endAt, startAt, endAt)
+        )
+      )
+        throw new Error("Slot sudah digunakan oleh reservasi lain")
       const id = `demo-reservation-${crypto.randomUUID()}`
       change<Reservation>("reservations", (items) => [
         ...items,
@@ -599,27 +642,27 @@ export async function staticMutation(
         assertFacilityCanApprove(
           required(state.facilities, item.facilityId).status
         )
-      if (
+      const alreadyBooked =
         decision === "approved" &&
         state.reservations.some(
-          (r) =>
-            r.id !== id &&
-            r.facilityId === item.facilityId &&
-            r.status === "approved" &&
-            r.startAt < item.endAt &&
-            r.endAt > item.startAt
+          (r) => r.status === "approved" && conflicts(r, item)
         )
-      )
-        throw new Error("Slot sudah dipakai reservasi lain")
       change<Reservation>("reservations", (items) =>
         items.map((r) =>
           r.id === id
             ? {
                 ...r,
-                status: decision,
-                decisionNote: value(args, "note") || undefined,
+                status: alreadyBooked ? "rejected" : decision,
+                decisionNote: alreadyBooked
+                  ? AUTO_REJECTION_NOTE
+                  : value(args, "note").trim() || undefined,
               }
-            : r
+            : decision === "approved" &&
+                !alreadyBooked &&
+                r.status === "pending" &&
+                conflicts(r, item)
+              ? { ...r, status: "rejected", decisionNote: AUTO_REJECTION_NOTE }
+              : r
         )
       )
       return null
