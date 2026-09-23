@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, useRef, useState, type FormEvent } from "react"
+import { useRef, useState, type FormEvent } from "react"
 import {
   useAppMutation as useMutation,
   useAppQuery as useQuery,
@@ -31,6 +31,13 @@ import { Button, buttonVariants } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { useAuthenticatedQuery } from "@/lib/use-authenticated-query"
@@ -62,6 +69,23 @@ function tomorrow() {
 
 function toTimestamp(date: string, time: string) {
   return Date.parse(`${date}T${time}:00+07:00`)
+}
+
+const reservationTimes = Array.from({ length: 27 }, (_, index) => {
+  const hour = 7 + Math.floor(index / 2)
+  return `${String(hour).padStart(2, "0")}:${index % 2 ? "30" : "00"}`
+})
+
+function displayTime(time: string) {
+  return time.replace(":", ".")
+}
+
+function displayDuration(minutes: number) {
+  const hours = Math.floor(minutes / 60)
+  const remaining = minutes % 60
+  return [hours && `${hours} jam`, remaining && `${remaining} menit`]
+    .filter(Boolean)
+    .join(" ")
 }
 
 export function UserDashboard() {
@@ -319,19 +343,40 @@ export function ReservationForm({
       : "skip"
   )
 
-  const conflict = useMemo(() => {
-    if (!availability) return false
-    const startAt = toTimestamp(date, startTime)
-    const endAt = toTimestamp(date, endTime)
+  function rangeConflicts(start: string, end: string) {
+    if (!availability || !start || !end) return false
+    const startAt = toTimestamp(date, start)
+    const endAt = toTimestamp(date, end)
     return availability.reservations.some(
       (item) => item.startAt < endAt && startAt < item.endAt
     )
-  }, [availability, date, endTime, startTime])
+  }
+
+  const conflict = rangeConflicts(startTime, endTime)
+  const durationMinutes =
+    startTime && endTime
+      ? (toTimestamp(date, endTime) - toTimestamp(date, startTime)) / 60000
+      : 0
+
+  function chooseStartTime(nextStart: string) {
+    setStartTime(nextStart)
+    if (endTime <= nextStart || rangeConflicts(nextStart, endTime)) {
+      setEndTime(
+        reservationTimes.find(
+          (time) => time > nextStart && !rangeConflicts(nextStart, time)
+        ) ?? ""
+      )
+    }
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (!selectedFacility) {
       setMessage("Pilih fasilitas terlebih dahulu.")
+      return
+    }
+    if (!availability || !endTime || conflict) {
+      setMessage("Pilih rentang waktu yang tersedia terlebih dahulu.")
       return
     }
     setPending(true)
@@ -452,56 +497,120 @@ export function ReservationForm({
               </div>
             )}
           </fieldset>
-          <div id="reservation-schedule" className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="date">Tanggal</Label>
-              <Input
-                id="date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                required
-              />
+          <div
+            id="reservation-schedule"
+            className="space-y-4 rounded-2xl border bg-muted/20 p-4 sm:p-5"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="font-heading font-semibold">Jadwal pemakaian</h2>
+              <span className="rounded-full bg-background px-3 py-1 text-xs text-muted-foreground">
+                Interval 30 menit · WIB
+              </span>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="start">Mulai</Label>
-              <Input
-                id="start"
-                type="time"
-                min="07:00"
-                max="19:30"
-                step="1800"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                required
-              />
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="date">Tanggal</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="h-11 rounded-2xl border border-border bg-background"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label id="reservation-start-label">Jam mulai</Label>
+                <Select
+                  value={startTime}
+                  onValueChange={(value) => value && chooseStartTime(value)}
+                  disabled={!selectedFacility || !availability}
+                >
+                  <SelectTrigger
+                    aria-labelledby="reservation-start-label"
+                    className="h-11 w-full rounded-2xl border border-border bg-background"
+                  >
+                    <SelectValue>
+                      {(value: string | null) =>
+                        value ? displayTime(value) : "Pilih jam mulai"
+                      }
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {reservationTimes.slice(0, -1).map((time, index) => {
+                      const booked = rangeConflicts(
+                        time,
+                        reservationTimes[index + 1]
+                      )
+                      return (
+                        <SelectItem key={time} value={time} disabled={booked}>
+                          {displayTime(time)}
+                          {booked ? " · Terisi" : ""}
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label id="reservation-end-label">Jam selesai</Label>
+                <Select
+                  value={endTime || null}
+                  onValueChange={(value) => setEndTime(value ?? "")}
+                  disabled={!selectedFacility || !availability || !startTime}
+                >
+                  <SelectTrigger
+                    aria-labelledby="reservation-end-label"
+                    className="h-11 w-full rounded-2xl border border-border bg-background"
+                  >
+                    <SelectValue>
+                      {(value: string | null) =>
+                        value ? displayTime(value) : "Pilih jam selesai"
+                      }
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {reservationTimes
+                      .filter((time) => time > startTime)
+                      .map((time) => {
+                        const booked = rangeConflicts(startTime, time)
+                        return (
+                          <SelectItem key={time} value={time} disabled={booked}>
+                            {displayTime(time)}
+                            {booked ? " · Bentrok" : ""}
+                          </SelectItem>
+                        )
+                      })}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="end">Selesai</Label>
-              <Input
-                id="end"
-                type="time"
-                min="07:30"
-                max="20:00"
-                step="1800"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                required
-              />
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+              <p
+                className={cn(
+                  conflict ? "text-destructive" : "text-muted-foreground"
+                )}
+              >
+                {!selectedFacility
+                  ? "Pilih fasilitas untuk melihat jam yang tersedia."
+                  : !availability
+                    ? "Memuat ketersediaan jadwal…"
+                    : conflict
+                      ? "Rentang waktu ini sudah dipakai. Pilih jam lain."
+                      : !endTime
+                        ? "Pilih rentang waktu yang tersedia."
+                        : "Rentang waktu tersedia untuk diajukan."}
+              </p>
+              {selectedFacility &&
+                availability &&
+                !conflict &&
+                durationMinutes > 0 && (
+                  <span className="font-medium">
+                    Durasi {displayDuration(durationMinutes)}
+                  </span>
+                )}
             </div>
           </div>
-          {facilityId && availability && (
-            <p
-              className={cn(
-                "text-sm",
-                conflict ? "text-destructive" : "text-emerald-700"
-              )}
-            >
-              {conflict
-                ? "Slot bertabrakan dengan reservasi yang sudah disetujui."
-                : "Slot belum digunakan."}
-            </p>
-          )}
           <div id="reservation-purpose" className="space-y-1.5">
             <Label htmlFor="purpose">Tujuan penggunaan</Label>
             <Textarea
@@ -517,7 +626,13 @@ export function ReservationForm({
           <Button
             id="reservation-submit"
             type="submit"
-            disabled={pending || conflict}
+            disabled={
+              pending ||
+              !selectedFacility ||
+              !availability ||
+              !endTime ||
+              conflict
+            }
           >
             {pending ? "Mengirim…" : "Kirim reservasi"}
           </Button>
