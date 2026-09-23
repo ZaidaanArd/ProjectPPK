@@ -5,6 +5,7 @@ import {
 } from "@convex-dev/better-auth"
 import { convex } from "@convex-dev/better-auth/plugins"
 import { betterAuth } from "better-auth/minimal"
+import { multiSession } from "better-auth/plugins"
 
 import { components, internal } from "./_generated/api"
 import type { DataModel } from "./_generated/dataModel"
@@ -78,7 +79,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
       expiresIn: 60 * 60 * 24 * 7,
       updateAge: 60 * 60 * 24,
     },
-    plugins: [convex({ authConfig })],
+    plugins: [convex({ authConfig }), multiSession({ maximumSessions: 5 })],
   })
 
 export const { onCreate, onUpdate, onDelete } = authComponent.triggersApi()
