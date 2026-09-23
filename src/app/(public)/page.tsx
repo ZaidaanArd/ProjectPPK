@@ -6,15 +6,15 @@ import {
   IconBuilding,
   IconCalendarEvent,
   IconCheck,
+  IconChevronDown,
   IconMapPin,
   IconSearch,
-  IconShield,
   IconUsers,
-  IconUser,
   IconTool as IconWrench,
 } from "@tabler/icons-react"
 import { DashboardPreview } from "@/components/public/dashboard-preview"
 import { LandingMotion } from "@/components/public/landing-motion"
+import { SthaniFace } from "@/components/sthani-face"
 import { facilities } from "@/lib/facilities"
 import { site, siteUrl } from "@/lib/site"
 export const metadata: Metadata = {
@@ -66,24 +66,26 @@ const steps = [
     text: "Ada yang rusak? Kirim laporan dan ikuti penanganannya.",
   },
 ]
-const portals = [
+const faqs = [
   {
-    icon: IconUser,
-    title: "Pengguna",
-    text: "Kelola reservasi dan laporan fasilitasmu.",
-    href: "/app",
+    question: "Siapa yang bisa menggunakan Sthana Kampus?",
+    text: "Semua mahasiswa dan dosen bisa mendaftar untuk mengajukan reservasi, sementara verifikasi dan pengelolaan fasilitas ditangani petugas serta admin kampus.",
   },
   {
-    icon: IconUsers,
-    title: "Petugas",
-    text: "Verifikasi reservasi dan tangani laporan.",
-    href: "/staff",
+    question: "Bagaimana cara mengajukan reservasi ruangan?",
+    text: "Cari fasilitas yang tersedia, pilih tanggal dan jam pakai, isi keperluan acara, lalu kirim pengajuan. Status persetujuan bisa dipantau langsung dari akunmu.",
   },
   {
-    icon: IconShield,
-    title: "Admin",
-    text: "Kelola fasilitas, pengguna, dan rekap aktivitas.",
-    href: "/admin",
+    question: "Berapa lama pengajuan disetujui?",
+    text: "Pengajuan diperiksa dan diverifikasi oleh petugas dalam hitungan jam kerja. Setiap perubahan status langsung terlihat di akunmu.",
+  },
+  {
+    question: "Apakah reservasi bisa dibatalkan?",
+    text: "Bisa. Buka daftar reservasi di akunmu, pilih pengajuan yang ingin dibatalkan, lalu batalkan selama statusnya masih menunggu persetujuan.",
+  },
+  {
+    question: "Bagaimana cara melaporkan fasilitas yang rusak?",
+    text: "Buat laporan dari akunmu, jelaskan kendalanya — misalnya AC mati atau kursi rusak — dan sebutkan lokasinya. Petugas akan menindaklanjuti dan memperbarui progresnya.",
   },
 ]
 export default function HomePage() {
@@ -281,26 +283,27 @@ export default function HomePage() {
               ))}
             </div>
           </section>
-          <section data-reveal aria-labelledby="portals-heading">
-            <div className="section-heading">
-              <h2 id="portals-heading">Satu sistem, tiga pintu masuk.</h2>
-            </div>
-            <div className="portal-grid">
-              {portals.map(({ icon: Icon, title, text, href }) => (
-                <article key={title}>
-                  <span className="feature-icon">
-                    <Icon size={25} aria-hidden="true" />
-                  </span>
-                  <div>
-                    <h3>{title}</h3>
-                    <p>{text}</p>
-                    <Link href={href} aria-label={`Buka portal ${title}`}>
-                      Buka portal{" "}
-                      <IconArrowRight size={15} aria-hidden="true" />
-                    </Link>
-                  </div>
-                </article>
-              ))}
+          <section data-reveal aria-labelledby="faq-heading">
+            <div className="faq-layout">
+              <div className="faq-intro">
+                <h2 id="faq-heading">Sering ditanyakan.</h2>
+                <p>
+                  Jawaban singkat untuk hal yang paling sering ditanyakan soal
+                  reservasi dan pelaporan fasilitas.
+                </p>
+                <SthaniFace expression="bingung" className="faq-mascot" />
+              </div>
+              <div className="faq-list">
+                {faqs.map(({ question, text }) => (
+                  <details key={question} className="faq-item">
+                    <summary className="faq-question">
+                      {question}
+                      <IconChevronDown size={18} aria-hidden="true" />
+                    </summary>
+                    <p className="faq-answer">{text}</p>
+                  </details>
+                ))}
+              </div>
             </div>
           </section>
           <section className="report-banner" data-reveal>
