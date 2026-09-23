@@ -2,8 +2,9 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
-import { IconArrowRight, IconMenu2, IconX } from "@tabler/icons-react"
+import { IconMenu2, IconX } from "@tabler/icons-react"
 import { BrandLogo } from "@/components/brand-logo"
+import { PublicAccountLinks } from "@/components/public-account-links"
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler"
 const nav = [
   { href: "/", label: "Beranda" },
@@ -50,12 +51,7 @@ export function SiteHeader() {
             aria-label="Ganti tema terang atau gelap"
             title="Ganti tema"
           />
-          <Link href="/login" className="header-login">
-            Masuk
-          </Link>
-          <Link href="/register" className="sthana-button primary small">
-            Daftar akun <IconArrowRight size={16} aria-hidden="true" />
-          </Link>
+          <PublicAccountLinks placement="header" />
           <button
             className="mobile-menu-button"
             type="button"
@@ -74,7 +70,7 @@ export function SiteHeader() {
           className="mobile-navigation"
           aria-label="Navigasi mobile"
         >
-          {[...nav, { href: "/login", label: "Masuk" }].map((item) => (
+          {nav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -83,6 +79,10 @@ export function SiteHeader() {
               {item.label}
             </Link>
           ))}
+          <PublicAccountLinks
+            placement="mobile"
+            onNavigate={() => setOpen(false)}
+          />
         </nav>
       )}
     </header>

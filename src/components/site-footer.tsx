@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { BrandLogo } from "@/components/brand-logo"
+import { PublicAccountLinks } from "@/components/public-account-links"
 import { AnimatedTooltip } from "@/components/ui/animated-tooltip"
 
 const team = [
@@ -61,8 +62,7 @@ export function SiteFooter() {
         </nav>
         <nav aria-label="Akun">
           <h2>Akun</h2>
-          <Link href="/login">Masuk</Link>
-          <Link href="/register">Daftar akun</Link>
+          <PublicAccountLinks placement="footer" />
         </nav>
       </div>
       <div className="sthana-container footer-bottom">
