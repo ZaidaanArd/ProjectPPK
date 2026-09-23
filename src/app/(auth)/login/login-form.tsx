@@ -1,11 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { BrandLogo } from "@/components/brand-logo"
 import { useEffect, useState } from "react"
 import type { FormEvent } from "react"
-import { useConvexAuth, useQuery } from "convex/react"
 import {
   IconArrowLeft,
   IconEye,
@@ -18,49 +16,57 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { api } from "../../../../convex/_generated/api"
 import { authClient } from "@/lib/auth-client"
+import { getDeviceAccounts, isLegacySession } from "@/lib/device-accounts"
+import { MAX_DEVICE_ACCOUNTS } from "@/lib/account-routing"
 
-export function LoginForm() {
-  const router = useRouter()
-  const { isAuthenticated } = useConvexAuth()
-  const profile = useQuery(api.profiles.current, isAuthenticated ? {} : "skip")
+export function LoginForm({ addAccount = false }: { addAccount?: boolean }) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [addState, setAddState] = useState<
+    "checking" | "ready" | "reconnect" | "full" | "error"
+  >(addAccount ? "checking" : "ready")
+  const [currentEmail, setCurrentEmail] = useState("")
 
   useEffect(() => {
-    if (!loading || !isAuthenticated || profile === undefined) return
+    if (!addAccount) return
+    let cancelled = false
 
-    if (profile?.status === "active") {
-      const destination =
-        profile.role === "admin"
-          ? "/admin"
-          : profile.role === "officer"
-            ? "/staff"
-            : "/app"
-      router.replace(destination)
-      return
+    void Promise.all([authClient.getSession(), getDeviceAccounts()])
+      .then(([current, accounts]) => {
+        if (cancelled) return
+        if (current.error || !current.data?.session) {
+          setAddState("error")
+          return
+        }
+        const activeToken = current.data.session.token
+        if (isLegacySession(activeToken, accounts)) {
+          const activeEmail = current.data.user.email.toLowerCase()
+          setCurrentEmail(activeEmail)
+          setEmail(activeEmail)
+          setAddState("reconnect")
+        } else {
+          setAddState(accounts.length >= MAX_DEVICE_ACCOUNTS ? "full" : "ready")
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setAddState("error")
+      })
+
+    return () => {
+      cancelled = true
     }
-
-    const message =
-      profile?.status === "rejected"
-        ? "Pendaftaran akun ditolak. Hubungi administrator."
-        : profile?.status === "disabled"
-          ? "Akun dinonaktifkan. Hubungi administrator."
-          : "Akun masih menunggu verifikasi administrator."
-
-    void authClient.signOut().finally(() => {
-      setError(message)
-      setLoading(false)
-    })
-  }, [isAuthenticated, loading, profile, router])
+  }, [addAccount])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    if (addState !== "ready" && addState !== "reconnect") return
+    if (addState === "reconnect" && email.trim().toLowerCase() !== currentEmail)
+      return
     setError("")
     setLoading(true)
 
@@ -71,7 +77,10 @@ export function LoginForm() {
         rememberMe,
       })
 
-      if (!result.error) return
+      if (!result.error) {
+        window.location.replace("/portal")
+        return
+      }
       setError("Email atau password tidak sesuai.")
       setLoading(false)
     } catch {
@@ -98,13 +107,36 @@ export function LoginForm() {
             <BrandLogo markOnly />
             <div className="text-center">
               <h1 className="font-heading text-[26px] font-semibold tracking-tight text-foreground">
-                Selamat Datang di Sthana Kampus!
+                {addAccount
+                  ? "Masuk ke akun lain"
+                  : "Selamat Datang di Sthana Kampus!"}
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Masuk ke akun Anda untuk melanjutkan
+                {addAccount
+                  ? "Gunakan akun yang sudah terdaftar."
+                  : "Masuk ke akun Anda untuk melanjutkan"}
               </p>
             </div>
           </div>
+
+          {addAccount && addState === "reconnect" ? (
+            <p className="mb-5 rounded-xl border border-pink-200 bg-pink-50 p-3 text-sm text-pink-900 dark:border-pink-300/20 dark:bg-pink-400/10 dark:text-pink-100">
+              Masuk ulang ke akun ini sekali agar tetap tersedia saat Anda
+              menambah akun lain.
+            </p>
+          ) : null}
+          {addAccount && addState === "full" ? (
+            <p className="mb-5 rounded-xl border p-3 text-sm text-muted-foreground">
+              Maksimal {MAX_DEVICE_ACCOUNTS} akun. Keluarkan satu akun dari menu
+              profil sebelum menambah akun lain.
+            </p>
+          ) : null}
+          {addAccount && addState === "error" ? (
+            <p role="alert" className="mb-5 text-sm text-destructive">
+              Sesi akun tidak dapat diperiksa. Muat ulang halaman untuk mencoba
+              lagi.
+            </p>
+          ) : null}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -117,6 +149,7 @@ export function LoginForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                readOnly={addState === "reconnect"}
                 autoComplete="email"
                 className="rounded-lg border-border bg-background"
               />
@@ -169,7 +202,12 @@ export function LoginForm() {
 
             <Button
               type="submit"
-              disabled={loading}
+              disabled={
+                loading ||
+                addState === "checking" ||
+                addState === "full" ||
+                addState === "error"
+              }
               className="login-pink-accent mt-1 w-full rounded-lg"
             >
               {loading ? (
@@ -189,15 +227,17 @@ export function LoginForm() {
           </form>
 
           {/* Footer */}
-          <p className="mt-5 text-center text-sm text-muted-foreground">
-            Belum punya akun?{" "}
-            <Link
-              href="/register"
-              className="font-medium text-foreground transition-opacity hover:opacity-70"
-            >
-              Daftar
-            </Link>
-          </p>
+          {!addAccount ? (
+            <p className="mt-5 text-center text-sm text-muted-foreground">
+              Belum punya akun?{" "}
+              <Link
+                href="/register"
+                className="font-medium text-foreground transition-opacity hover:opacity-70"
+              >
+                Daftar
+              </Link>
+            </p>
+          ) : null}
         </div>
       </div>
 

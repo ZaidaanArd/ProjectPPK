@@ -46,7 +46,12 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { authClient } from "@/lib/auth-client"
+import {
+  leaveAllAccounts,
+  leaveCurrentAccount,
+  removeDeviceAccount,
+  switchDeviceAccount,
+} from "@/lib/device-accounts"
 import {
   getActivePortalItem,
   portalRoleMeta,
@@ -197,8 +202,14 @@ export function PortalShell({
   const { isLoading, isAuthenticated } = useConvexAuth()
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
   const [passwordChangedLocally, setPasswordChangedLocally] = useState(false)
-  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
-  const [logoutPending, setLogoutPending] = useState(false)
+  const [logoutKind, setLogoutKind] = useState<"current" | "all" | null>(null)
+  const [navigationPending, setNavigationPending] = useState(false)
+  const [accountError, setAccountError] = useState("")
+  const [removeTarget, setRemoveTarget] = useState<{
+    token: string
+    email: string
+  } | null>(null)
+  const [removePending, setRemovePending] = useState(false)
   const role = portalRoleMeta[profile.role]
   const activeItem = getActivePortalItem(profile.role, pathname)
   const passwordChangeRequired =
@@ -208,24 +219,55 @@ export function PortalShell({
     !passwordChangedLocally
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (!navigationPending && !isLoading && !isAuthenticated) {
       router.replace("/login")
       router.refresh()
     }
-  }, [isAuthenticated, isLoading, router])
+  }, [isAuthenticated, isLoading, navigationPending, router])
 
-  if ((!isLoading && !isAuthenticated) || logoutPending) {
+  if ((!isLoading && !isAuthenticated) || navigationPending) {
     return <PortalShellLoading />
   }
 
-  async function logout() {
-    setLogoutPending(true)
+  async function switchAccount(token: string) {
+    setNavigationPending(true)
+    setAccountError("")
     try {
-      await authClient.signOut()
-      router.replace("/login")
-      router.refresh()
+      await switchDeviceAccount(token)
+      window.location.replace("/portal")
+    } catch {
+      setNavigationPending(false)
+      setAccountError("Tidak dapat mengganti akun. Coba lagi.")
+    }
+  }
+
+  async function logout() {
+    if (!logoutKind) return
+    const kind = logoutKind
+    setNavigationPending(true)
+    setAccountError("")
+    try {
+      if (kind === "all") await leaveAllAccounts()
+      else await leaveCurrentAccount()
+      window.location.replace(kind === "all" ? "/login" : "/portal")
+    } catch {
+      setNavigationPending(false)
+      setLogoutKind(null)
+      setAccountError("Tidak dapat keluar dari akun. Coba lagi.")
+    }
+  }
+
+  async function removeStoredAccount() {
+    if (!removeTarget) return
+    setRemovePending(true)
+    try {
+      await removeDeviceAccount(removeTarget.token)
+      setRemoveTarget(null)
+    } catch {
+      setRemoveTarget(null)
+      setAccountError("Akun tidak dapat dilepas. Coba lagi.")
     } finally {
-      setLogoutPending(false)
+      setRemovePending(false)
     }
   }
 
@@ -249,7 +291,10 @@ export function PortalShell({
         <AppSidebar
           profile={profile}
           onChangePassword={() => setPasswordDialogOpen(true)}
-          onLogout={() => setLogoutDialogOpen(true)}
+          onLogoutCurrent={() => setLogoutKind("current")}
+          onLogoutAll={() => setLogoutKind("all")}
+          onSwitchAccount={(token) => void switchAccount(token)}
+          onRemoveAccount={(token, email) => setRemoveTarget({ token, email })}
         />
         <SidebarInset className="min-h-svh overflow-hidden bg-[radial-gradient(circle_at_top_right,rgba(255,229,242,0.55),transparent_32%),#fbfafb] dark:bg-[radial-gradient(circle_at_top_right,rgba(135,25,84,0.18),transparent_32%),#17131a]">
           <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-pink-950/5 bg-white/80 px-4 backdrop-blur-xl sm:px-6 dark:border-white/10 dark:bg-[#201a23]/85">
@@ -301,9 +346,9 @@ export function PortalShell({
       />
 
       <AlertDialog
-        open={logoutDialogOpen}
+        open={logoutKind !== null}
         onOpenChange={(open) => {
-          if (!logoutPending) setLogoutDialogOpen(open)
+          if (!navigationPending && !open) setLogoutKind(null)
         }}
       >
         <AlertDialogContent>
@@ -311,21 +356,68 @@ export function PortalShell({
             <AlertDialogMedia className="bg-red-50 text-destructive">
               <IconLogout aria-hidden="true" />
             </AlertDialogMedia>
-            <AlertDialogTitle>Keluar dari Sthana?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {logoutKind === "all"
+                ? "Keluar dari semua akun?"
+                : "Keluar dari akun ini?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Anda perlu masuk kembali untuk mengakses portal dan data akun.
+              {logoutKind === "all"
+                ? "Semua akun tersimpan di browser ini akan dikeluarkan."
+                : "Akun lain di browser ini tetap tersedia untuk dipilih."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={logoutPending}>
+            <AlertDialogCancel disabled={navigationPending}>
               Tetap di sini
             </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              disabled={logoutPending}
+              disabled={navigationPending}
               onClick={() => void logout()}
             >
-              {logoutPending ? "Mengeluarkan…" : "Ya, keluar"}
+              {navigationPending ? "Mengeluarkan…" : "Ya, keluar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={removeTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !removePending) setRemoveTarget(null)
+        }}
+      >
+        <AlertDialogContent className="max-w-sm bg-card text-card-foreground">
+          <AlertDialogTitle>Lepas akun tersimpan?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {removeTarget?.email} akan perlu login lagi untuk digunakan di
+            browser ini.
+          </AlertDialogDescription>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removePending}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={removePending}
+              onClick={() => void removeStoredAccount()}
+            >
+              {removePending ? "Melepas…" : "Lepas akun"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={Boolean(accountError)}
+        onOpenChange={(open) => {
+          if (!open) setAccountError("")
+        }}
+      >
+        <AlertDialogContent className="max-w-sm bg-card text-card-foreground">
+          <AlertDialogTitle>Tindakan gagal</AlertDialogTitle>
+          <AlertDialogDescription>{accountError}</AlertDialogDescription>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setAccountError("")}>
+              Tutup
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

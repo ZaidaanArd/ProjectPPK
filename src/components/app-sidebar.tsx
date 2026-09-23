@@ -24,7 +24,10 @@ import {
 export function AppSidebar({
   profile,
   onChangePassword,
-  onLogout,
+  onLogoutCurrent,
+  onLogoutAll,
+  onSwitchAccount,
+  onRemoveAccount,
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
   profile: {
@@ -33,7 +36,10 @@ export function AppSidebar({
     role: PortalRole
   }
   onChangePassword: () => void
-  onLogout: () => void
+  onLogoutCurrent: () => void
+  onLogoutAll: () => void
+  onSwitchAccount: (token: string) => void
+  onRemoveAccount: (token: string, email: string) => void
 }) {
   const role = portalRoleMeta[profile.role]
 
@@ -81,7 +87,10 @@ export function AppSidebar({
             roleLabel: role.label,
           }}
           onChangePassword={onChangePassword}
-          onLogout={onLogout}
+          onLogoutCurrent={onLogoutCurrent}
+          onLogoutAll={onLogoutAll}
+          onSwitchAccount={onSwitchAccount}
+          onRemoveAccount={onRemoveAccount}
         />
       </SidebarFooter>
       <SidebarRail />

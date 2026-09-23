@@ -1,12 +1,16 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import {
+  IconCheck,
   IconHome,
   IconKey,
   IconLogout,
+  IconPlus,
   IconSelector,
   IconShieldCheck,
+  IconTrash,
 } from "@tabler/icons-react"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -25,6 +29,13 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { MAX_DEVICE_ACCOUNTS } from "@/lib/account-routing"
+import {
+  getActiveSessionToken,
+  getDeviceAccounts,
+  isLegacySession,
+  type DeviceAccount,
+} from "@/lib/device-accounts"
 
 function getInitials(name: string) {
   return name
@@ -39,7 +50,10 @@ function getInitials(name: string) {
 export function NavUser({
   user,
   onChangePassword,
-  onLogout,
+  onLogoutCurrent,
+  onLogoutAll,
+  onSwitchAccount,
+  onRemoveAccount,
 }: {
   user: {
     name: string
@@ -47,15 +61,51 @@ export function NavUser({
     roleLabel: string
   }
   onChangePassword: () => void
-  onLogout: () => void
+  onLogoutCurrent: () => void
+  onLogoutAll: () => void
+  onSwitchAccount: (token: string) => void
+  onRemoveAccount: (token: string, email: string) => void
 }) {
   const { isMobile } = useSidebar()
   const initials = getInitials(user.name)
+  const [open, setOpen] = useState(false)
+  const [accounts, setAccounts] = useState<DeviceAccount[]>([])
+  const [activeToken, setActiveToken] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const legacy = isLegacySession(activeToken, accounts)
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    void Promise.all([getDeviceAccounts(), getActiveSessionToken()])
+      .then(([items, token]) => {
+        if (cancelled) return
+        setAccounts(items)
+        setActiveToken(token)
+        setError("")
+      })
+      .catch(() => {
+        if (!cancelled) setError("Daftar akun tidak dapat dimuat.")
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open])
 
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <DropdownMenu>
+        <DropdownMenu
+          open={open}
+          onOpenChange={(next) => {
+            setOpen(next)
+            if (next) setLoading(true)
+          }}
+        >
           <DropdownMenuTrigger
             render={
               <SidebarMenuButton
@@ -79,7 +129,7 @@ export function NavUser({
             <IconSelector className="ml-auto size-4 text-muted-foreground group-data-[collapsible=icon]:hidden" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-72"
+            className="w-80"
             side={isMobile ? "bottom" : "right"}
             align="end"
             sideOffset={8}
@@ -107,6 +157,86 @@ export function NavUser({
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
+              <DropdownMenuLabel>Akun di browser ini</DropdownMenuLabel>
+              {loading ? (
+                <p className="px-3 py-2 text-xs text-muted-foreground">
+                  Memuat akun…
+                </p>
+              ) : null}
+              {!loading && error ? (
+                <p role="alert" className="px-3 py-2 text-xs text-destructive">
+                  {error}
+                </p>
+              ) : null}
+              {!loading && !error ? (
+                <>
+                  <div className="flex items-center gap-2 rounded-2xl bg-pink-50 px-3 py-2.5 dark:bg-pink-400/10">
+                    <IconCheck className="size-4 shrink-0 text-pink-700 dark:text-pink-300" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold">
+                        {user.name}
+                      </span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {user.email}
+                      </span>
+                    </span>
+                    <span className="text-[10px] font-semibold text-pink-700 dark:text-pink-300">
+                      Aktif
+                    </span>
+                  </div>
+                  {accounts
+                    .filter(({ session }) => session.token !== activeToken)
+                    .map(({ session, user: other }) => (
+                      <div
+                        key={session.id}
+                        className="mt-1 flex items-stretch gap-1"
+                      >
+                        <DropdownMenuItem
+                          className="min-w-0 flex-1"
+                          onClick={() => onSwitchAccount(session.token)}
+                        >
+                          <span className="min-w-0">
+                            <span className="block truncate">{other.name}</span>
+                            <span className="block truncate text-xs font-normal text-muted-foreground">
+                              {other.email}
+                            </span>
+                          </span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          aria-label={`Lepas akun ${other.email}`}
+                          title={`Lepas akun ${other.email}`}
+                          className="px-2 text-muted-foreground"
+                          onClick={() =>
+                            onRemoveAccount(session.token, other.email)
+                          }
+                        >
+                          <IconTrash className="size-4" />
+                        </DropdownMenuItem>
+                      </div>
+                    ))}
+                  {legacy ? (
+                    <p className="px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+                      Masuk ulang ke akun ini sekali sebelum menambah akun lain.
+                    </p>
+                  ) : null}
+                  {accounts.length >= MAX_DEVICE_ACCOUNTS && !legacy ? (
+                    <p className="px-3 py-2 text-xs text-muted-foreground">
+                      Batas {MAX_DEVICE_ACCOUNTS} akun tercapai. Lepas satu akun
+                      untuk menambah yang baru.
+                    </p>
+                  ) : (
+                    <DropdownMenuItem
+                      render={<Link href="/login/add-account" />}
+                    >
+                      <IconPlus />
+                      {legacy ? "Aktifkan ganti akun" : "Tambah akun"}
+                    </DropdownMenuItem>
+                  )}
+                </>
+              ) : null}
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
               <DropdownMenuItem onClick={onChangePassword}>
                 <IconKey />
                 Ganti password
@@ -117,9 +247,13 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onClick={onLogout}>
+            <DropdownMenuItem variant="destructive" onClick={onLogoutCurrent}>
               <IconLogout />
-              Keluar
+              Keluar akun ini
+            </DropdownMenuItem>
+            <DropdownMenuItem variant="destructive" onClick={onLogoutAll}>
+              <IconLogout />
+              Keluar semua akun
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
