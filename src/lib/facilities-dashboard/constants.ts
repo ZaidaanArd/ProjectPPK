@@ -46,6 +46,51 @@ export function matchKapasitas(kapasitas: number, filter: KapasitasFilter) {
   return kapasitas > 100
 }
 
+// --- Helper tanggal untuk picker di modal slot ---
+export function toIsoDate(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${y}-${m}-${day}`
+}
+
+export function parseIsoDate(s: string): Date {
+  const [y, m, day] = s.split("-").map(Number)
+  return new Date(y, (m ?? 1) - 1, day ?? 1)
+}
+
+export function formatTanggalIndo(iso: string): string {
+  const d = parseIsoDate(iso)
+  return d.toLocaleDateString("id-ID", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  })
+}
+
+export function formatTanggalPendek(iso: string): string {
+  const d = parseIsoDate(iso)
+  return d.toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short" })
+}
+
+export function getTanggalOptions(jumlah: number = 14): string[] {
+  const out: string[] = []
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  for (let i = 0; i < jumlah; i++) {
+    const d = new Date(today)
+    d.setDate(today.getDate() + i)
+    out.push(toIsoDate(d))
+  }
+  return out
+}
+
+export function isWeekendIso(iso: string): boolean {
+  const day = parseIsoDate(iso).getDay()
+  return day === 0 || day === 6
+}
+
 function pad(n: number) {
   return n.toString().padStart(2, "0")
 }

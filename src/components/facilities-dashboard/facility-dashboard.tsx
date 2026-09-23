@@ -6,11 +6,12 @@ import { FacilityFormModal } from "./facility-form-modal"
 import { FacilityGrid } from "./facility-grid"
 import { SlotGridModal } from "./slot-grid-modal"
 import {
+  formatTanggalIndo,
   matchKapasitas,
   type KapasitasFilter,
 } from "@/lib/facilities-dashboard/constants"
 import {
-  mockBookedSlots,
+  getBookedIdsForDate,
   mockFacilities,
 } from "@/lib/facilities-dashboard/mock-data"
 import type {
@@ -54,7 +55,14 @@ export function FacilityDashboard({
   const [slotFacility, setSlotFacility] = React.useState<FacilityItem | null>(
     null
   )
+  const [selectedDate, setSelectedDate] = React.useState<string>("")
   const [notice, setNotice] = React.useState("")
+
+  // Reset tanggal (kosong) tiap buka modal — jadwal baru muncul setelah tanggal dipilih via kalender
+  function openSlot(f: FacilityItem) {
+    setSelectedDate("")
+    setSlotFacility(f)
+  }
 
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -87,14 +95,19 @@ export function FacilityDashboard({
   }
 
   function handleSubmitForm(values: FacilityFormValues) {
+    // Kerangka foto siap-DB: fotoUrl = cover (kompatibel), photos = galeri
+    const normalized: FacilityFormValues = {
+      ...values,
+      fotoUrl: values.photos?.[0]?.url ?? values.fotoUrl ?? "",
+    }
     if (editing) {
       setFacilities((prev) =>
-        prev.map((f) => (f.id === editing.id ? { ...f, ...values } : f))
+        prev.map((f) => (f.id === editing.id ? { ...f, ...normalized } : f))
       )
       setNotice(`“${values.nama}” berhasil diperbarui.`)
     } else {
       const id = slugify(values.nama)
-      setFacilities((prev) => [{ id, status: "Aktif", ...values }, ...prev])
+      setFacilities((prev) => [{ id, status: "Aktif", ...normalized }, ...prev])
       setNotice(`“${values.nama}” berhasil ditambahkan.`)
     }
     setFormOpen(false)
@@ -136,10 +149,11 @@ export function FacilityDashboard({
     )
   }
 
-  function handlePilihSlot(f: FacilityItem, slot: TimeSlot) {
-    // Hook integrasi ke modul reservasi (US-03): arahkan ke /app/reservations/new?facility=&slot=
+  function handlePilihSlot(f: FacilityItem, slot: TimeSlot, isoDate: string) {
+    const tgl = formatTanggalIndo(isoDate)
+    // Hook integrasi ke modul reservasi (US-03): arahkan ke /app/reservations/new?facility=&date=&slot=
     setNotice(
-      `Slot ${slot.mulai}–${slot.selesai} di “${f.nama}” tersedia — lanjutkan ke form reservasi.`
+      `Slot ${slot.mulai}–${slot.selesai} di “${f.nama}” tanggal ${tgl} tersedia — lanjutkan ke form reservasi.`
     )
     setSlotFacility(null)
   }
@@ -175,7 +189,7 @@ export function FacilityDashboard({
       <FacilityGrid
         facilities={filtered}
         role={role}
-        onCekSlot={setSlotFacility}
+        onCekSlot={openSlot}
         onEdit={openEdit}
         onToggleNonaktif={toggleNonaktif}
         onToggleMaintenance={toggleMaintenance}
@@ -194,7 +208,13 @@ export function FacilityDashboard({
 
       <SlotGridModal
         facility={slotFacility}
-        bookedIds={slotFacility ? (mockBookedSlots[slotFacility.id] ?? []) : []}
+        bookedIds={
+          slotFacility && selectedDate
+            ? getBookedIdsForDate(slotFacility.id, selectedDate)
+            : []
+        }
+        selectedDate={selectedDate}
+        onSelectDate={setSelectedDate}
         onClose={() => setSlotFacility(null)}
         onPilihSlot={handlePilihSlot}
       />

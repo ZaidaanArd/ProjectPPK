@@ -61,9 +61,9 @@ export function DashboardControls({
   return (
     <section
       aria-label="Kontrol dashboard fasilitas"
-      className="rounded-4xl bg-card p-4 shadow-md ring-1 ring-foreground/5 sm:p-5"
+      className="rounded-4xl bg-card p-5 shadow-md ring-1 ring-foreground/5 sm:p-6"
     >
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
         <div className="relative flex-1">
           <IconSearch
             size={16}
@@ -78,7 +78,7 @@ export function DashboardControls({
             className="pl-10"
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
           {showRoleSwitcher && <RoleSwitcher value={role} onChange={onRole} />}
           {role === "admin" && (
             <Button type="button" onClick={onTambah}>
@@ -89,8 +89,8 @@ export function DashboardControls({
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-x-2 gap-y-3 lg:grid-cols-4">
-        <div className="grid gap-1.5">
+      <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4 lg:grid-cols-4">
+        <div className="grid gap-2">
           <Label id="filter-tipe-label">Tipe</Label>
           <Select
             value={tipe}
@@ -113,7 +113,7 @@ export function DashboardControls({
           </Select>
         </div>
 
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label id="filter-status-label">Status</Label>
           <Select
             value={status}
@@ -136,7 +136,7 @@ export function DashboardControls({
           </Select>
         </div>
 
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label id="filter-lokasi-label">Lokasi</Label>
           <Select value={lokasi} onValueChange={(v) => onLokasi(v ?? "semua")}>
             <SelectTrigger
@@ -156,7 +156,7 @@ export function DashboardControls({
           </Select>
         </div>
 
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label id="filter-kapasitas-label">Kapasitas</Label>
           <Select
             value={kapasitas}
