@@ -6,6 +6,8 @@ import {
   IconExternalLink,
 } from "@tabler/icons-react"
 import { LandingMotion } from "@/components/public/landing-motion"
+import { DialogMascot } from "@/components/dialog-mascot"
+import { SthaniFace, type SthaniExpression } from "@/components/sthani-face"
 import { site, siteUrl } from "@/lib/site"
 
 const pageUrl = siteUrl ? `${siteUrl}/tentang` : undefined
@@ -53,6 +55,17 @@ const colors = [
   { name: "Soft Blush", hex: "#FFE5F2", className: "about-swatch-blush" },
   { name: "Deep Ink", hex: "#1C172F", className: "about-swatch-ink" },
 ] as const
+
+const expressions: { label: string; face: SthaniExpression }[] = [
+  { label: "Senang", face: "senang" },
+  { label: "Bingung", face: "bingung" },
+  { label: "Kesal", face: "kesal" },
+  { label: "Ngantuk", face: "ngantuk" },
+  { label: "Sedih", face: "sedih" },
+  { label: "Keren", face: "keren" },
+  { label: "Terkejut", face: "terkejut" },
+  { label: "Sayang", face: "sayang" },
+]
 
 const teamMembers = [
   {
@@ -261,6 +274,83 @@ export default function AboutPage() {
                     <code>{color.hex}</code>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="sthani"
+          className="about-sthani"
+          aria-labelledby="sthani-heading"
+          data-reveal
+        >
+          <div className="sthana-container">
+            <div className="about-sthani-intro">
+              <div>
+                <h2 id="sthani-heading">Kenalan samaa Sthani (●'◡'●)</h2>
+                <p>
+                  Sthani adalah maskot Sthana Kampus. Ekspresinya membantu
+                  menjelaskan keadaan dan tindakan di dalam aplikasi
+                </p>
+              </div>
+              <div className="about-sthani-feature" aria-hidden="true">
+                <SthaniFace expression="senang" />
+              </div>
+            </div>
+
+            <div className="about-sthani-group">
+              <h3>Ekspresi Sthani</h3>
+              <ul className="about-sthani-expressions">
+                {expressions.map((expression) => (
+                  <li key={expression.face}>
+                    <SthaniFace expression={expression.face} />
+                    <span>{expression.label}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="about-sthani-group about-sthani-usage">
+              <h3>Di dalam aplikasi</h3>
+              <div className="about-sthani-examples">
+                <article>
+                  <div className="about-sthani-preview about-sthani-preview-empty">
+                    <SthaniFace expression="ngantuk" />
+                    <strong>Belum ada reservasi</strong>
+                    <span className="about-sthani-preview-button">
+                      Cari fasilitas
+                    </span>
+                  </div>
+                  <h4>Halaman kosong</h4>
+                </article>
+                <article>
+                  <div className="about-sthani-preview about-sthani-preview-dialog">
+                    <div className="about-sthani-preview-header">
+                      <DialogMascot mood="goodbye" />
+                      <strong>Keluar dari Sthana?</strong>
+                    </div>
+                    <div className="about-sthani-preview-actions">
+                      <span>Tetap di sini</span>
+                      <span>Ya, keluar</span>
+                    </div>
+                  </div>
+                  <h4>Konfirmasi keluar</h4>
+                </article>
+                <article>
+                  <div className="about-sthani-preview about-sthani-preview-dialog">
+                    <div className="about-sthani-preview-header">
+                      <DialogMascot mood="secure" />
+                      <strong>Ganti password</strong>
+                    </div>
+                    <span className="about-sthani-preview-field" />
+                    <span className="about-sthani-preview-field" />
+                    <span className="about-sthani-preview-submit">
+                      Perbarui password
+                    </span>
+                  </div>
+                  <h4>Keamanan akun</h4>
+                </article>
               </div>
             </div>
           </div>
