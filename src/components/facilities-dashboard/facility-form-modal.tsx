@@ -49,7 +49,18 @@ function toFormValues(editing: FacilityItem | null): FacilityFormValues {
     kapasitas: editing.kapasitas,
     deskripsi: editing.deskripsi,
     fotoUrl: editing.fotoUrl,
-    photos: editing.photos ?? (editing.fotoUrl ? [{ id: `${editing.id}-cover`, url: editing.fotoUrl, sortOrder: 0, alt: editing.nama }] : []),
+    photos:
+      editing.photos ??
+      (editing.fotoUrl
+        ? [
+            {
+              id: `${editing.id}-cover`,
+              url: editing.fotoUrl,
+              sortOrder: 0,
+              alt: editing.nama,
+            },
+          ]
+        : []),
   }
 }
 
@@ -105,12 +116,19 @@ function FacilityFormFields({
       .split("\n")
       .map((s) => s.trim())
       .filter(Boolean)
-    if (urls.length > 5) return setError("Maksimal 5 foto. Hapus baris berlebih.")
+    if (urls.length > 5)
+      return setError("Maksimal 5 foto. Hapus baris berlebih.")
     for (const u of urls) {
-      const ok = u.startsWith("/") || u.startsWith("http://") || u.startsWith("https://")
-      if (!ok) return setError(`URL foto tidak valid: ${u} — pakai /images/... atau https://...`)
+      const ok =
+        u.startsWith("/") || u.startsWith("http://") || u.startsWith("https://")
+      if (!ok)
+        return setError(
+          `URL foto tidak valid: ${u} — pakai /images/... atau https://...`
+        )
     }
-    const fid = (editing?.id ?? values.nama.toLowerCase().replace(/[^a-z0-9]+/g, "-")) || "fasilitas-baru"
+    const fid =
+      (editing?.id ?? values.nama.toLowerCase().replace(/[^a-z0-9]+/g, "-")) ||
+      "fasilitas-baru"
     const photos = urls.map((url, i) => ({
       id: `${fid}-${i + 1}`,
       url,
@@ -192,26 +210,43 @@ function FacilityFormFields({
       </div>
 
       <div className="grid gap-1.5 sm:col-span-2">
-        <Label htmlFor="f-foto">Foto galeri — kerangka siap-database (maks 5, satu URL per baris)</Label>
+        <Label htmlFor="f-foto">
+          Foto galeri — kerangka siap-database (maks 5, satu URL per baris)
+        </Label>
         <Textarea
           id="f-foto"
           value={fotoTextarea}
           onChange={(e) => setFotoTextarea(e.target.value)}
-          placeholder={"/images/facilities/16859956.jpg\nhttps://.../foto-ruangan.jpg\n(kosongkan jika belum ada foto)"}
+          placeholder={
+            "/images/facilities/16859956.jpg\nhttps://.../foto-ruangan.jpg\n(kosongkan jika belum ada foto)"
+          }
           rows={3}
         />
         <p className="text-[11px] text-muted-foreground">
-          Urutan = sort_order; baris pertama = cover (<code className="rounded bg-muted px-1">fotoUrl</code> untuk kompatibilitas). Nanti ganti jadi <code className="rounded bg-muted px-1">&lt;input type=&quot;file&quot; multiple&gt;</code> + upload ke storage, DB simpan url.
+          Urutan = sort_order; baris pertama = cover (
+          <code className="rounded bg-muted px-1">fotoUrl</code> untuk
+          kompatibilitas). Nanti ganti jadi{" "}
+          <code className="rounded bg-muted px-1">
+            &lt;input type=&quot;file&quot; multiple&gt;
+          </code>{" "}
+          + upload ke storage, DB simpan url.
         </p>
         {fotoUrlsPreview.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {fotoUrlsPreview.map((url) => (
               // eslint-disable-next-line @next/next/no-img-element
-              <img key={url} src={url} alt="" className="size-14 rounded-xl border object-cover" />
+              <img
+                key={url}
+                src={url}
+                alt=""
+                className="size-14 rounded-xl border object-cover"
+              />
             ))}
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">Belum ada foto — akan tampil placeholder IconPhoto di kartu & modal.</p>
+          <p className="text-xs text-muted-foreground">
+            Belum ada foto — akan tampil placeholder IconPhoto di kartu & modal.
+          </p>
         )}
       </div>
 
@@ -272,8 +307,10 @@ export function FacilityFormModal({
             {editing ? `Edit — ${editing.nama}` : "Tambah Fasilitas"}
           </DialogTitle>
           <DialogDescription>
-            Khusus Admin. Kerangka foto: <code>FACILITY_PHOTOS(facility_id, url, alt, sort_order)</code> — API{" "}
-            <code>GET /api/facilities</code> include <code>photos[]</code>, <code>POST/PATCH /api/admin/facilities</code> terima{" "}
+            Khusus Admin. Kerangka foto:{" "}
+            <code>FACILITY_PHOTOS(facility_id, url, alt, sort_order)</code> —
+            API <code>GET /api/facilities</code> include <code>photos[]</code>,{" "}
+            <code>POST/PATCH /api/admin/facilities</code> terima{" "}
             <code>photos[]</code> (skeleton URL, nanti multipart).
           </DialogDescription>
         </div>

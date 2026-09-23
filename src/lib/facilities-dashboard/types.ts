@@ -65,7 +65,14 @@ export function getGalleryPhotos(facility: FacilityItem): FacilityPhoto[] {
     return [...facility.photos].sort((a, b) => a.sortOrder - b.sortOrder)
   }
   if (facility.fotoUrl) {
-    return [{ id: `${facility.id}-cover`, url: facility.fotoUrl, sortOrder: 0, alt: facility.nama }]
+    return [
+      {
+        id: `${facility.id}-cover`,
+        url: facility.fotoUrl,
+        sortOrder: 0,
+        alt: facility.nama,
+      },
+    ]
   }
   return []
 }

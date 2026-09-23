@@ -14,10 +14,6 @@ export function PhotoGallery({
 }) {
   const [active, setActive] = React.useState(0)
 
-  React.useEffect(() => {
-    setActive(0)
-  }, [photos])
-
   if (photos.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed bg-muted/50 px-4 py-10 text-center">
@@ -26,7 +22,7 @@ export function PhotoGallery({
         </span>
         <p className="mt-2 text-sm font-medium">Belum ada foto ruangan</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Admin dapat menambahkan foto galeri (maks 5) lewat form. Kerangka siap-database: tabel FACILITY_PHOTOS.
+          Foto ruangan belum tersedia.
         </p>
       </div>
     )
@@ -44,45 +40,43 @@ export function PhotoGallery({
           loading="lazy"
           className="aspect-[16/9] w-full object-cover"
         />
-        <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[11px] font-medium text-white backdrop-blur">
+        <span className="absolute right-2 bottom-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[11px] font-medium text-white backdrop-blur">
           <IconZoomIn size={12} aria-hidden="true" />
           {active + 1} / {photos.length}
         </span>
       </div>
 
       {photos.length > 1 && (
-        <div
-          role="list"
+        <ul
           aria-label={`Galeri foto ${facilityName}`}
           className="flex gap-2 overflow-x-auto pb-1"
         >
           {photos.map((p, idx) => (
-            <button
-              key={p.id}
-              type="button"
-              role="listitem"
-              aria-label={`Lihat ${p.alt ?? `foto ${idx + 1}`}`}
-              aria-current={idx === active ? "true" : undefined}
-              onClick={() => setActive(idx)}
-              className={cn(
-                "relative shrink-0 overflow-hidden rounded-xl border-2 transition-all",
-                idx === active
-                  ? "border-primary ring-2 ring-primary/20"
-                  : "border-transparent opacity-80 hover:opacity-100"
-              )}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={p.url}
-                alt={p.alt ?? `${facilityName} thumbnail ${idx + 1}`}
-                loading="lazy"
-                className="size-[72px] object-cover sm:size-[84px]"
-              />
-            </button>
+            <li key={p.id}>
+              <button
+                type="button"
+                aria-label={`Lihat ${p.alt ?? `foto ${idx + 1}`}`}
+                aria-current={idx === active ? "true" : undefined}
+                onClick={() => setActive(idx)}
+                className={cn(
+                  "relative shrink-0 overflow-hidden rounded-xl border-2 transition-all",
+                  idx === active
+                    ? "border-primary ring-2 ring-primary/20"
+                    : "border-transparent opacity-80 hover:opacity-100"
+                )}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={p.url}
+                  alt={p.alt ?? `${facilityName} thumbnail ${idx + 1}`}
+                  loading="lazy"
+                  className="size-[72px] object-cover sm:size-[84px]"
+                />
+              </button>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
-
     </div>
   )
 }

@@ -4,16 +4,6 @@ import type { FacilityItem } from "./types"
 // Foto memakai file yang sudah ada di public/images/facilities.
 // bookedSlots TIDAK menyimpan identitas pemesan (privasi pengunjung, US-01).
 
-// Kumpulan foto yang tersedia di public — dipakai sebagai skeleton galeri
-const FOTO_POOL = [
-  "/images/facilities/16859956.jpg",
-  "/images/facilities/18471480.jpg",
-  "/images/facilities/6602623.jpg",
-  "/images/facilities/2186251.jpg",
-  "/images/facilities/7457920.jpg",
-  "/images/facilities/8102300.jpg",
-] as const
-
 export const mockFacilities: FacilityItem[] = [
   {
     id: "aula-gedung-a",
@@ -25,9 +15,24 @@ export const mockFacilities: FacilityItem[] = [
       "Cocok untuk seminar, wisuda jurusan, dan acara ormawa. Termasuk sound system, proyektor 5000 lumen, podium, dan AC central. Kapasitas 300 kursi dengan layout theater. Cocok untuk wisuda, seminar nasional, dan expo kampus.",
     fotoUrl: "/images/facilities/16859956.jpg",
     photos: [
-      { id: "aula-gedung-a-1", url: "/images/facilities/16859956.jpg", sortOrder: 0, alt: "Aula Gedung A — tampak depan" },
-      { id: "aula-gedung-a-2", url: "/images/facilities/6602623.jpg", sortOrder: 1, alt: "Aula Gedung A — layout kursi" },
-      { id: "aula-gedung-a-3", url: "/images/facilities/8102300.jpg", sortOrder: 2, alt: "Aula Gedung A — panggung & podium" },
+      {
+        id: "aula-gedung-a-1",
+        url: "/images/facilities/16859956.jpg",
+        sortOrder: 0,
+        alt: "Aula Gedung A — tampak depan",
+      },
+      {
+        id: "aula-gedung-a-2",
+        url: "/images/facilities/6602623.jpg",
+        sortOrder: 1,
+        alt: "Aula Gedung A — layout kursi",
+      },
+      {
+        id: "aula-gedung-a-3",
+        url: "/images/facilities/8102300.jpg",
+        sortOrder: 2,
+        alt: "Aula Gedung A — panggung & podium",
+      },
     ],
     status: "Aktif",
   },
@@ -41,9 +46,24 @@ export const mockFacilities: FacilityItem[] = [
       "40 unit PC dengan software praktikum standar (VS Code, Docker, Figma). Peminjaman per slot 30 menit, termasuk jaringan LAN gigabit dan proyektor. Ideal untuk praktikum, workshop, dan ujian lab.",
     fotoUrl: "/images/facilities/18471480.jpg",
     photos: [
-      { id: "lab-komputer-3-1", url: "/images/facilities/18471480.jpg", sortOrder: 0, alt: "Lab Komputer 3 — deretan PC" },
-      { id: "lab-komputer-3-2", url: "/images/facilities/7457920.jpg", sortOrder: 1, alt: "Lab Komputer 3 — meja kerja" },
-      { id: "lab-komputer-3-3", url: "/images/facilities/6602623.jpg", sortOrder: 2, alt: "Lab Komputer 3 — sudut ruangan" },
+      {
+        id: "lab-komputer-3-1",
+        url: "/images/facilities/18471480.jpg",
+        sortOrder: 0,
+        alt: "Lab Komputer 3 — deretan PC",
+      },
+      {
+        id: "lab-komputer-3-2",
+        url: "/images/facilities/7457920.jpg",
+        sortOrder: 1,
+        alt: "Lab Komputer 3 — meja kerja",
+      },
+      {
+        id: "lab-komputer-3-3",
+        url: "/images/facilities/6602623.jpg",
+        sortOrder: 2,
+        alt: "Lab Komputer 3 — sudut ruangan",
+      },
     ],
     status: "Aktif",
   },
@@ -57,9 +77,24 @@ export const mockFacilities: FacilityItem[] = [
       "Ruang kuliah reguler dengan AC, papan tulis, proyektor HDMI, dan 60 kursi. Pencahayaan natural, akses lift, dan dekat kantin. Cocok untuk kuliah, presentasi TA, dan rapat kecil.",
     fotoUrl: "/images/facilities/6602623.jpg",
     photos: [
-      { id: "ruang-kelas-b201-1", url: "/images/facilities/6602623.jpg", sortOrder: 0, alt: "Ruang Kelas B201 — tampak dalam" },
-      { id: "ruang-kelas-b201-2", url: "/images/facilities/8102300.jpg", sortOrder: 1, alt: "Ruang Kelas B201 — papan tulis" },
-      { id: "ruang-kelas-b201-3", url: "/images/facilities/16859956.jpg", sortOrder: 2, alt: "Ruang Kelas B201 — baris kursi" },
+      {
+        id: "ruang-kelas-b201-1",
+        url: "/images/facilities/6602623.jpg",
+        sortOrder: 0,
+        alt: "Ruang Kelas B201 — tampak dalam",
+      },
+      {
+        id: "ruang-kelas-b201-2",
+        url: "/images/facilities/8102300.jpg",
+        sortOrder: 1,
+        alt: "Ruang Kelas B201 — papan tulis",
+      },
+      {
+        id: "ruang-kelas-b201-3",
+        url: "/images/facilities/16859956.jpg",
+        sortOrder: 2,
+        alt: "Ruang Kelas B201 — baris kursi",
+      },
     ],
     status: "Aktif",
   },
@@ -73,9 +108,24 @@ export const mockFacilities: FacilityItem[] = [
       "Lapangan basket outdoor standar dengan lantai semen halus, ring portable, dan lampu sorot untuk kegiatan sore. Untuk latihan rutin UKM dan kegiatan olahraga kampus. Tersedia jam pagi & sore.",
     fotoUrl: "/images/facilities/2186251.jpg",
     photos: [
-      { id: "lapangan-basket-outdoor-1", url: "/images/facilities/2186251.jpg", sortOrder: 0, alt: "Lapangan Basket — tampak lapangan" },
-      { id: "lapangan-basket-outdoor-2", url: "/images/facilities/16859956.jpg", sortOrder: 1, alt: "Lapangan Basket — tribun" },
-      { id: "lapangan-basket-outdoor-3", url: "/images/facilities/18471480.jpg", sortOrder: 2, alt: "Lapangan Basket — detail ring" },
+      {
+        id: "lapangan-basket-outdoor-1",
+        url: "/images/facilities/2186251.jpg",
+        sortOrder: 0,
+        alt: "Lapangan Basket — tampak lapangan",
+      },
+      {
+        id: "lapangan-basket-outdoor-2",
+        url: "/images/facilities/16859956.jpg",
+        sortOrder: 1,
+        alt: "Lapangan Basket — tribun",
+      },
+      {
+        id: "lapangan-basket-outdoor-3",
+        url: "/images/facilities/18471480.jpg",
+        sortOrder: 2,
+        alt: "Lapangan Basket — detail ring",
+      },
     ],
     status: "Aktif",
   },
@@ -89,8 +139,18 @@ export const mockFacilities: FacilityItem[] = [
       "Studio multimedia dengan 25 workstation, tablet gambar, dan peredam suara. Sedang perawatan AC dan akustik ruangan. Estimasi buka kembali minggu depan. Cocok untuk editing, animasi, dan recording.",
     fotoUrl: "/images/facilities/7457920.jpg",
     photos: [
-      { id: "studio-multimedia-1", url: "/images/facilities/7457920.jpg", sortOrder: 0, alt: "Studio Multimedia — workstation" },
-      { id: "studio-multimedia-2", url: "/images/facilities/18471480.jpg", sortOrder: 1, alt: "Studio Multimedia — ruang editing" },
+      {
+        id: "studio-multimedia-1",
+        url: "/images/facilities/7457920.jpg",
+        sortOrder: 0,
+        alt: "Studio Multimedia — workstation",
+      },
+      {
+        id: "studio-multimedia-2",
+        url: "/images/facilities/18471480.jpg",
+        sortOrder: 1,
+        alt: "Studio Multimedia — ruang editing",
+      },
     ],
     status: "Dalam Perbaikan",
   },
@@ -104,9 +164,24 @@ export const mockFacilities: FacilityItem[] = [
       "Ruang rapat eksklusif dengan meja konferensi 20 kursi, proyektor, dan jendela besar. Untuk rapat dosen, senat, dan tamu fakultas. Perlu persetujuan petugas. Termasuk pantry kecil & akses VIP.",
     fotoUrl: "/images/facilities/8102300.jpg",
     photos: [
-      { id: "ruang-rapat-senat-1", url: "/images/facilities/8102300.jpg", sortOrder: 0, alt: "Ruang Rapat Senat — meja konferensi" },
-      { id: "ruang-rapat-senat-2", url: "/images/facilities/6602623.jpg", sortOrder: 1, alt: "Ruang Rapat Senat — sudut ruangan" },
-      { id: "ruang-rapat-senat-3", url: "/images/facilities/7457920.jpg", sortOrder: 2, alt: "Ruang Rapat Senat — detail kursi" },
+      {
+        id: "ruang-rapat-senat-1",
+        url: "/images/facilities/8102300.jpg",
+        sortOrder: 0,
+        alt: "Ruang Rapat Senat — meja konferensi",
+      },
+      {
+        id: "ruang-rapat-senat-2",
+        url: "/images/facilities/6602623.jpg",
+        sortOrder: 1,
+        alt: "Ruang Rapat Senat — sudut ruangan",
+      },
+      {
+        id: "ruang-rapat-senat-3",
+        url: "/images/facilities/7457920.jpg",
+        sortOrder: 2,
+        alt: "Ruang Rapat Senat — detail kursi",
+      },
     ],
     status: "Aktif",
   },
@@ -172,12 +247,15 @@ const ALL_SLOT_IDS: string[] = (() => {
  * Skeleton: slot terisi yang beda tiap tanggal (deterministik, tanpa backend).
  * Nanti diganti fetch `GET /api/facilities/:id/slots?date=YYYY-MM-DD`.
  */
-export function getBookedIdsForDate(facilityId: string, isoDate: string): string[] {
+export function getBookedIdsForDate(
+  facilityId: string,
+  isoDate: string
+): string[] {
   const base = mockBookedSlots[facilityId] ?? []
   // tanggal ganjil/genap & hash facility → geser pola agar tiap hari terlihat beda tapi stabil
   const h = hashString(`${facilityId}|${isoDate}`)
   const offset = h % ALL_SLOT_IDS.length
-  const extraCount = (h % 3) // 0-2 slot tambahan pseudo-random
+  const extraCount = h % 3 // 0-2 slot tambahan pseudo-random
   const extra: string[] = []
   for (let i = 0; i < extraCount; i++) {
     extra.push(ALL_SLOT_IDS[(offset + i * 7) % ALL_SLOT_IDS.length])

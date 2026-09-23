@@ -71,7 +71,11 @@ export function formatTanggalIndo(iso: string): string {
 
 export function formatTanggalPendek(iso: string): string {
   const d = parseIsoDate(iso)
-  return d.toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short" })
+  return d.toLocaleDateString("id-ID", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  })
 }
 
 export function getTanggalOptions(jumlah: number = 14): string[] {

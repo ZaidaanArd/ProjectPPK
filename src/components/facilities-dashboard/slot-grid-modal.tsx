@@ -43,7 +43,11 @@ export function SlotGridModal({
   selectedDate: string
   onSelectDate: (iso: string) => void
   onClose: () => void
-  onPilihSlot?: (facility: FacilityItem, slot: TimeSlot, isoDate: string) => void
+  onPilihSlot?: (
+    facility: FacilityItem,
+    slot: TimeSlot,
+    isoDate: string
+  ) => void
 }) {
   const slots = React.useMemo(
     () => (facility ? generateTimeSlots(facility.status, bookedIds) : []),
@@ -55,7 +59,8 @@ export function SlotGridModal({
   const [hanyaTersedia, setHanyaTersedia] = React.useState(false)
 
   const slotTampil = React.useMemo(
-    () => (hanyaTersedia ? slots.filter((s) => s.status === "tersedia") : slots),
+    () =>
+      hanyaTersedia ? slots.filter((s) => s.status === "tersedia") : slots,
     [slots, hanyaTersedia]
   )
 
@@ -72,7 +77,12 @@ export function SlotGridModal({
 
   if (!facility) {
     return (
-      <Dialog open={false} onClose={onClose} size="xl" labelledBy="slot-modal-title">
+      <Dialog
+        open={false}
+        onClose={onClose}
+        size="xl"
+        labelledBy="slot-modal-title"
+      >
         <span />
       </Dialog>
     )
@@ -89,7 +99,9 @@ export function SlotGridModal({
     >
       <DialogHeader>
         <div className="min-w-0">
-          <DialogTitle id="slot-modal-title">Slot Waktu — {facility.nama}</DialogTitle>
+          <DialogTitle id="slot-modal-title">
+            Slot Waktu — {facility.nama}
+          </DialogTitle>
           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             <StatusBadge status={facility.status} />
             <Badge variant="secondary">{facility.tipe}</Badge>
@@ -115,7 +127,11 @@ export function SlotGridModal({
           Foto ruangan
         </h3>
         <div className="mt-2">
-          <PhotoGallery photos={gallery} facilityName={facility.nama} />
+          <PhotoGallery
+            key={facility.id}
+            photos={gallery}
+            facilityName={facility.nama}
+          />
         </div>
       </section>
 
@@ -145,21 +161,15 @@ export function SlotGridModal({
       <Separator className="mb-5" />
 
       {facility.status === "Dalam Perbaikan" && (
-        <p
-          role="status"
-          className="mb-4 flex items-center gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200"
-        >
+        <output className="mb-4 flex items-center gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
           <IconLock size={15} aria-hidden="true" />
           Fasilitas dalam perbaikan — seluruh slot terkunci otomatis.
-        </p>
+        </output>
       )}
       {facility.status === "Nonaktif" && (
-        <p
-          role="status"
-          className="mb-4 rounded-2xl border bg-muted px-3 py-2 text-sm text-muted-foreground"
-        >
+        <output className="mb-4 rounded-2xl border bg-muted px-3 py-2 text-sm text-muted-foreground">
           Fasilitas nonaktif — tidak menerima reservasi baru.
-        </p>
+        </output>
       )}
 
       {/* 3+4. Tanggal (kalender shadcn) + Jadwal (tab sesi + pil kompak) */}
@@ -251,7 +261,9 @@ export function SlotGridModal({
                       key={slot.id}
                       type="button"
                       disabled={!bisaKlik}
-                      onClick={() => onPilihSlot?.(facility, slot, selectedDate)}
+                      onClick={() =>
+                        onPilihSlot?.(facility, slot, selectedDate)
+                      }
                       title={
                         bisaKlik
                           ? `Slot ${slot.mulai}–${slot.selesai} tanggal ${tanggalLabel} tersedia`
@@ -265,7 +277,7 @@ export function SlotGridModal({
                           ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-800 hover:bg-emerald-500/20 dark:text-emerald-200"
                           : slot.status === "terkunci"
                             ? "cursor-not-allowed border-amber-500/30 bg-amber-500/10 text-amber-800/70 dark:text-amber-200/70"
-                            : "cursor-not-allowed border-border bg-muted text-muted-foreground opacity-70 line-through"
+                            : "cursor-not-allowed border-border bg-muted text-muted-foreground line-through opacity-70"
                       )}
                     >
                       {slot.mulai}
@@ -279,13 +291,25 @@ export function SlotGridModal({
               </p>
               <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
                 <span className="inline-flex items-center gap-1">
-                  <i aria-hidden="true" className="size-2 rounded-full bg-emerald-500" /> Tersedia
+                  <i
+                    aria-hidden="true"
+                    className="size-2 rounded-full bg-emerald-500"
+                  />{" "}
+                  Tersedia
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <i aria-hidden="true" className="size-2 rounded-full bg-zinc-400" /> Terisi
+                  <i
+                    aria-hidden="true"
+                    className="size-2 rounded-full bg-zinc-400"
+                  />{" "}
+                  Terisi
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <i aria-hidden="true" className="size-2 rounded-full bg-amber-500" /> Terkunci
+                  <i
+                    aria-hidden="true"
+                    className="size-2 rounded-full bg-amber-500"
+                  />{" "}
+                  Terkunci
                 </span>
               </div>
             </>
