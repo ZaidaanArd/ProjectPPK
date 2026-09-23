@@ -147,6 +147,12 @@ describe("reservation conflict rules", () => {
         await ctx.db.insert("reservations", { ...base, status: "pending" }),
       ] as const
     })
+    const preview = await t.query(
+      internal.reservations.previewPendingConflicts,
+      {}
+    )
+    expect(preview.affectedIds).toEqual([pending])
+    expect(preview.nextCursor).toBeNull()
     await t.mutation(internal.reservations.reconcilePendingConflicts, {})
     await t.mutation(internal.reservations.reconcilePendingConflicts, {})
     const result = await t.run(async (ctx) => ({

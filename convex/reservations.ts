@@ -2,8 +2,13 @@ import { ConvexError, v } from "convex/values"
 
 import { internal } from "./_generated/api"
 import type { Id } from "./_generated/dataModel"
-import { internalMutation, mutation, query } from "./_generated/server"
-import type { MutationCtx } from "./_generated/server"
+import {
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+} from "./_generated/server"
+import type { MutationCtx, QueryCtx } from "./_generated/server"
 import { recordAuditEvent } from "./lib/audit"
 import { requireActiveProfile, requireRole } from "./lib/authz"
 import {
@@ -28,7 +33,7 @@ const reservationListItemValidator = v.object({
 })
 
 async function approvedConflict(
-  ctx: MutationCtx,
+  ctx: QueryCtx | MutationCtx,
   facilityId: Id<"facilities">,
   startAt: number,
   endAt: number
@@ -332,8 +337,36 @@ export const decide = mutation({
   },
 })
 
-// Run once after deployment: pnpm exec convex run reservations:reconcilePendingConflicts '{}'
-// Add --prod for the production deployment. Re-running is safe.
+// Preview with previewPendingConflicts before considering this migration in production.
+export const previewPendingConflicts = internalQuery({
+  args: { cursor: v.optional(v.string()) },
+  returns: v.object({
+    scanned: v.number(),
+    affectedIds: v.array(v.id("reservations")),
+    nextCursor: v.union(v.string(), v.null()),
+  }),
+  handler: async (ctx, args) => {
+    const page = await ctx.db
+      .query("reservations")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .paginate({ cursor: args.cursor ?? null, numItems: 100 })
+    const affectedIds: Id<"reservations">[] = []
+    for (const item of page.page) {
+      if (
+        await approvedConflict(ctx, item.facilityId, item.startAt, item.endAt)
+      ) {
+        affectedIds.push(item._id)
+      }
+    }
+    return {
+      scanned: page.page.length,
+      affectedIds,
+      nextCursor: page.isDone ? null : page.continueCursor,
+    }
+  },
+})
+
+// Run only after an approved read-only preview of affected production reservations.
 export const reconcilePendingConflicts = internalMutation({
   args: { cursor: v.optional(v.string()) },
   returns: v.object({
