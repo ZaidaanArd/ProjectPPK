@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useAppMutation as useMutation } from "@/lib/data-hooks"
 import {
   IconChecklist,
@@ -19,6 +19,14 @@ import { Button, buttonVariants } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useAuthenticatedQuery } from "@/lib/use-authenticated-query"
 
 const labels: Record<string, string> = {
@@ -38,6 +46,38 @@ const jakartaDateTime = new Intl.DateTimeFormat("id-ID", {
 
 function formatDate(value: number) {
   return jakartaDateTime.format(value)
+}
+
+type QueueSortOrder = "prioritas" | "terbaru" | "terlama"
+
+type ReservationStatusFilter =
+  | "all"
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "cancelled"
+
+type ReportStatusFilter =
+  | "all"
+  | "pending"
+  | "in_progress"
+  | "resolved"
+  | "rejected"
+
+const queueSortLabels: Record<QueueSortOrder, string> = {
+  prioritas: "Prioritas",
+  terbaru: "Terbaru",
+  terlama: "Terlama",
+}
+
+function reservationPriority(status: string) {
+  return status === "pending" ? 0 : 1
+}
+
+function reportPriority(status: string) {
+  if (status === "pending") return 0
+  if (status === "in_progress") return 1
+  return 2
 }
 
 export function StaffDashboard() {
@@ -136,6 +176,26 @@ export function StaffReservations() {
   const cancel = useMutation(api.reservations.cancelByStaff)
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [message, setMessage] = useState("")
+  const [statusFilter, setStatusFilter] =
+    useState<ReservationStatusFilter>("all")
+  const [sortOrder, setSortOrder] = useState<QueueSortOrder>("prioritas")
+
+  const visibleReservations = useMemo(() => {
+    if (!reservations) return undefined
+    const filtered =
+      statusFilter === "all"
+        ? [...reservations]
+        : reservations.filter((item) => item.status === statusFilter)
+    filtered.sort((a, b) => {
+      if (sortOrder === "terbaru") return b.createdAt - a.createdAt
+      if (sortOrder === "terlama") return a.createdAt - b.createdAt
+      const priority =
+        reservationPriority(a.status) - reservationPriority(b.status)
+      if (priority !== 0) return priority
+      return b.createdAt - a.createdAt
+    })
+    return filtered
+  }, [reservations, statusFilter, sortOrder])
 
   async function process(
     id: Id<"reservations">,
@@ -170,15 +230,73 @@ export function StaffReservations() {
           {message}
         </p>
       )}
-      {!reservations ? (
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="grid gap-1.5">
+          <Label id="reservation-status-filter-label">Status</Label>
+          <Select
+            value={statusFilter}
+            onValueChange={(value) =>
+              setStatusFilter(value as ReservationStatusFilter)
+            }
+          >
+            <SelectTrigger
+              aria-labelledby="reservation-status-filter-label"
+              className="w-44"
+            >
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua</SelectItem>
+              <SelectItem value="pending">{labels.pending}</SelectItem>
+              <SelectItem value="approved">{labels.approved}</SelectItem>
+              <SelectItem value="rejected">{labels.rejected}</SelectItem>
+              <SelectItem value="cancelled">{labels.cancelled}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-1.5">
+          <Label id="reservation-sort-label">Urutkan</Label>
+          <Select
+            value={sortOrder}
+            onValueChange={(value) => setSortOrder(value as QueueSortOrder)}
+          >
+            <SelectTrigger
+              aria-labelledby="reservation-sort-label"
+              className="w-44"
+            >
+              <SelectValue placeholder="Urutkan" />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(queueSortLabels) as QueueSortOrder[]).map(
+                (order) => (
+                  <SelectItem key={order} value={order}>
+                    {queueSortLabels[order]}
+                  </SelectItem>
+                )
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+        {reservations && visibleReservations && (
+          <p className="pb-2 text-xs text-muted-foreground" aria-live="polite">
+            Menampilkan {visibleReservations.length} dari {reservations.length}{" "}
+            reservasi
+          </p>
+        )}
+      </div>
+      {!visibleReservations || !reservations ? (
         <PortalListSkeleton />
       ) : reservations.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground">
           Belum ada reservasi.
         </Card>
+      ) : visibleReservations.length === 0 ? (
+        <Card className="p-8 text-center text-muted-foreground">
+          Tidak ada reservasi dengan filter ini.
+        </Card>
       ) : (
         <div className="space-y-3">
-          {reservations.map((item) => (
+          {visibleReservations.map((item) => (
             <Card key={item.id} className="gap-3 p-5">
               <div className="flex flex-wrap justify-between gap-3">
                 <div>
@@ -252,6 +370,24 @@ export function StaffReports() {
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [maintenance, setMaintenance] = useState<Record<string, boolean>>({})
   const [message, setMessage] = useState("")
+  const [statusFilter, setStatusFilter] = useState<ReportStatusFilter>("all")
+  const [sortOrder, setSortOrder] = useState<QueueSortOrder>("prioritas")
+
+  const visibleReports = useMemo(() => {
+    if (!reports) return undefined
+    const filtered =
+      statusFilter === "all"
+        ? [...reports]
+        : reports.filter((report) => report.status === statusFilter)
+    filtered.sort((a, b) => {
+      if (sortOrder === "terbaru") return b.createdAt - a.createdAt
+      if (sortOrder === "terlama") return a.createdAt - b.createdAt
+      const priority = reportPriority(a.status) - reportPriority(b.status)
+      if (priority !== 0) return priority
+      return b.updatedAt - a.updatedAt
+    })
+    return filtered
+  }, [reports, statusFilter, sortOrder])
 
   async function process(
     reportId: Id<"reports">,
@@ -284,15 +420,69 @@ export function StaffReports() {
           {message}
         </p>
       )}
-      {!reports ? (
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="grid gap-1.5">
+          <Label id="report-status-filter-label">Status</Label>
+          <Select
+            value={statusFilter}
+            onValueChange={(value) =>
+              setStatusFilter(value as ReportStatusFilter)
+            }
+          >
+            <SelectTrigger
+              aria-labelledby="report-status-filter-label"
+              className="w-44"
+            >
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua</SelectItem>
+              <SelectItem value="pending">{labels.pending}</SelectItem>
+              <SelectItem value="in_progress">{labels.in_progress}</SelectItem>
+              <SelectItem value="resolved">{labels.resolved}</SelectItem>
+              <SelectItem value="rejected">{labels.rejected}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-1.5">
+          <Label id="report-sort-label">Urutkan</Label>
+          <Select
+            value={sortOrder}
+            onValueChange={(value) => setSortOrder(value as QueueSortOrder)}
+          >
+            <SelectTrigger aria-labelledby="report-sort-label" className="w-44">
+              <SelectValue placeholder="Urutkan" />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(queueSortLabels) as QueueSortOrder[]).map(
+                (order) => (
+                  <SelectItem key={order} value={order}>
+                    {queueSortLabels[order]}
+                  </SelectItem>
+                )
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+        {reports && visibleReports && (
+          <p className="pb-2 text-xs text-muted-foreground" aria-live="polite">
+            Menampilkan {visibleReports.length} dari {reports.length} laporan
+          </p>
+        )}
+      </div>
+      {!visibleReports || !reports ? (
         <PortalListSkeleton />
       ) : reports.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground">
           Belum ada laporan.
         </Card>
+      ) : visibleReports.length === 0 ? (
+        <Card className="p-8 text-center text-muted-foreground">
+          Tidak ada laporan dengan filter ini.
+        </Card>
       ) : (
         <div className="space-y-3">
-          {reports.map((report) => (
+          {visibleReports.map((report) => (
             <Card key={report.id} className="gap-3 p-5">
               <div className="flex flex-wrap justify-between gap-3">
                 <div>
