@@ -69,7 +69,7 @@ flowchart LR
 - **Convex** untuk query, mutation, action, database real-time, dan penyimpanan foto laporan.
 - **Better Auth** untuk registrasi email/password, session, dan token Convex.
 - **Tailwind CSS v4 dan shadcn/ui** sebagai fondasi antarmuka.
-- **Zod** untuk kontrak validasi, **Vitest** untuk pengujian, serta **Oxfmt**, **Oxlint**, dan **React Doctor** untuk quality gate.
+- **Zod** untuk kontrak validasi, **Vitest** dan **Playwright** untuk pengujian, serta **Oxfmt**, **Oxlint**, dan **React Doctor** untuk quality gate.
 
 Rancangan lengkap tersedia di [dokumentasi arsitektur](./docs/ARCHITECTURE.md)
 dan [kontrak data/API](./docs/DATA-AND-API.md).
@@ -139,15 +139,17 @@ pengembangan.
 
 ## Perintah penting
 
-| Perintah           | Kegunaan                                                           |
-| ------------------ | ------------------------------------------------------------------ |
-| `pnpm dev`         | Menjalankan Next.js pada port 3000                                 |
-| `pnpm dev:backend` | Menjalankan Convex development deployment                          |
-| `pnpm dev:full`    | Menjalankan web dan backend bersamaan                              |
-| `pnpm test`        | Menjalankan test dengan Vitest                                     |
-| `pnpm doctor`      | Mengaudit komponen React                                           |
-| `pnpm check`       | Format, lint, typecheck, test, peer check, React Doctor, dan build |
-| `pnpm build`       | Membuat production build Next.js                                   |
+| Perintah               | Kegunaan                                                            |
+| ---------------------- | ------------------------------------------------------------------- |
+| `pnpm dev`             | Menjalankan Next.js pada port 3000                                  |
+| `pnpm dev:backend`     | Menjalankan Convex development deployment                           |
+| `pnpm dev:full`        | Menjalankan web dan backend bersamaan                               |
+| `pnpm test`            | Menjalankan test dengan Vitest                                      |
+| `pnpm test:e2e`        | Menjalankan tes browser Playwright                                  |
+| `pnpm test:e2e:record` | Membuka situs production untuk merekam klik di Playwright Inspector |
+| `pnpm doctor`          | Mengaudit komponen React                                            |
+| `pnpm check`           | Format, lint, typecheck, test, peer check, React Doctor, dan build  |
+| `pnpm build`           | Membuat production build Next.js                                    |
 
 ## Struktur repository
 

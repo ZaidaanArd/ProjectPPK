@@ -15,6 +15,9 @@
     "format:check": "oxfmt --check",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:record": "playwright codegen --target=playwright-test https://sthana.myudak.com/",
     "doctor": "react-doctor --no-telemetry --no-supply-chain --yes .",
     "doctor:ci": "react-doctor --no-telemetry --no-supply-chain --yes --blocking error .",
     "peers:check": "pnpm peers check",
@@ -45,6 +48,7 @@
   },
   "devDependencies": {
     "@convex-dev/eslint-plugin": "^5.0.0",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^24",
     "@types/react": "^19",
