@@ -37,6 +37,7 @@ const DEFAULT_VALUES: FacilityFormValues = {
   kapasitas: 30,
   deskripsi: "",
   fotoUrl: "",
+  photos: [],
 }
 
 function toFormValues(editing: FacilityItem | null): FacilityFormValues {
@@ -48,7 +49,27 @@ function toFormValues(editing: FacilityItem | null): FacilityFormValues {
     kapasitas: editing.kapasitas,
     deskripsi: editing.deskripsi,
     fotoUrl: editing.fotoUrl,
+    photos:
+      editing.photos ??
+      (editing.fotoUrl
+        ? [
+            {
+              id: `${editing.id}-cover`,
+              url: editing.fotoUrl,
+              sortOrder: 0,
+              alt: editing.nama,
+            },
+          ]
+        : []),
   }
+}
+
+function photosToTextarea(photos?: FacilityFormValues["photos"]): string {
+  if (!photos?.length) return ""
+  return [...photos]
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((p) => p.url)
+    .join("\n")
 }
 
 // Inner form di-mount ulang setiap modal dibuka (Dialog me-return null saat
@@ -65,6 +86,9 @@ function FacilityFormFields({
   const [values, setValues] = React.useState<FacilityFormValues>(() =>
     toFormValues(editing)
   )
+  const [fotoTextarea, setFotoTextarea] = React.useState(() =>
+    photosToTextarea(toFormValues(editing).photos)
+  )
   const [error, setError] = React.useState("")
 
   function set<K extends keyof FacilityFormValues>(
@@ -74,14 +98,46 @@ function FacilityFormFields({
     setValues((prev) => ({ ...prev, [key]: v }))
   }
 
+  const fotoUrlsPreview = React.useMemo(() => {
+    return fotoTextarea
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, 5)
+  }, [fotoTextarea])
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!values.nama.trim()) return setError("Nama fasilitas wajib diisi.")
     if (!values.lokasi.trim()) return setError("Lokasi wajib diisi.")
     if (!Number.isFinite(values.kapasitas) || values.kapasitas < 1)
       return setError("Kapasitas harus bilangan bulat minimal 1.")
+    const urls = fotoTextarea
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean)
+    if (urls.length > 5)
+      return setError("Maksimal 5 foto. Hapus baris berlebih.")
+    for (const u of urls) {
+      const ok =
+        u.startsWith("/") || u.startsWith("http://") || u.startsWith("https://")
+      if (!ok)
+        return setError(
+          `URL foto tidak valid: ${u} — pakai /images/... atau https://...`
+        )
+    }
+    const fid =
+      (editing?.id ?? values.nama.toLowerCase().replace(/[^a-z0-9]+/g, "-")) ||
+      "fasilitas-baru"
+    const photos = urls.map((url, i) => ({
+      id: `${fid}-${i + 1}`,
+      url,
+      alt: `${values.nama.trim() || "Fasilitas"} — foto ${i + 1}`,
+      sortOrder: i,
+    }))
+    const fotoUrl = photos[0]?.url ?? ""
     setError("")
-    onSubmit({ ...values, nama: values.nama.trim() })
+    onSubmit({ ...values, nama: values.nama.trim(), fotoUrl, photos })
   }
 
   return (
@@ -153,16 +209,45 @@ function FacilityFormFields({
         />
       </div>
 
-      <div className="grid gap-1.5">
-        <Label htmlFor="f-foto">URL Foto (opsional)</Label>
-        <Input
+      <div className="grid gap-1.5 sm:col-span-2">
+        <Label htmlFor="f-foto">
+          Foto galeri — kerangka siap-database (maks 5, satu URL per baris)
+        </Label>
+        <Textarea
           id="f-foto"
-          type="url"
-          inputMode="url"
-          value={values.fotoUrl}
-          onChange={(e) => set("fotoUrl", e.target.value)}
-          placeholder="https://… atau kosongkan untuk placeholder"
+          value={fotoTextarea}
+          onChange={(e) => setFotoTextarea(e.target.value)}
+          placeholder={
+            "/images/facilities/16859956.jpg\nhttps://.../foto-ruangan.jpg\n(kosongkan jika belum ada foto)"
+          }
+          rows={3}
         />
+        <p className="text-[11px] text-muted-foreground">
+          Urutan = sort_order; baris pertama = cover (
+          <code className="rounded bg-muted px-1">fotoUrl</code> untuk
+          kompatibilitas). Nanti ganti jadi{" "}
+          <code className="rounded bg-muted px-1">
+            &lt;input type=&quot;file&quot; multiple&gt;
+          </code>{" "}
+          + upload ke storage, DB simpan url.
+        </p>
+        {fotoUrlsPreview.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {fotoUrlsPreview.map((url) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={url}
+                src={url}
+                alt=""
+                className="size-14 rounded-xl border object-cover"
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Belum ada foto — akan tampil placeholder IconPhoto di kartu & modal.
+          </p>
+        )}
       </div>
 
       <div className="grid gap-1.5 sm:col-span-2">
@@ -222,8 +307,11 @@ export function FacilityFormModal({
             {editing ? `Edit — ${editing.nama}` : "Tambah Fasilitas"}
           </DialogTitle>
           <DialogDescription>
-            Khusus Admin. Data tersimpan lokal (demo) dan siap disambung ke{" "}
-            <code>POST/PATCH /api/admin/facilities</code>.
+            Khusus Admin. Kerangka foto:{" "}
+            <code>FACILITY_PHOTOS(facility_id, url, alt, sort_order)</code> —
+            API <code>GET /api/facilities</code> include <code>photos[]</code>,{" "}
+            <code>POST/PATCH /api/admin/facilities</code> terima{" "}
+            <code>photos[]</code> (skeleton URL, nanti multipart).
           </DialogDescription>
         </div>
         <DialogCloseButton onClose={onClose} />

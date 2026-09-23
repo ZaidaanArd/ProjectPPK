@@ -19,6 +19,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import type { DemoRole, FacilityItem } from "@/lib/facilities-dashboard/types"
+import { getCoverUrl } from "@/lib/facilities-dashboard/types"
 import { StatusBadge } from "./status-badge"
 
 export function FacilityCard({
@@ -40,16 +41,26 @@ export function FacilityCard({
   const bisaMaintenance = role === "admin" || role === "petugas"
   const nonaktif = facility.status === "Nonaktif"
 
+  const cover = getCoverUrl(facility)
+  const hasMultiple = (facility.photos?.length ?? 0) > 1
+
   return (
     <Card className="h-full">
-      {facility.fotoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={facility.fotoUrl}
-          alt={facility.nama}
-          loading="lazy"
-          className="aspect-[16/9] w-full object-cover"
-        />
+      {cover ? (
+        <div className="relative">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={cover}
+            alt={facility.nama}
+            loading="lazy"
+            className="aspect-[16/9] w-full object-cover"
+          />
+          {hasMultiple && (
+            <span className="absolute right-2 bottom-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur">
+              +{facility.photos!.length} foto
+            </span>
+          )}
+        </div>
       ) : (
         <div
           aria-hidden="true"
