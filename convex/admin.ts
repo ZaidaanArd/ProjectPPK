@@ -264,6 +264,7 @@ export const analytics = query({
       v.object({
         facilityId: v.id("facilities"),
         name: v.string(),
+        location: v.string(),
         approvedReservations: v.number(),
         reservedMinutes: v.number(),
         reports: v.number(),
@@ -309,6 +310,7 @@ export const analytics = query({
         .map((facility) => ({
           facilityId: facility._id,
           name: facility.name,
+          location: facility.location,
           approvedReservations: reservations.filter(
             (item) =>
               item.facilityId === facility._id && item.status === "approved"

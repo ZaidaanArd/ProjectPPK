@@ -202,14 +202,20 @@ export function StaffReservations() {
     action: "approved" | "rejected" | "cancelled"
   ) {
     setMessage("")
+    const note = notes[id]?.trim() ?? ""
+    if (action === "cancelled" && !note) {
+      setMessage("Isi alasan pembatalan sebelum membatalkan reservasi.")
+      document.getElementById(`reservation-note-${id}`)?.focus()
+      return
+    }
     try {
       if (action === "cancelled") {
-        await cancel({ reservationId: id, reason: notes[id] ?? "" })
+        await cancel({ reservationId: id, reason: note })
       } else {
         await decide({
           reservationId: id,
           decision: action,
-          note: notes[id] || undefined,
+          note: note || undefined,
         })
       }
     } catch (error) {
@@ -324,8 +330,9 @@ export function StaffReservations() {
               {(item.status === "pending" || item.status === "approved") && (
                 <div className="space-y-2">
                   <Input
+                    id={`reservation-note-${item.id}`}
                     aria-label="Catatan keputusan"
-                    placeholder="Catatan atau alasan"
+                    placeholder="Alasan wajib untuk pembatalan"
                     value={notes[item.id] ?? ""}
                     onChange={(event) =>
                       setNotes((current) => ({
@@ -401,11 +408,20 @@ export function StaffReports() {
     maintenanceOverride?: boolean
   ) {
     setMessage("")
+    const report = reports?.find((item) => item.id === reportId)
+    const note = (notes[reportId] ?? report?.resolutionNote ?? "").trim()
+    if (status !== "in_progress" && !note) {
+      setMessage(
+        "Isi catatan penanganan sebelum menyelesaikan atau menolak laporan."
+      )
+      document.getElementById(`report-note-${reportId}`)?.focus()
+      return
+    }
     try {
       await updateStatus({
         reportId,
         status,
-        note: notes[reportId] ?? "",
+        note,
         facilityMaintenance: maintenanceOverride ?? maintenance[reportId],
       })
     } catch (error) {
@@ -510,8 +526,9 @@ export function StaffReports() {
                 />
               )}
               <Input
+                id={`report-note-${report.id}`}
                 aria-label="Catatan penanganan"
-                placeholder="Catatan penanganan wajib diisi"
+                placeholder="Wajib untuk selesai atau ditolak"
                 value={notes[report.id] ?? report.resolutionNote ?? ""}
                 onChange={(event) =>
                   setNotes((current) => ({

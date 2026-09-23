@@ -200,8 +200,11 @@ export const updateStatus = mutation({
       throw new ConvexError("Laporan tidak ditemukan")
     }
 
-    if (!args.note.trim()) {
-      throw new ConvexError("Catatan penanganan wajib diisi")
+    const note = args.note.trim()
+    if (args.status !== "in_progress" && !note) {
+      throw new ConvexError(
+        "Catatan wajib diisi untuk menyelesaikan atau menolak laporan"
+      )
     }
 
     assertReportTransition(report.status, args.status)
@@ -209,7 +212,7 @@ export const updateStatus = mutation({
     const now = Date.now()
     await ctx.db.patch("reports", report._id, {
       status: args.status,
-      resolutionNote: args.note.trim(),
+      resolutionNote: note || report.resolutionNote,
       handledBy: actor._id,
       handledAt: now,
       updatedAt: now,
@@ -231,7 +234,7 @@ export const updateStatus = mutation({
           toStatus: nextStatus,
           actorId: actor._id,
           actorRole: actor.role,
-          note: args.note.trim(),
+          note: note || undefined,
         })
       }
     }
@@ -244,7 +247,7 @@ export const updateStatus = mutation({
       toStatus: args.status,
       actorId: actor._id,
       actorRole: actor.role,
-      note: args.note.trim(),
+      note: note || undefined,
     })
 
     return null

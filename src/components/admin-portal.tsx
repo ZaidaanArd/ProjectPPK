@@ -40,6 +40,14 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { useAuthenticatedQuery } from "@/lib/use-authenticated-query"
 
 const statusLabel: Record<string, string> = {
@@ -69,6 +77,23 @@ export function AdminDashboard() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {isStaticMode ? (
+            <button
+              type="button"
+              onClick={() => downloadStaticCsv("summary")}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <IconDownload aria-hidden="true" /> Rekap fasilitas CSV
+            </button>
+          ) : (
+            <Link
+              href="/api/admin/export?kind=summary"
+              prefetch={false}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <IconDownload aria-hidden="true" /> Rekap fasilitas CSV
+            </Link>
+          )}
           {isStaticMode ? (
             <button
               type="button"
@@ -163,24 +188,40 @@ export function AdminDashboard() {
           <Card className="p-5 sm:p-6">
             <h2 className="font-heading font-bold">Penggunaan fasilitas</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Delapan fasilitas dengan aktivitas terbaru.
+              Rekap seluruh periode per fasilitas dan lokasi.
             </p>
-            <div className="mt-5 space-y-4">
-              {analytics.facilityUsage.slice(0, 8).map((item) => (
-                <div
-                  key={item.facilityId}
-                  className="flex items-center justify-between gap-3 text-sm"
-                >
-                  <span className="min-w-0 truncate font-medium">
-                    {item.name}
-                  </span>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {item.approvedReservations} reservasi ·{" "}
-                    {Math.round(item.reservedMinutes / 60)} jam · {item.reports}{" "}
-                    laporan
-                  </span>
-                </div>
-              ))}
+            <div className="mt-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fasilitas / lokasi</TableHead>
+                    <TableHead className="text-right">Disetujui</TableHead>
+                    <TableHead className="text-right">Menit</TableHead>
+                    <TableHead className="text-right">Laporan</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {analytics.facilityUsage.map((item) => (
+                    <TableRow key={item.facilityId}>
+                      <TableCell>
+                        <span className="block font-medium">{item.name}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          {item.location}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {item.approvedReservations}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {item.reservedMinutes}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {item.reports}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           </Card>
         </div>
