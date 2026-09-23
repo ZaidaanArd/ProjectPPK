@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { MAX_DEVICE_ACCOUNTS } from "@/lib/account-routing"
 import {
+  accountErrorMessage,
   getActiveSessionToken,
   getDeviceAccounts,
   isLegacySession,
@@ -28,6 +29,7 @@ export function AccountStatusActions() {
   const [activeToken, setActiveToken] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState("")
+  const [retryKey, setRetryKey] = useState(0)
   const [confirmLeave, setConfirmLeave] = useState(false)
   const legacy = isLegacySession(activeToken, accounts)
   const full = accounts.length >= MAX_DEVICE_ACCOUNTS
@@ -40,13 +42,16 @@ export function AccountStatusActions() {
         setAccounts(items)
         setActiveToken(token)
       })
-      .catch(() => {
-        if (!cancelled) setError("Daftar akun tidak dapat dimuat.")
+      .catch((cause: unknown) => {
+        if (!cancelled)
+          setError(
+            accountErrorMessage(cause, "Daftar akun tidak dapat dimuat.")
+          )
       })
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [retryKey])
 
   async function switchAccount(token: string) {
     setPending(true)
@@ -100,9 +105,19 @@ export function AccountStatusActions() {
         </div>
       ) : null}
       {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
+        <div
+          role="alert"
+          className="flex items-center gap-2 text-sm text-destructive"
+        >
+          <span>{error}</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setRetryKey((value) => value + 1)}
+          >
+            Coba lagi
+          </Button>
+        </div>
       ) : null}
       <div className="flex flex-wrap gap-2">
         {full ? (
