@@ -16,8 +16,10 @@ import {
   IconClockHour4,
   IconFilePlus,
   IconMapPin,
+  IconPhoto,
   IconSearch,
   IconTool,
+  IconUpload,
   IconUsers,
 } from "@tabler/icons-react"
 
@@ -722,17 +724,32 @@ export function ReportForm() {
   const generateUploadUrl = useMutation(api.reports.generateUploadUrl)
   const createReport = useMutation(api.reports.create)
   const [facilityId, setFacilityId] = useState("")
+  const [facilitySearch, setFacilitySearch] = useState("")
   const [category, setCategory] = useState("")
   const [description, setDescription] = useState("")
-  const photoRef = useRef<File | null>(null)
+  const [photo, setPhoto] = useState<File | null>(null)
+  const photoInputRef = useRef<HTMLInputElement>(null)
   const [message, setMessage] = useState("")
   const [pending, setPending] = useState(false)
+  const selectedFacility = facilities?.find(
+    (facility) => facility.id === facilityId
+  )
+  const searchTerm = facilitySearch.trim().toLowerCase()
+  const visibleFacilities = (facilities ?? []).filter(
+    (facility) =>
+      facility.id === facilityId ||
+      `${facility.name} ${facility.type} ${facility.location}`
+        .toLowerCase()
+        .includes(searchTerm)
+  )
 
   async function submit(event: FormEvent) {
     event.preventDefault()
-    if (!facilityId) return
+    if (!selectedFacility) {
+      setMessage("Pilih fasilitas yang ingin dilaporkan terlebih dahulu.")
+      return
+    }
     const form = event.currentTarget as HTMLFormElement
-    const photo = photoRef.current
     setPending(true)
     setMessage("")
     try {
@@ -755,7 +772,7 @@ export function ReportForm() {
         }
       }
       await createReport({
-        facilityId: facilityId as Id<"facilities">,
+        facilityId: selectedFacility.id,
         category,
         description,
         photoStorageId,
@@ -763,8 +780,9 @@ export function ReportForm() {
       })
       setCategory("")
       setDescription("")
-      photoRef.current = null
+      setPhoto(null)
       form.reset()
+      if (photoInputRef.current) photoInputRef.current.value = ""
       setMessage("Laporan berhasil dikirim.")
     } catch (error) {
       setMessage(
@@ -776,7 +794,7 @@ export function ReportForm() {
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-4xl space-y-6">
       <div>
         <h1 className="font-heading text-2xl font-bold">
           Buat laporan fasilitas
@@ -787,23 +805,96 @@ export function ReportForm() {
       </div>
       <Card className="p-6">
         <form onSubmit={submit} className="space-y-4">
-          <div id="report-facility-field" className="space-y-1.5">
-            <Label htmlFor="report-facility">Fasilitas</Label>
-            <select
-              id="report-facility"
-              className="h-9 w-full rounded-md border bg-background px-3 text-sm"
-              value={facilityId}
-              onChange={(e) => setFacilityId(e.target.value)}
-              required
-            >
-              <option value="">Pilih fasilitas</option>
-              {(facilities ?? []).map((facility) => (
-                <option key={facility.id} value={facility.id}>
-                  {facility.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <fieldset className="space-y-4">
+            <legend className="font-heading text-base font-semibold">
+              Pilih fasilitas
+            </legend>
+            <div id="report-facility-picker" className="relative max-w-sm">
+              <IconSearch
+                size={18}
+                className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                aria-label="Cari fasilitas"
+                placeholder="Cari nama atau lokasi"
+                value={facilitySearch}
+                onChange={(event) => setFacilitySearch(event.target.value)}
+                className="pl-10"
+              />
+            </div>
+            {!facilities ? (
+              <p className="text-sm text-muted-foreground">Memuat fasilitas…</p>
+            ) : facilities.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Belum ada fasilitas yang dapat dilaporkan.
+              </p>
+            ) : visibleFacilities.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Fasilitas tidak ditemukan.
+              </p>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {visibleFacilities.map((facility) => {
+                  const selected = facilityId === facility.id
+                  return (
+                    <label
+                      key={facility.id}
+                      className={cn(
+                        "relative flex cursor-pointer flex-col gap-3 rounded-2xl border p-4 transition-colors focus-within:ring-2 focus-within:ring-ring",
+                        selected
+                          ? "border-pink-500 bg-pink-50 ring-1 ring-pink-400/40 dark:border-pink-400 dark:bg-pink-400/10"
+                          : "border-border bg-background hover:border-pink-300 hover:bg-pink-50/40 dark:hover:border-pink-500/40 dark:hover:bg-pink-400/5"
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="report-facility"
+                        value={facility.id}
+                        checked={selected}
+                        onChange={() => setFacilityId(facility.id)}
+                        required
+                        className="sr-only"
+                      />
+                      <span className="flex items-start justify-between gap-3">
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-pink-100 text-pink-700 dark:bg-pink-400/15 dark:text-pink-200">
+                          <IconBuilding size={19} aria-hidden="true" />
+                        </span>
+                        <span className="flex items-center gap-2">
+                          <span className="rounded-full bg-pink-50 px-2 py-1 text-[11px] font-medium text-pink-800 dark:bg-pink-400/10 dark:text-pink-200">
+                            {facility.type}
+                          </span>
+                          {selected ? (
+                            <IconCheck
+                              size={19}
+                              className="text-pink-600 dark:text-pink-300"
+                              aria-hidden="true"
+                            />
+                          ) : null}
+                        </span>
+                      </span>
+                      <span className="font-heading font-semibold">
+                        {facility.name}
+                      </span>
+                      <span className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                        {facility.description}
+                      </span>
+                      <span className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        <span className="inline-flex items-center gap-1">
+                          <IconMapPin size={14} aria-hidden="true" />
+                          {facility.location}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <IconUsers size={14} aria-hidden="true" />
+                          {facility.capacity} orang
+                        </span>
+                      </span>
+                    </label>
+                  )
+                })}
+              </div>
+            )}
+          </fieldset>
           <div id="report-category-field" className="space-y-1.5">
             <Label htmlFor="category">Kategori</Label>
             <Input
@@ -824,20 +915,69 @@ export function ReportForm() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="photo">Foto (opsional, maks. 5 MB)</Label>
-            <Input
+            <Label htmlFor="photo">Foto pendukung (opsional)</Label>
+            <input
+              ref={photoInputRef}
               id="photo"
               type="file"
+              className="sr-only"
               accept="image/jpeg,image/png,image/webp"
               onChange={(e) => {
-                photoRef.current = e.target.files?.[0] ?? null
+                const selectedPhoto = e.target.files?.[0] ?? null
+                if (
+                  selectedPhoto &&
+                  (selectedPhoto.size > 5 * 1024 * 1024 ||
+                    !["image/jpeg", "image/png", "image/webp"].includes(
+                      selectedPhoto.type
+                    ))
+                ) {
+                  setPhoto(null)
+                  setMessage(
+                    "Foto harus berformat JPG, PNG, atau WebP dan maksimal 5 MB."
+                  )
+                  e.currentTarget.value = ""
+                  return
+                }
+                setPhoto(selectedPhoto)
+                setMessage("")
               }}
             />
+            <div className="flex flex-col gap-4 rounded-2xl border border-dashed border-border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                  <IconPhoto aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">
+                    {photo ? photo.name : "Belum ada foto dipilih"}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {photo
+                      ? `${(photo.size / 1024 / 1024).toFixed(1)} MB · Siap diunggah`
+                      : "JPG, PNG, atau WebP · Maksimal 5 MB"}
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-auto"
+                disabled={pending}
+                onClick={() => photoInputRef.current?.click()}
+              >
+                <IconUpload aria-hidden="true" />
+                {photo ? "Ganti foto" : "Pilih foto"}
+              </Button>
+            </div>
           </div>
           {message && (
             <p className="text-sm text-muted-foreground">{message}</p>
           )}
-          <Button id="report-submit" type="submit" disabled={pending}>
+          <Button
+            id="report-submit"
+            type="submit"
+            disabled={pending || !selectedFacility}
+          >
             {pending ? "Mengirim…" : "Kirim laporan"}
           </Button>
         </form>
