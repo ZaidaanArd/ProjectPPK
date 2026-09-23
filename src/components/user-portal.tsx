@@ -271,12 +271,18 @@ export function ReservationList() {
   )
 }
 
-export function ReservationForm() {
+export function ReservationForm({
+  initialFacilityId,
+  initialDate,
+}: {
+  initialFacilityId?: string
+  initialDate?: string
+} = {}) {
   const facilities = useQuery(api.facilities.listPublic)
   const createReservation = useMutation(api.reservations.create)
-  const [facilityId, setFacilityId] = useState("")
+  const [facilityId, setFacilityId] = useState(initialFacilityId ?? "")
   const [facilitySearch, setFacilitySearch] = useState("")
-  const [date, setDate] = useState(tomorrow)
+  const [date, setDate] = useState(initialDate ?? tomorrow)
   const [startTime, setStartTime] = useState("07:00")
   const [endTime, setEndTime] = useState("08:00")
   const [purpose, setPurpose] = useState("")
@@ -284,6 +290,9 @@ export function ReservationForm() {
   const [pending, setPending] = useState(false)
   const availableFacilities = (facilities ?? []).filter(
     (facility) => facility.status === "active"
+  )
+  const selectedFacility = availableFacilities.find(
+    (facility) => facility.id === facilityId
   )
   const searchTerm = facilitySearch.trim().toLowerCase()
   const visibleFacilities = availableFacilities.filter(
@@ -296,9 +305,9 @@ export function ReservationForm() {
   const rangeStart = Date.parse(`${date}T00:00:00+07:00`)
   const availability = useQuery(
     api.facilities.getPublicAvailability,
-    facilityId
+    selectedFacility
       ? {
-          facilityId: facilityId as Id<"facilities">,
+          facilityId: selectedFacility.id,
           rangeStart,
           rangeEnd: rangeStart + 24 * 60 * 60 * 1000,
         }
@@ -316,7 +325,7 @@ export function ReservationForm() {
 
   async function submit(event: FormEvent) {
     event.preventDefault()
-    if (!facilityId) {
+    if (!selectedFacility) {
       setMessage("Pilih fasilitas terlebih dahulu.")
       return
     }
@@ -324,7 +333,7 @@ export function ReservationForm() {
     setMessage("")
     try {
       await createReservation({
-        facilityId: facilityId as Id<"facilities">,
+        facilityId: selectedFacility.id,
         purpose,
         startAt: toTimestamp(date, startTime),
         endAt: toTimestamp(date, endTime),

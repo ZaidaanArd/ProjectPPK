@@ -1,4 +1,4 @@
-export type FacilityStatus = "Tersedia" | "Penuh" | "Perawatan"
+export type FacilityStatus = "Aktif" | "Perawatan"
 
 export type Facility = {
   slug: string
@@ -12,8 +12,7 @@ export type Facility = {
   imageAlt: string
 }
 
-// Data contoh untuk tampilan public.
-// Nanti diganti hasil fetch dari database/API — bentuk tipenya usahakan tetap sama.
+// Preview statis beranda; data dan jadwal terkini ditampilkan di /facilities.
 export const facilities: Facility[] = [
   {
     slug: "aula-gedung-a",
@@ -21,11 +20,11 @@ export const facilities: Facility[] = [
     imageAlt: "Ilustrasi aula dengan deretan kursi untuk seminar",
     name: "Aula Gedung A",
     category: "Aula",
-    building: "Gedung A · Lt. 2",
+    building: "Gedung A · Lantai 2",
     capacity: 300,
-    status: "Tersedia",
+    status: "Aktif",
     description:
-      "Cocok untuk seminar, wisuda jurusan, dan acara ormawa. Termasuk sound system dan proyektor.",
+      "Aula untuk seminar, wisuda, dan kegiatan organisasi mahasiswa.",
   },
   {
     slug: "lab-komputer-3",
@@ -33,11 +32,11 @@ export const facilities: Facility[] = [
     imageAlt: "Ilustrasi laboratorium dengan deretan komputer",
     name: "Lab Komputer 3",
     category: "Laboratorium",
-    building: "Gedung Informatika · Lt. 3",
+    building: "Gedung Informatika · Lantai 3",
     capacity: 40,
-    status: "Tersedia",
+    status: "Aktif",
     description:
-      "40 unit PC dengan software praktikum standar. Bisa dipinjam per sesi 2 jam.",
+      "Laboratorium komputer untuk praktikum dan pelatihan perangkat lunak.",
   },
   {
     slug: "ruang-seminar-2",
@@ -45,11 +44,10 @@ export const facilities: Facility[] = [
     imageAlt: "Ilustrasi ruang kelas dengan meja dan kursi",
     name: "Ruang Seminar 2",
     category: "Ruang Kelas",
-    building: "Gedung Kuliah Bersama · Lt. 1",
+    building: "Gedung Kuliah Bersama · Lantai 1",
     capacity: 60,
-    status: "Penuh",
-    description:
-      "Ruang presentasi tugas akhir dan kuliah tamu. Pekan ini sudah penuh dipesan.",
+    status: "Aktif",
+    description: "Ruang presentasi untuk seminar, sidang, dan kuliah tamu.",
   },
   {
     slug: "lapangan-basket-outdoor",
@@ -59,8 +57,9 @@ export const facilities: Facility[] = [
     category: "Olahraga",
     building: "Kawasan Sport Center",
     capacity: 50,
-    status: "Tersedia",
-    description: "Untuk latihan rutin UKM dan kegiatan olahraga kampus.",
+    status: "Aktif",
+    description:
+      "Lapangan luar ruang untuk latihan dan kegiatan olahraga kampus.",
   },
   {
     slug: "studio-multimedia",
@@ -68,11 +67,11 @@ export const facilities: Facility[] = [
     imageAlt: "Ilustrasi ruang kerja komputer multimedia",
     name: "Studio Multimedia",
     category: "Laboratorium",
-    building: "Gedung Desain · Lt. 2",
+    building: "Gedung Desain · Lantai 2",
     capacity: 25,
     status: "Perawatan",
     description:
-      "Sedang perawatan AC dan akustik ruangan. Estimasi buka kembali minggu depan.",
+      "Studio untuk produksi audio visual dan kegiatan kreatif mahasiswa.",
   },
   {
     slug: "ruang-rapat-senat",
@@ -80,11 +79,10 @@ export const facilities: Facility[] = [
     imageAlt: "Ilustrasi ruang rapat dengan jendela besar",
     name: "Ruang Rapat Senat",
     category: "Rapat",
-    building: "Gedung Rektorat · Lt. 4",
+    building: "Gedung Rektorat · Lantai 4",
     capacity: 20,
-    status: "Tersedia",
-    description:
-      "Untuk rapat dosen, senat, dan tamu fakultas. Perlu persetujuan petugas.",
+    status: "Aktif",
+    description: "Ruang rapat untuk dosen, senat, dan tamu fakultas.",
   },
 ]
 
