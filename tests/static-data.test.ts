@@ -18,6 +18,28 @@ beforeEach(async () => {
 })
 
 describe("static data mode", () => {
+  it("lets staff cancel a pending request only with a reason", async () => {
+    role("officer")
+    await expect(
+      staticMutation("reservations:cancelByStaff", {
+        reservationId: "demo-reservation-pending",
+        reason: "",
+      })
+    ).rejects.toThrow("Kolom wajib diisi")
+    await staticMutation("reservations:cancelByStaff", {
+      reservationId: "demo-reservation-pending",
+      reason: "Pemohon membatalkan kegiatan",
+    })
+    expect(
+      getStaticData().reservations.find(
+        (item) => item.id === "demo-reservation-pending"
+      )
+    ).toMatchObject({
+      status: "cancelled",
+      decisionNote: "Pemohon membatalkan kegiatan",
+    })
+  })
+
   it("shares a reservation across user, staff, and public availability", async () => {
     const startAt = Date.parse("2026-10-01T11:00:00+07:00")
     const endAt = startAt + 30 * 60 * 1000
