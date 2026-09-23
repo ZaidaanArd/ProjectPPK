@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { AUTO_REJECTION_NOTE } from "../convex/lib/reservationTime"
 import {
   getStaticData,
   resetStaticData,
@@ -42,6 +43,115 @@ describe("static data mode", () => {
       rangeEnd: endAt,
     }) as { reservations: unknown[] }
     expect(availability.reservations).toHaveLength(1)
+  })
+
+  it("rejects overlapping pending requests when one is approved", async () => {
+    const startAt = Date.parse("2027-10-01T10:00:00+07:00")
+    const request = (facilityId: string, start: number, end: number) =>
+      staticMutation("reservations:create", {
+        facilityId,
+        purpose: "Rapat",
+        startAt: start,
+        endAt: end,
+      }) as Promise<string>
+    const winner = await request("demo-aula", startAt, startAt + 3600000)
+    const sameTime = await request("demo-aula", startAt, startAt + 3600000)
+    const partial = await request(
+      "demo-aula",
+      startAt + 1800000,
+      startAt + 5400000
+    )
+    const adjacent = await request(
+      "demo-aula",
+      startAt + 3600000,
+      startAt + 5400000
+    )
+    const otherFacility = await request("demo-lab", startAt, startAt + 3600000)
+
+    role("officer")
+    await staticMutation("reservations:decide", {
+      reservationId: winner,
+      decision: "approved",
+    })
+    const byId = (id: string) =>
+      getStaticData().reservations.find((item) => item.id === id)
+    expect(byId(winner)?.status).toBe("approved")
+    for (const id of [sameTime, partial]) {
+      expect(byId(id)).toMatchObject({
+        status: "rejected",
+        decisionNote: AUTO_REJECTION_NOTE,
+      })
+    }
+    expect(byId(adjacent)?.status).toBe("pending")
+    expect(byId(otherFacility)?.status).toBe("pending")
+    await staticMutation("reservations:decide", {
+      reservationId: adjacent,
+      decision: "approved",
+    })
+    await staticMutation("reservations:decide", {
+      reservationId: otherFacility,
+      decision: "approved",
+    })
+    role("user")
+    await expect(
+      request("demo-aula", startAt, startAt + 1800000)
+    ).rejects.toThrow("Slot sudah digunakan")
+  })
+
+  it("automatically rejects a pending approval when an approved slot already exists", async () => {
+    const approved = getStaticData().reservations.find(
+      (item) => item.status === "approved"
+    )!
+    const id = "legacy-overlap"
+    getStaticData().reservations.push({
+      ...approved,
+      id,
+      status: "pending",
+    })
+    role("officer")
+    await staticMutation("reservations:decide", {
+      reservationId: id,
+      decision: "approved",
+    })
+    expect(
+      getStaticData().reservations.find((item) => item.id === id)
+    ).toMatchObject({
+      status: "rejected",
+      decisionNote: AUTO_REJECTION_NOTE,
+    })
+  })
+
+  it("reconciles old browser data on hydration and persists the rejection", async () => {
+    vi.resetModules()
+    const { initialStaticData, hydrateStaticData, getStaticData } =
+      await import("../src/lib/static-data")
+    const approved = initialStaticData.reservations.find(
+      (item) => item.status === "approved"
+    )!
+    const stored = structuredClone(initialStaticData)
+    stored.reservations.push({
+      ...approved,
+      id: "old-pending",
+      status: "pending",
+    })
+    let saved = JSON.stringify(stored)
+    vi.stubGlobal("window", {})
+    vi.stubGlobal("localStorage", {
+      getItem: () => saved,
+      setItem: (_key: string, value: string) => {
+        saved = value
+      },
+    })
+    await hydrateStaticData()
+    expect(
+      getStaticData().reservations.find((item) => item.id === "old-pending")
+    ).toMatchObject({ status: "rejected", decisionNote: AUTO_REJECTION_NOTE })
+    expect(
+      JSON.parse(saved).reservations.find(
+        (item: { id: string }) => item.id === "old-pending"
+      )
+    ).toMatchObject({ status: "rejected", decisionNote: AUTO_REJECTION_NOTE })
+    vi.unstubAllGlobals()
   })
 
   it("updates reports and facility status across roles, then resets", async () => {

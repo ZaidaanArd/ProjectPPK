@@ -1,9 +1,16 @@
 import { ConvexError, v } from "convex/values"
 
-import { mutation, query } from "./_generated/server"
+import { internal } from "./_generated/api"
+import type { Id } from "./_generated/dataModel"
+import { internalMutation, mutation, query } from "./_generated/server"
+import type { MutationCtx } from "./_generated/server"
 import { recordAuditEvent } from "./lib/audit"
 import { requireActiveProfile, requireRole } from "./lib/authz"
-import { overlaps, validateReservationWindow } from "./lib/reservationTime"
+import {
+  AUTO_REJECTION_NOTE,
+  overlaps,
+  validateReservationWindow,
+} from "./lib/reservationTime"
 import { reservationStatusValidator } from "./lib/validators"
 import { assertFacilityCanApprove } from "./lib/workflows"
 
@@ -19,6 +26,48 @@ const reservationListItemValidator = v.object({
   decisionNote: v.optional(v.string()),
   createdAt: v.number(),
 })
+
+async function approvedConflict(
+  ctx: MutationCtx,
+  facilityId: Id<"facilities">,
+  startAt: number,
+  endAt: number
+) {
+  const approved = await ctx.db
+    .query("reservations")
+    .withIndex("by_facility_status_start", (q) =>
+      q
+        .eq("facilityId", facilityId)
+        .eq("status", "approved")
+        .lt("startAt", endAt)
+    )
+    .collect()
+  return approved.some((item) =>
+    overlaps(item.startAt, item.endAt, startAt, endAt)
+  )
+}
+
+async function autoReject(
+  ctx: MutationCtx,
+  reservationId: Id<"reservations">,
+  now: number
+) {
+  await ctx.db.patch("reservations", reservationId, {
+    status: "rejected",
+    decisionNote: AUTO_REJECTION_NOTE,
+    decidedAt: now,
+    updatedAt: now,
+  })
+  await recordAuditEvent(ctx, {
+    entityType: "reservation",
+    entityId: reservationId,
+    action: "reservation.auto_rejected_conflict",
+    fromStatus: "pending",
+    toStatus: "rejected",
+    actorRole: "system",
+    note: AUTO_REJECTION_NOTE,
+  })
+}
 
 export const listMine = query({
   args: {},
@@ -125,6 +174,10 @@ export const create = mutation({
       throw new ConvexError("Waktu reservasi harus berada di masa mendatang")
     }
 
+    if (await approvedConflict(ctx, facility._id, args.startAt, args.endAt)) {
+      throw new ConvexError("Slot sudah digunakan oleh reservasi lain")
+    }
+
     const now = Date.now()
     const id = await ctx.db.insert("reservations", {
       userId: profile._id,
@@ -217,26 +270,16 @@ export const decide = mutation({
 
       assertFacilityCanApprove(facility.status)
 
-      const approved = await ctx.db
-        .query("reservations")
-        .withIndex("by_facility_status_start", (q) =>
-          q
-            .eq("facilityId", reservation.facilityId)
-            .eq("status", "approved")
-            .lt("startAt", reservation.endAt)
-        )
-        .collect()
-      const conflict = approved.some((item) =>
-        overlaps(
-          item.startAt,
-          item.endAt,
+      if (
+        await approvedConflict(
+          ctx,
+          reservation.facilityId,
           reservation.startAt,
           reservation.endAt
         )
-      )
-
-      if (conflict) {
-        throw new ConvexError("Slot sudah digunakan oleh reservasi lain")
+      ) {
+        await autoReject(ctx, reservation._id, Date.now())
+        return null
       }
     }
 
@@ -260,7 +303,69 @@ export const decide = mutation({
       note: args.note?.trim() || undefined,
     })
 
+    if (args.decision === "approved") {
+      const pending = await ctx.db
+        .query("reservations")
+        .withIndex("by_facility_status_start", (q) =>
+          q
+            .eq("facilityId", reservation.facilityId)
+            .eq("status", "pending")
+            .lt("startAt", reservation.endAt)
+        )
+        .collect()
+      for (const item of pending) {
+        if (
+          item._id !== reservation._id &&
+          overlaps(
+            item.startAt,
+            item.endAt,
+            reservation.startAt,
+            reservation.endAt
+          )
+        ) {
+          await autoReject(ctx, item._id, now)
+        }
+      }
+    }
+
     return null
+  },
+})
+
+// Run once after deployment: pnpm exec convex run reservations:reconcilePendingConflicts '{}'
+// Add --prod for the production deployment. Re-running is safe.
+export const reconcilePendingConflicts = internalMutation({
+  args: { cursor: v.optional(v.string()) },
+  returns: v.object({
+    scanned: v.number(),
+    rejected: v.number(),
+    done: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const page = await ctx.db
+      .query("reservations")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .paginate({ cursor: args.cursor ?? null, numItems: 100 })
+    let rejected = 0
+    const now = Date.now()
+    for (const item of page.page) {
+      if (
+        await approvedConflict(ctx, item.facilityId, item.startAt, item.endAt)
+      ) {
+        await autoReject(ctx, item._id, now)
+        rejected++
+      }
+    }
+    if (!page.isDone) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.reservations.reconcilePendingConflicts,
+        {
+          cursor: page.continueCursor,
+        }
+      )
+    }
+    return { scanned: page.page.length, rejected, done: page.isDone }
   },
 })
 
