@@ -25,6 +25,7 @@ import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
 import { DashboardMetricCard } from "@/components/dashboard-metric-card"
 import { PortalListSkeleton } from "@/components/portal-skeletons"
+import { ReservationDatePicker } from "@/components/reservation-date-picker"
 import { SthaniFace } from "@/components/sthani-face"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -509,15 +510,8 @@ export function ReservationForm({
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-1.5">
-                <Label htmlFor="date">Tanggal</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="h-11 rounded-2xl border border-border bg-background"
-                  required
-                />
+                <Label htmlFor="reservation-date">Tanggal</Label>
+                <ReservationDatePicker value={date} onChange={setDate} />
               </div>
               <div className="space-y-1.5">
                 <Label id="reservation-start-label">Jam mulai</Label>
