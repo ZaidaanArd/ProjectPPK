@@ -10,7 +10,10 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react"
-import { useConvexAuth, useMutation } from "convex/react"
+import {
+  useAppAuth as useConvexAuth,
+  useAppMutation as useMutation,
+} from "@/lib/data-hooks"
 import { IconInfoCircle } from "@tabler/icons-react"
 
 import { api } from "../../convex/_generated/api"

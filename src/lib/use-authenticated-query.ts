@@ -1,15 +1,12 @@
 "use client"
 
-import {
-  useConvexAuth,
-  useQuery,
-  type OptionalRestArgsOrSkip,
-} from "convex/react"
+import type { OptionalRestArgsOrSkip } from "convex/react"
 import type {
   FunctionArgs,
   FunctionReference,
   FunctionReturnType,
 } from "convex/server"
+import { useAppAuth, useAppQuery } from "@/lib/data-hooks"
 
 /**
  * Starts a private query only after Convex has confirmed the browser token.
@@ -19,10 +16,10 @@ export function useAuthenticatedQuery<Query extends FunctionReference<"query">>(
   query: Query,
   args: FunctionArgs<Query>
 ): FunctionReturnType<Query> | undefined {
-  const { isAuthenticated } = useConvexAuth()
+  const { isAuthenticated } = useAppAuth()
   const queryArgs = [
     isAuthenticated ? args : "skip",
   ] as unknown as OptionalRestArgsOrSkip<Query>
 
-  return useQuery(query, ...queryArgs)
+  return useAppQuery(query, ...queryArgs)
 }

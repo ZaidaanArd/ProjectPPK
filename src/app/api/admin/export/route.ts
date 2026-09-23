@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 
 import { api } from "../../../../../convex/_generated/api"
 import { fetchAuthQuery } from "@/lib/auth-server"
+import { isStaticMode } from "@/lib/data-mode"
 
 function csvCell(value: string | number) {
   const stringValue = String(value)
@@ -11,6 +12,12 @@ function csvCell(value: string | number) {
 }
 
 export async function GET(request: Request) {
+  if (isStaticMode) {
+    return NextResponse.json(
+      { message: "Gunakan ekspor CSV di portal demo" },
+      { status: 404 }
+    )
+  }
   const kind = new URL(request.url).searchParams.get("kind")
   if (kind !== "reservations" && kind !== "reports") {
     return NextResponse.json(

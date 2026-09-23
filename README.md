@@ -76,6 +76,21 @@ dan [kontrak data/API](./docs/DATA-AND-API.md).
 
 ## Menjalankan secara lokal
 
+### Mode development tanpa backend
+
+Atur `NEXT_PUBLIC_DATA_MODE=static` di `.env.local`, lalu jalankan `pnpm dev`.
+Mode ini menyediakan data demo lokal untuk halaman publik dan portal pengguna,
+petugas, serta admin. Masuk melalui pemilih peran di `/login`; reservasi, laporan,
+foto, dan perubahan admin disimpan di browser ini. Foto menggunakan IndexedDB,
+sedangkan data lainnya menggunakan `localStorage`. Gunakan **Reset data** di menu
+portal untuk mengembalikan contoh awal. Mode ini tidak mengirim permintaan ke
+Convex atau Better Auth.
+
+Untuk kembali memakai backend, ubah menjadi `NEXT_PUBLIC_DATA_MODE=dynamic`
+atau hapus variabel tersebut, lalu mulai ulang Next.js dan jalankan
+`pnpm dev:backend`. Nilai default adalah `dynamic`. Build production menolak
+mode `static`.
+
 ### Prasyarat
 
 - Node.js 24 LTS

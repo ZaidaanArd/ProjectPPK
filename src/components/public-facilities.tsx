@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import { useQuery } from "convex/react"
+import { useAppQuery as useQuery } from "@/lib/data-hooks"
 import {
   IconArrowRight,
   IconCalendar,

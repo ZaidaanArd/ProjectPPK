@@ -2,7 +2,9 @@
 
 import Link from "next/link"
 import { useState, type FormEvent, type ReactNode } from "react"
-import { useMutation } from "convex/react"
+import { useAppMutation as useMutation } from "@/lib/data-hooks"
+import { isStaticMode } from "@/lib/data-mode"
+import { downloadStaticCsv } from "@/lib/static-data"
 import {
   IconBuilding,
   IconCalendar,
@@ -51,20 +53,40 @@ export function AdminDashboard() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link
-            href="/api/admin/export?kind=reservations"
-            prefetch={false}
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            <IconDownload aria-hidden="true" /> Reservasi CSV
-          </Link>
-          <Link
-            href="/api/admin/export?kind=reports"
-            prefetch={false}
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            <IconDownload aria-hidden="true" /> Laporan CSV
-          </Link>
+          {isStaticMode ? (
+            <button
+              type="button"
+              onClick={() => downloadStaticCsv("reservations")}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <IconDownload aria-hidden="true" /> Reservasi CSV
+            </button>
+          ) : (
+            <Link
+              href="/api/admin/export?kind=reservations"
+              prefetch={false}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <IconDownload aria-hidden="true" /> Reservasi CSV
+            </Link>
+          )}
+          {isStaticMode ? (
+            <button
+              type="button"
+              onClick={() => downloadStaticCsv("reports")}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <IconDownload aria-hidden="true" /> Laporan CSV
+            </button>
+          ) : (
+            <Link
+              href="/api/admin/export?kind=reports"
+              prefetch={false}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <IconDownload aria-hidden="true" /> Laporan CSV
+            </Link>
+          )}
         </div>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -115,7 +137,7 @@ export function AdminDashboard() {
                   <span className="capitalize">
                     {item.status.replace("_", " ")}
                   </span>
-                  <strong className="rounded-full bg-white px-2.5 py-1 text-xs shadow-sm">
+                  <strong className="rounded-full bg-background px-2.5 py-1 text-xs text-foreground shadow-sm">
                     {item.count}
                   </strong>
                 </div>
@@ -435,16 +457,18 @@ export function AdminUsers() {
                 required
               />
             </Field>
-            <Field label="Password sementara" id="account-password">
-              <Input
-                id="account-password"
-                type="text"
-                minLength={8}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </Field>
+            {!isStaticMode && (
+              <Field label="Password sementara" id="account-password">
+                <Input
+                  id="account-password"
+                  type="text"
+                  minLength={8}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </Field>
+            )}
             <Field label="Role" id="account-role">
               <select
                 id="account-role"

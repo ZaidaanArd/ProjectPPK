@@ -5,6 +5,8 @@ import Link from "next/link"
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
+import { StaticNavUser } from "@/components/static-nav-user"
+import { isStaticMode } from "@/lib/data-mode"
 import {
   Sidebar,
   SidebarContent,
@@ -80,18 +82,22 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter className="pb-3">
-        <NavUser
-          user={{
-            name: profile.name,
-            email: profile.email,
-            roleLabel: role.label,
-          }}
-          onChangePassword={onChangePassword}
-          onLogoutCurrent={onLogoutCurrent}
-          onLogoutAll={onLogoutAll}
-          onSwitchAccount={onSwitchAccount}
-          onRemoveAccount={onRemoveAccount}
-        />
+        {isStaticMode ? (
+          <StaticNavUser role={profile.role} />
+        ) : (
+          <NavUser
+            user={{
+              name: profile.name,
+              email: profile.email,
+              roleLabel: role.label,
+            }}
+            onChangePassword={onChangePassword}
+            onLogoutCurrent={onLogoutCurrent}
+            onLogoutAll={onLogoutAll}
+            onSwitchAccount={onSwitchAccount}
+            onRemoveAccount={onRemoveAccount}
+          />
+        )}
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
