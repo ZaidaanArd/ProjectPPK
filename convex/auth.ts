@@ -72,7 +72,10 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     baseURL: env.SITE_URL,
     secret: env.BETTER_AUTH_SECRET,
     database: authComponent.adapter(ctx),
-    trustedOrigins: [env.SITE_URL],
+    trustedOrigins: [
+      env.SITE_URL,
+      ...(env.AUTH_PREVIEW_ORIGIN ? [env.AUTH_PREVIEW_ORIGIN] : []),
+    ],
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,
