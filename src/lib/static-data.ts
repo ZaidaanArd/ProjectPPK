@@ -673,7 +673,7 @@ export async function staticMutation(
       requireRole(["officer", "admin"])
       const id = value(args, "reservationId"),
         item = required(state.reservations, id)
-      if (item.status !== "approved")
+      if (item.status !== "pending" && item.status !== "approved")
         throw new Error("Reservasi tidak dapat dibatalkan")
       requireText(value(args, "reason"))
       change<Reservation>("reservations", (items) =>
