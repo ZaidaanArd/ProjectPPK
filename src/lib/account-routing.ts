@@ -13,6 +13,15 @@ export function accountDestination(profile: PortalAccount | null) {
   return "/app"
 }
 
+export function portalAccessDestination(
+  profile: PortalAccount,
+  allowedRoles: PortalAccount["role"][]
+) {
+  if (profile.status !== "active") return "/account/status"
+  if (!allowedRoles.includes(profile.role)) return "/forbidden"
+  return null
+}
+
 export function accountStatusMessage(status: PortalAccount["status"] | null) {
   if (status === "pending")
     return "Akun ini masih menunggu verifikasi administrator."
