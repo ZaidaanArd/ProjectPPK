@@ -4,6 +4,7 @@ import {
   accountDestination,
   accountStatusMessage,
   MAX_DEVICE_ACCOUNTS,
+  portalAccessDestination,
 } from "../src/lib/account-routing"
 
 describe("account routing", () => {
@@ -23,8 +24,20 @@ describe("account routing", () => {
         "/account/status"
       )
       expect(accountStatusMessage(status)).toBeTruthy()
+      expect(portalAccessDestination({ role: "user", status }, ["user"])).toBe(
+        "/account/status"
+      )
     }
     expect(accountDestination(null)).toBe("/account/status")
+  })
+
+  it("keeps active accounts out of the wrong portal", () => {
+    expect(
+      portalAccessDestination({ role: "user", status: "active" }, ["admin"])
+    ).toBe("/forbidden")
+    expect(
+      portalAccessDestination({ role: "admin", status: "active" }, ["admin"])
+    ).toBeNull()
   })
 
   it("limits accounts stored on a device", () => {
