@@ -6,20 +6,22 @@ import { FacilityCard } from "./facility-card"
 
 export function FacilityGrid({
   facilities,
-  role,
+  viewerRole,
   onCekSlot,
   onEdit,
   onToggleNonaktif,
   onToggleMaintenance,
   onReset,
+  illustrated = false,
 }: {
   facilities: FacilityItem[]
-  role: DemoRole
+  viewerRole: DemoRole
   onCekSlot: (f: FacilityItem) => void
   onEdit: (f: FacilityItem) => void
   onToggleNonaktif: (f: FacilityItem) => void
   onToggleMaintenance: (f: FacilityItem) => void
   onReset: () => void
+  illustrated?: boolean
 }) {
   if (facilities.length === 0) {
     return (
@@ -55,11 +57,12 @@ export function FacilityGrid({
         <li key={f.id} className="h-full">
           <FacilityCard
             facility={f}
-            role={role}
+            role={viewerRole}
             onCekSlot={onCekSlot}
             onEdit={onEdit}
             onToggleNonaktif={onToggleNonaktif}
             onToggleMaintenance={onToggleMaintenance}
+            illustrated={illustrated}
           />
         </li>
       ))}

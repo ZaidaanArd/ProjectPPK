@@ -185,7 +185,7 @@ export function FacilityDashboard({
 
       <FacilityGrid
         facilities={filtered}
-        role={role}
+        viewerRole={role}
         onCekSlot={openSlot}
         onEdit={openEdit}
         onToggleNonaktif={toggleNonaktif}

@@ -62,10 +62,11 @@ test("US-11/12: mulai tanpa catatan, perbaikan, lalu aktif kembali", async ({
   await expect(page.getByText("Ditangani", { exact: true })).toBeVisible()
 
   await page.goto("/facilities")
-  const lab = page.locator("article.public-facility-card").filter({
-    has: page.getByRole("heading", { name: "Lab Komputer 3" }),
-  })
-  await expect(lab).toContainText("Perawatan")
+  const lab = page
+    .getByRole("list", { name: "Daftar fasilitas" })
+    .locator("li")
+    .filter({ hasText: "Lab Komputer 3" })
+  await expect(lab).toContainText("Dalam Perbaikan")
 
   await page.goto("/staff/reports")
   await page

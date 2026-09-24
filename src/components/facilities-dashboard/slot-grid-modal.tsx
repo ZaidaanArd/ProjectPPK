@@ -37,6 +37,8 @@ export function SlotGridModal({
   onSelectDate,
   onClose,
   onPilihSlot,
+  slotsOverride,
+  illustrated = false,
 }: {
   facility: FacilityItem | null
   bookedIds: string[]
@@ -48,10 +50,16 @@ export function SlotGridModal({
     slot: TimeSlot,
     isoDate: string
   ) => void
+  slotsOverride?: TimeSlot[] | null
+  illustrated?: boolean
 }) {
   const slots = React.useMemo(
-    () => (facility ? generateTimeSlots(facility.status, bookedIds) : []),
-    [facility, bookedIds]
+    () =>
+      slotsOverride ??
+      (slotsOverride === undefined && facility
+        ? generateTimeSlots(facility.status, bookedIds)
+        : []),
+    [facility, bookedIds, slotsOverride]
   )
   const tersedia = slots.filter((s) => s.status === "tersedia").length
   const terisi = slots.filter((s) => s.status === "terisi").length
@@ -124,7 +132,7 @@ export function SlotGridModal({
           id="slot-foto-heading"
           className="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
         >
-          Foto ruangan
+          {illustrated ? "Ilustrasi fasilitas" : "Foto ruangan"}
         </h3>
         <div className="mt-2">
           <PhotoGallery
@@ -203,7 +211,9 @@ export function SlotGridModal({
                 <span className="font-semibold text-foreground">
                   {tanggalLabel}
                 </span>{" "}
-                · {tersedia} tersedia · {terisi} terisi
+                {slotsOverride === null
+                  ? "· Memuat jadwal…"
+                  : `· ${tersedia} tersedia · ${terisi} terisi`}
               </>
             ) : (
               "Belum ada tanggal dipilih — klik tanggal di kalender."
@@ -244,6 +254,10 @@ export function SlotGridModal({
             <p className="mt-2 rounded-2xl border border-dashed bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">
               Pilih tanggal dulu untuk melihat jadwal slot.
             </p>
+          ) : slotsOverride === null ? (
+            <output className="mt-2 block rounded-2xl border border-dashed bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">
+              Memuat jadwal…
+            </output>
           ) : slotTampil.length === 0 ? (
             <p className="mt-2 rounded-2xl border border-dashed bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">
               Tidak ada slot tersedia untuk filter ini.
