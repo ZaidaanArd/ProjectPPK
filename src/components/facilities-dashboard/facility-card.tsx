@@ -29,6 +29,7 @@ export function FacilityCard({
   onEdit,
   onToggleNonaktif,
   onToggleMaintenance,
+  illustrated = false,
 }: {
   facility: FacilityItem
   role: DemoRole
@@ -36,6 +37,7 @@ export function FacilityCard({
   onEdit: (f: FacilityItem) => void
   onToggleNonaktif: (f: FacilityItem) => void
   onToggleMaintenance: (f: FacilityItem) => void
+  illustrated?: boolean
 }) {
   const isAdmin = role === "admin"
   const bisaMaintenance = role === "admin" || role === "petugas"
@@ -51,10 +53,15 @@ export function FacilityCard({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={cover}
-            alt={facility.nama}
+            alt={facility.photos?.[0]?.alt ?? facility.nama}
             loading="lazy"
             className="aspect-[16/9] w-full object-cover"
           />
+          {illustrated && (
+            <span className="absolute bottom-2 left-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur">
+              Ilustrasi
+            </span>
+          )}
           {hasMultiple && (
             <span className="absolute right-2 bottom-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur">
               +{facility.photos!.length} foto

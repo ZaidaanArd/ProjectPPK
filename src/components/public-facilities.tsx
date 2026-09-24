@@ -1,36 +1,33 @@
 "use client"
 
-import Image from "next/image"
-import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import { useAppQuery as useQuery } from "@/lib/data-hooks"
-import {
-  IconArrowRight,
-  IconCalendar,
-  IconChevronDown,
-  IconMapPin,
-  IconSearch,
-  IconUsers,
-  IconX,
-} from "@tabler/icons-react"
-
+import { useRouter } from "next/navigation"
+import { IconSearch, IconX } from "@tabler/icons-react"
 import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
+import { FacilityGrid } from "@/components/facilities-dashboard/facility-grid"
+import { SlotGridModal } from "@/components/facilities-dashboard/slot-grid-modal"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { useAppQuery as useQuery } from "@/lib/data-hooks"
 import { facilityIllustration } from "@/lib/facility-illustrations"
-
-const jakartaTime = new Intl.DateTimeFormat("id-ID", {
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-  timeZone: "Asia/Jakarta",
-})
-
-function dateInJakarta(offset = 0) {
-  const now = new Date(Date.now() + 7 * 60 * 60 * 1000)
-  now.setUTCDate(now.getUTCDate() + offset)
-  return now.toISOString().slice(0, 10)
-}
+import {
+  matchKapasitas,
+  type KapasitasFilter,
+} from "@/lib/facilities-dashboard/constants"
+import type {
+  FacilityItem,
+  FacilityType,
+  TimeSlot,
+} from "@/lib/facilities-dashboard/types"
 
 function dayRange(date: string) {
   const start = Date.parse(`${date}T00:00:00+07:00`)
@@ -39,38 +36,37 @@ function dayRange(date: string) {
 
 function useIntentionalSkeleton(pending: boolean) {
   const [visible, setVisible] = useState(false)
-
   useEffect(() => {
     if (!pending) return
     const timer = window.setTimeout(() => setVisible(true), 180)
     return () => window.clearTimeout(timer)
   }, [pending])
-
   useEffect(() => {
     if (pending || !visible) return
     const timer = window.setTimeout(() => setVisible(false), 360)
     return () => window.clearTimeout(timer)
   }, [pending, visible])
-
   return visible
 }
 
-function FacilitiesSkeleton() {
+function FacilitySkeleton() {
   return (
     <div
-      className="public-facilities-grid"
-      aria-live="polite"
-      aria-label="Memuat daftar fasilitas"
+      aria-label="Memuat fasilitas"
+      className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
     >
       {Array.from({ length: 6 }, (_, index) => (
-        <div className="public-facility-card" key={index} aria-hidden="true">
-          <Skeleton className="!h-48 !rounded-none motion-reduce:animate-none" />
-          <div className="flex flex-col gap-4 p-5">
-            <Skeleton className="h-3 w-20 motion-reduce:animate-none" />
-            <Skeleton className="h-6 w-3/4 motion-reduce:animate-none" />
+        <div
+          key={index}
+          className="overflow-hidden rounded-4xl bg-card pb-6 shadow-md ring-1 ring-foreground/5"
+          aria-hidden="true"
+        >
+          <Skeleton className="aspect-[16/9] w-full rounded-none motion-reduce:animate-none" />
+          <div className="space-y-4 px-6 pt-6">
+            <Skeleton className="h-5 w-2/3 motion-reduce:animate-none" />
             <Skeleton className="h-4 w-full motion-reduce:animate-none" />
-            <Skeleton className="h-4 w-2/3 motion-reduce:animate-none" />
-            <Skeleton className="mt-3 h-10 w-full motion-reduce:animate-none" />
+            <Skeleton className="h-4 w-3/4 motion-reduce:animate-none" />
+            <Skeleton className="h-10 w-full motion-reduce:animate-none" />
           </div>
         </div>
       ))}
@@ -79,127 +75,148 @@ function FacilitiesSkeleton() {
   )
 }
 
-function Availability({
-  facilityId,
-  date,
+function PublicSlotDialog({
+  facility,
+  selectedDate,
+  onSelectDate,
+  onClose,
 }: {
-  facilityId: Id<"facilities">
-  date: string
+  facility: FacilityItem | null
+  selectedDate: string
+  onSelectDate: (date: string) => void
+  onClose: () => void
 }) {
-  const range = useMemo(() => dayRange(date), [date])
-  const availability = useQuery(api.facilities.getPublicAvailability, {
-    facilityId,
-    rangeStart: range.start,
-    rangeEnd: range.end,
-  })
-
-  const slots = useMemo(
-    () =>
-      Array.from({ length: 26 }, (_, index) => {
-        const startAt = range.start + (7 * 60 + index * 30) * 60 * 1000
-        const endAt = startAt + 30 * 60 * 1000
-        return {
-          label: jakartaTime.format(startAt),
-          booked: availability?.reservations.some(
-            (item) => item.startAt < endAt && startAt < item.endAt
-          ),
-        }
-      }),
-    [availability, range.start]
+  const router = useRouter()
+  const range = useMemo(
+    () => (selectedDate ? dayRange(selectedDate) : null),
+    [selectedDate]
   )
-
-  if (!availability) {
-    return (
-      <div
-        className="grid grid-cols-4 gap-2 sm:grid-cols-6"
-        aria-live="polite"
-        aria-label="Memuat jadwal"
-      >
-        {Array.from({ length: 12 }, (_, index) => (
-          <Skeleton
-            key={index}
-            className="h-9 rounded-lg motion-reduce:animate-none"
-            aria-hidden="true"
-          />
-        ))}
-      </div>
-    )
-  }
-
-  const availableCount = slots.filter((slot) => !slot.booked).length
-
+  const availability = useQuery(
+    api.facilities.getPublicAvailability,
+    facility && range
+      ? {
+          facilityId: facility.id as Id<"facilities">,
+          rangeStart: range.start,
+          rangeEnd: range.end,
+        }
+      : "skip"
+  )
+  const liveSlots = useMemo<TimeSlot[] | null | undefined>(() => {
+    if (!selectedDate || !range) return undefined
+    if (!availability) return null
+    return Array.from({ length: 26 }, (_, index) => {
+      const startAt = range.start + (7 * 60 + index * 30) * 60_000
+      const endAt = startAt + 30 * 60_000
+      const startMinutes = 7 * 60 + index * 30
+      const endMinutes = startMinutes + 30
+      const format = (minutes: number) =>
+        `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`
+      const mulai = format(startMinutes)
+      const selesai = format(endMinutes)
+      return {
+        id: `${mulai}-${selesai}`,
+        mulai: mulai.replace(":", "."),
+        selesai: selesai.replace(":", "."),
+        status:
+          availability.facilityStatus !== "active"
+            ? "terkunci"
+            : availability.reservations.some(
+                  (item) => item.startAt < endAt && startAt < item.endAt
+                )
+              ? "terisi"
+              : "tersedia",
+      }
+    })
+  }, [availability, range, selectedDate])
   return (
-    <div className="public-facility-schedule">
-      <div className="public-facility-schedule-heading">
-        <span className="font-semibold">Jadwal 07.00–20.00 WIB</span>
-        <span>{availableCount} dari 26 slot tersedia</span>
-      </div>
-      <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-        {slots.map((slot) => (
-          <span
-            key={slot.label}
-            className={
-              slot.booked
-                ? "public-facility-slot public-facility-slot-booked"
-                : "public-facility-slot public-facility-slot-open"
-            }
-            title={
-              slot.booked
-                ? `${slot.label} sudah dipesan`
-                : `${slot.label} tersedia`
-            }
-          >
-            {slot.label}
-          </span>
-        ))}
-      </div>
-      <div className="public-facility-schedule-footer">
-        <span>
-          <i className="public-facility-dot public-facility-dot-open" />{" "}
-          Tersedia
-        </span>
-        <span>
-          <i className="public-facility-dot public-facility-dot-booked" />
-          Dipesan
-        </span>
-        <Link
-          href={{
-            pathname: "/app/reservations/new",
-            query: { facility: facilityId, date },
-          }}
-        >
-          Ajukan reservasi <IconArrowRight size={16} aria-hidden="true" />
-        </Link>
-      </div>
-    </div>
+    <SlotGridModal
+      facility={facility}
+      bookedIds={[]}
+      slotsOverride={liveSlots}
+      illustrated
+      selectedDate={selectedDate}
+      onSelectDate={onSelectDate}
+      onClose={onClose}
+      onPilihSlot={(item, slot, date) => {
+        const params = new URLSearchParams({
+          facility: item.id,
+          date,
+          slot: slot.id,
+        })
+        router.push(`/app/reservations/new?${params.toString()}`)
+      }}
+    />
   )
 }
 
 export function PublicFacilities() {
   const facilities = useQuery(api.facilities.listPublic)
   const [search, setSearch] = useState("")
-  const [category, setCategory] = useState("Semua")
-  const [date, setDate] = useState(() => dateInJakarta(1))
-  const [selectedId, setSelectedId] = useState<Id<"facilities"> | null>(null)
+  const [type, setType] = useState("semua")
+  const [status, setStatus] = useState("semua")
+  const [location, setLocation] = useState("semua")
+  const [capacity, setCapacity] = useState<KapasitasFilter>("semua")
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedDate, setSelectedDate] = useState("")
   const showSkeleton = useIntentionalSkeleton(facilities === undefined)
-  const categories = useMemo(
-    () => ["Semua", ...new Set((facilities ?? []).map((item) => item.type))],
+  const types = useMemo(
+    () => [...new Set((facilities ?? []).map((item) => item.type))].sort(),
     [facilities]
   )
-  const filtered = useMemo(() => {
+  const locations = useMemo(
+    () => [...new Set((facilities ?? []).map((item) => item.location))].sort(),
+    [facilities]
+  )
+  const cards = useMemo<FacilityItem[]>(
+    () =>
+      (facilities ?? []).map((item) => {
+        const illustration = facilityIllustration(item.name, item.type)
+        return {
+          id: item.id,
+          nama: item.name,
+          tipe: item.type as FacilityType,
+          lokasi: item.location,
+          kapasitas: item.capacity,
+          deskripsi: item.description,
+          fotoUrl: illustration.src,
+          photos: [
+            {
+              id: `${item.id}-illustration`,
+              url: illustration.src,
+              alt: illustration.alt,
+              sortOrder: 0,
+            },
+          ],
+          status: item.status === "active" ? "Aktif" : "Dalam Perbaikan",
+        }
+      }),
+    [facilities]
+  )
+  const selected = cards.find((item) => item.id === selectedId) ?? null
+  const filtered = cards.filter((item) => {
     const term = search.trim().toLocaleLowerCase("id")
-    return (facilities ?? []).filter(
-      (facility) =>
-        (category === "Semua" || facility.type === category) &&
-        `${facility.name} ${facility.type} ${facility.location} ${facility.description}`
+    return (
+      (!term ||
+        `${item.nama} ${item.tipe} ${item.lokasi} ${item.deskripsi}`
           .toLocaleLowerCase("id")
-          .includes(term)
+          .includes(term)) &&
+      (type === "semua" || item.tipe === type) &&
+      (status === "semua" || item.status === status) &&
+      (location === "semua" || item.lokasi === location) &&
+      matchKapasitas(item.kapasitas, capacity)
     )
-  }, [facilities, search, category])
+  })
+  function resetFilters() {
+    setSearch("")
+    setType("semua")
+    setStatus("semua")
+    setLocation("semua")
+    setCapacity("semua")
+  }
   const loading = facilities === undefined || showSkeleton
 
   return (
-    <div className="sthana-container public-facilities-content">
+    <div className="sthana-container public-facilities-content space-y-5">
       <div className="public-facilities-intro">
         <div>
           <h1>Fasilitas kampus</h1>
@@ -207,172 +224,177 @@ export function PublicFacilities() {
             Cari fasilitas dan periksa jadwalnya sebelum mengajukan reservasi.
           </p>
         </div>
-        <div className="public-facilities-date">
-          <label htmlFor="facility-date">
-            <IconCalendar size={17} aria-hidden="true" /> Tanggal jadwal
-          </label>
-          <input
-            id="facility-date"
-            type="date"
-            min={dateInJakarta()}
-            value={date}
-            onChange={(event) => setDate(event.target.value)}
-          />
-        </div>
       </div>
-
-      <div className="public-facilities-controls">
-        <div className="public-facilities-search">
-          <IconSearch size={19} aria-hidden="true" />
-          <input
-            type="search"
-            aria-label="Cari fasilitas"
-            placeholder="Cari nama, jenis, atau lokasi"
+      <section
+        aria-label="Filter fasilitas"
+        className="rounded-4xl bg-card p-5 shadow-md ring-1 ring-foreground/5 sm:p-6 dark:ring-foreground/10"
+      >
+        <div className="relative">
+          <IconSearch
+            size={18}
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted-foreground"
+          />
+          <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
+            placeholder="Cari nama, jenis, atau lokasi"
+            aria-label="Cari fasilitas"
+            className="pr-10 pl-10"
           />
-          {search ? (
+          {search && (
             <button
               type="button"
               aria-label="Hapus pencarian"
               onClick={() => setSearch("")}
+              className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
-              <IconX size={17} aria-hidden="true" />
+              <IconX size={16} />
             </button>
-          ) : null}
+          )}
         </div>
-        <div
-          className="public-facilities-categories"
-          aria-label="Filter jenis fasilitas"
-        >
-          {categories.map((item) => (
-            <button
-              key={item}
-              type="button"
-              aria-pressed={category === item}
-              onClick={() => setCategory(item)}
+        <div className="mt-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="grid gap-2">
+            <Label id="public-type-label">Tipe</Label>
+            <Select
+              value={type}
+              onValueChange={(value) => setType(value ?? "semua")}
             >
-              {item}
-            </button>
-          ))}
+              <SelectTrigger
+                aria-labelledby="public-type-label"
+                className="w-full"
+              >
+                <SelectValue>
+                  {(value: string | null) =>
+                    value === "semua" ? "Semua tipe" : value
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="semua">Semua tipe</SelectItem>
+                {types.map((item) => (
+                  <SelectItem key={item} value={item}>
+                    {item}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label id="public-status-label">Status</Label>
+            <Select
+              value={status}
+              onValueChange={(value) => setStatus(value ?? "semua")}
+            >
+              <SelectTrigger
+                aria-labelledby="public-status-label"
+                className="w-full"
+              >
+                <SelectValue>
+                  {(value: string | null) =>
+                    value === "semua" ? "Semua status" : value
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="semua">Semua status</SelectItem>
+                <SelectItem value="Aktif">Aktif</SelectItem>
+                <SelectItem value="Dalam Perbaikan">Dalam Perbaikan</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label id="public-location-label">Lokasi</Label>
+            <Select
+              value={location}
+              onValueChange={(value) => setLocation(value ?? "semua")}
+            >
+              <SelectTrigger
+                aria-labelledby="public-location-label"
+                className="w-full"
+              >
+                <SelectValue>
+                  {(value: string | null) =>
+                    value === "semua" ? "Semua lokasi" : value
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="semua">Semua lokasi</SelectItem>
+                {locations.map((item) => (
+                  <SelectItem key={item} value={item}>
+                    {item}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label id="public-capacity-label">Kapasitas</Label>
+            <Select
+              value={capacity}
+              onValueChange={(value) =>
+                setCapacity((value ?? "semua") as KapasitasFilter)
+              }
+            >
+              <SelectTrigger
+                aria-labelledby="public-capacity-label"
+                className="w-full"
+              >
+                <SelectValue>
+                  {(value: string | null) =>
+                    ({
+                      semua: "Semua kapasitas",
+                      kecil: "< 30 orang",
+                      sedang: "30–100 orang",
+                      besar: "> 100 orang",
+                    })[value ?? "semua"]
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="semua">Semua kapasitas</SelectItem>
+                <SelectItem value="kecil">&lt; 30 orang</SelectItem>
+                <SelectItem value="sedang">30–100 orang</SelectItem>
+                <SelectItem value="besar">&gt; 100 orang</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-      </div>
-
-      <div className="public-facilities-results" aria-live="polite">
-        <span>
-          {loading ? "Memuat fasilitas" : `${filtered.length} fasilitas`}
-        </span>
-        <span>
-          {search || category !== "Semua"
-            ? "Hasil pencarian"
-            : "Daftar fasilitas"}
-        </span>
-      </div>
-
+      </section>
+      <p className="text-sm text-muted-foreground" aria-live="polite">
+        {loading ? "Memuat fasilitas…" : `${filtered.length} fasilitas`}
+      </p>
       {loading ? (
         showSkeleton ? (
-          <FacilitiesSkeleton />
+          <FacilitySkeleton />
         ) : (
-          <div className="public-facilities-loading-space" aria-live="polite">
-            <span className="sr-only">Memuat fasilitas…</span>
-          </div>
+          <div className="min-h-[430px]" aria-label="Memuat fasilitas" />
         )
-      ) : filtered.length === 0 ? (
-        <div className="public-facilities-empty">
-          <IconSearch size={28} aria-hidden="true" />
-          <h2>
-            {facilities.length === 0
-              ? "Belum ada fasilitas"
-              : "Fasilitas tidak ditemukan"}
-          </h2>
-          {facilities.length > 0 ? (
-            <button
-              type="button"
-              onClick={() => {
-                setSearch("")
-                setCategory("Semua")
-              }}
-            >
-              Hapus filter <IconArrowRight size={16} aria-hidden="true" />
-            </button>
-          ) : null}
-        </div>
       ) : (
-        <div className="public-facilities-grid">
-          {filtered.map((facility) => {
-            const illustration = facilityIllustration(
-              facility.name,
-              facility.type
-            )
-            const active = facility.status === "active"
-            const expanded = selectedId === facility.id
-
-            return (
-              <article key={facility.id} className="public-facility-card">
-                <div className="public-facility-image">
-                  <Image
-                    src={illustration.src}
-                    alt={illustration.alt}
-                    fill
-                    sizes="(max-width: 700px) 100vw, (max-width: 1100px) 50vw, 33vw"
-                  />
-                  <span className="public-facility-image-note">Ilustrasi</span>
-                  <span
-                    className={
-                      active
-                        ? "public-facility-status"
-                        : "public-facility-status public-facility-status-maintenance"
-                    }
-                  >
-                    <i /> {active ? "Aktif" : "Perawatan"}
-                  </span>
-                </div>
-                <div className="public-facility-body">
-                  <span className="public-facility-type">{facility.type}</span>
-                  <h2>{facility.name}</h2>
-                  <p>{facility.description}</p>
-                  <div className="public-facility-meta">
-                    <span>
-                      <IconMapPin size={16} aria-hidden="true" />
-                      {facility.location}
-                    </span>
-                    <span>
-                      <IconUsers size={16} aria-hidden="true" />
-                      {facility.capacity} orang
-                    </span>
-                  </div>
-                  {active ? (
-                    <button
-                      type="button"
-                      className="public-facility-action"
-                      aria-expanded={expanded}
-                      aria-controls={`schedule-${facility.id}`}
-                      onClick={() =>
-                        setSelectedId(expanded ? null : facility.id)
-                      }
-                    >
-                      {expanded ? "Tutup jadwal" : "Lihat jadwal"}
-                      <IconChevronDown size={18} aria-hidden="true" />
-                    </button>
-                  ) : (
-                    <span className="public-facility-unavailable">
-                      Belum dapat direservasi
-                    </span>
-                  )}
-                </div>
-                {expanded && active ? (
-                  <div
-                    id={`schedule-${facility.id}`}
-                    className="public-facility-expanded"
-                  >
-                    <Availability facilityId={facility.id} date={date} />
-                  </div>
-                ) : null}
-              </article>
-            )
-          })}
-        </div>
+        <FacilityGrid
+          facilities={filtered}
+          viewerRole="pengguna"
+          illustrated
+          onCekSlot={(item) => {
+            setSelectedDate("")
+            setSelectedId(item.id)
+          }}
+          onEdit={() => {}}
+          onToggleNonaktif={() => {}}
+          onToggleMaintenance={() => {}}
+          onReset={resetFilters}
+        />
       )}
+      <p className="text-xs text-muted-foreground">
+        Gambar merupakan ilustrasi fasilitas.
+      </p>
+      <PublicSlotDialog
+        facility={selected}
+        selectedDate={selectedDate}
+        onSelectDate={setSelectedDate}
+        onClose={() => setSelectedId(null)}
+      />
     </div>
   )
 }

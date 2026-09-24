@@ -306,17 +306,21 @@ export function ReservationList() {
 export function ReservationForm({
   initialFacilityId,
   initialDate,
+  initialStartTime,
+  initialEndTime,
 }: {
   initialFacilityId?: string
   initialDate?: string
+  initialStartTime?: string
+  initialEndTime?: string
 } = {}) {
   const facilities = useQuery(api.facilities.listPublic)
   const createReservation = useMutation(api.reservations.create)
   const [facilityId, setFacilityId] = useState(initialFacilityId ?? "")
   const [facilitySearch, setFacilitySearch] = useState("")
   const [date, setDate] = useState(initialDate ?? tomorrow)
-  const [startTime, setStartTime] = useState("07:00")
-  const [endTime, setEndTime] = useState("08:00")
+  const [startTime, setStartTime] = useState(initialStartTime ?? "07:00")
+  const [endTime, setEndTime] = useState(initialEndTime ?? "08:00")
   const [purpose, setPurpose] = useState("")
   const [message, setMessage] = useState("")
   const [pending, setPending] = useState(false)
