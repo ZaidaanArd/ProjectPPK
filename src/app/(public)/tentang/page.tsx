@@ -7,6 +7,7 @@ import {
 } from "@tabler/icons-react"
 import { LandingMotion } from "@/components/public/landing-motion"
 import { DialogMascot } from "@/components/dialog-mascot"
+import { ImagesBadge } from "@/components/ui/images-badge"
 import { SthaniFace, type SthaniExpression } from "@/components/sthani-face"
 import { site, siteUrl } from "@/lib/site"
 
@@ -424,11 +425,36 @@ export default function AboutPage() {
                   </div>
                   <p className="about-team-role">{member.role}</p>
                   <p className="about-team-focus">{member.focus}</p>
-                  <a href={member.profile} rel="external">
-                    <IconBrandGithub size={16} aria-hidden="true" />
-                    {member.handle}
-                    <IconArrowRight size={15} aria-hidden="true" />
-                  </a>
+                  <ImagesBadge
+                    className="mt-4"
+                    name={member.name}
+                    image={member.image}
+                    items={[
+                      {
+                        platform: "github",
+                        handle: member.handle,
+                        href: member.profile,
+                      },
+                      {
+                        platform: "instagram",
+                        ...(member.primary
+                          ? {
+                              handle: "@myudakk",
+                              href: "https://www.instagram.com/myudakk/",
+                            }
+                          : {}),
+                      },
+                      {
+                        platform: "linkedin",
+                        ...(member.primary
+                          ? {
+                              handle: "myudak",
+                              href: "https://www.linkedin.com/in/myudak/",
+                            }
+                          : {}),
+                      },
+                    ]}
+                  />
                 </div>
               </li>
             ))}
