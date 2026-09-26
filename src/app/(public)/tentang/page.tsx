@@ -428,7 +428,11 @@ export default function AboutPage() {
                   <ImagesBadge
                     className="mt-4"
                     name={member.name}
-                    image={member.image}
+                    folderSize={{ width: 48, height: 36 }}
+                    teaserImageSize={{ width: 40, height: 28 }}
+                    hoverImageSize={{ width: 180, height: 140 }}
+                    hoverTranslateY={-140}
+                    hoverSpread={70}
                     items={[
                       {
                         platform: "github",

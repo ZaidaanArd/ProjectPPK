@@ -7,7 +7,6 @@ export default function ImagesBadgeDemo() {
     <div className="flex min-h-40 w-full items-center justify-center">
       <ImagesBadge
         name="Muchammad Yuda Tri Ananda"
-        image="/images/team/muchammad-yuda-tri-ananda.png"
         items={[
           {
             platform: "github",
