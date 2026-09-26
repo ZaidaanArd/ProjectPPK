@@ -1,4 +1,5 @@
 import type { ElementType } from "react"
+import Link from "next/link"
 
 import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -29,16 +30,18 @@ export function DashboardMetricCard({
   description,
   icon: Icon,
   tone = "pink",
+  href,
 }: {
   label: string
   value: number | undefined
   description: string
   icon: ElementType
   tone?: keyof typeof tones
+  href?: string
 }) {
   const colors = tones[tone]
 
-  return (
+  const card = (
     <Card className="relative gap-4 overflow-hidden p-5 transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-lg">
       <div
         className={cn(
@@ -70,5 +73,16 @@ export function DashboardMetricCard({
         {description}
       </p>
     </Card>
+  )
+
+  if (!href) return card
+
+  return (
+    <Link
+      href={href}
+      className="block rounded-4xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+    >
+      {card}
+    </Link>
   )
 }

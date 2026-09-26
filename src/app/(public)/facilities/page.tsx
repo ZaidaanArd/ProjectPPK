@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 
 import { PublicFacilities } from "@/components/public-facilities"
+import { SthaniFace } from "@/components/sthani-face"
 import { site, siteUrl } from "@/lib/site"
 
 const pageUrl = siteUrl ? `${siteUrl}/facilities` : undefined
@@ -46,6 +47,9 @@ export default function FacilitiesPage() {
           }}
         />
       ) : null}
+      <span className="public-facilities-hero-art" aria-hidden="true">
+        <SthaniFace expression="senang" />
+      </span>
       <PublicFacilities />
     </main>
   )

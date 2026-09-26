@@ -13,6 +13,7 @@ export function FacilityGrid({
   onToggleMaintenance,
   onReset,
   illustrated = false,
+  reveal = false,
 }: {
   facilities: FacilityItem[]
   viewerRole: DemoRole
@@ -22,6 +23,7 @@ export function FacilityGrid({
   onToggleMaintenance: (f: FacilityItem) => void
   onReset: () => void
   illustrated?: boolean
+  reveal?: boolean
 }) {
   if (facilities.length === 0) {
     return (
@@ -54,7 +56,11 @@ export function FacilityGrid({
       className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
     >
       {facilities.map((f) => (
-        <li key={f.id} className="h-full">
+        <li
+          key={f.id}
+          className={reveal ? "reveal-pending h-full" : "h-full"}
+          data-reveal={reveal ? "dynamic" : undefined}
+        >
           <FacilityCard
             facility={f}
             role={viewerRole}

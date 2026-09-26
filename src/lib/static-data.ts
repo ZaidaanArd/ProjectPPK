@@ -51,6 +51,7 @@ type Reservation = {
   status: ReservationStatus
   decisionNote?: string
   createdAt: number
+  updatedAt: number
 }
 type Report = {
   id: string
@@ -81,6 +82,10 @@ const tomorrow = new Date(seedTime + 7 * 60 * 60 * 1000)
 tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
 const date = tomorrow.toISOString().slice(0, 10)
 const slot = (time: string) => Date.parse(`${date}T${time}:00+07:00`)
+const todayDate = new Date(seedTime + 7 * 60 * 60 * 1000)
+  .toISOString()
+  .slice(0, 10)
+const todaySlot = (time: string) => Date.parse(`${todayDate}T${time}:00+07:00`)
 
 export const initialStaticData: StaticData = {
   version: 1,
@@ -206,6 +211,7 @@ export const initialStaticData: StaticData = {
       endAt: slot("10:00"),
       status: "approved",
       createdAt: seedTime,
+      updatedAt: seedTime,
     },
     {
       id: "demo-reservation-pending",
@@ -216,6 +222,18 @@ export const initialStaticData: StaticData = {
       endAt: slot("14:00"),
       status: "pending",
       createdAt: seedTime,
+      updatedAt: seedTime,
+    },
+    {
+      id: "demo-reservation-today",
+      userId: "demo-user",
+      facilityId: "demo-seminar",
+      purpose: "Kuliah tamu",
+      startAt: todaySlot("10:00"),
+      endAt: todaySlot("11:00"),
+      status: "approved",
+      createdAt: seedTime,
+      updatedAt: seedTime,
     },
   ],
   reports: [
@@ -445,15 +463,27 @@ export function staticQuery(name: string, args: unknown): unknown {
     case "facilities:listPublic":
       return state.facilities
         .filter((f) => f.status !== "inactive")
-        .map(({ id, name, type, location, capacity, description, status }) => ({
-          id,
-          name,
-          type,
-          location,
-          capacity,
-          description,
-          status,
-        }))
+        .map(
+          ({
+            id,
+            name,
+            type,
+            location,
+            capacity,
+            description,
+            status,
+            createdAt,
+          }) => ({
+            id,
+            name,
+            type,
+            location,
+            capacity,
+            description,
+            status,
+            createdAt,
+          })
+        )
     case "facilities:getPublicAvailability": {
       const id = value(args, "facilityId")
       const start = Number(field(args, "rangeStart"))
@@ -616,6 +646,7 @@ export async function staticMutation(
           endAt,
           status: "pending",
           createdAt: now,
+          updatedAt: now,
         },
       ])
       return id
@@ -630,7 +661,9 @@ export async function staticMutation(
       )
         throw new Error("Reservasi tidak dapat dibatalkan")
       change<Reservation>("reservations", (items) =>
-        items.map((r) => (r.id === id ? { ...r, status: "cancelled" } : r))
+        items.map((r) =>
+          r.id === id ? { ...r, status: "cancelled", updatedAt: now } : r
+        )
       )
       return null
     }
@@ -658,12 +691,18 @@ export async function staticMutation(
                 decisionNote: alreadyBooked
                   ? AUTO_REJECTION_NOTE
                   : value(args, "note").trim() || undefined,
+                updatedAt: now,
               }
             : decision === "approved" &&
                 !alreadyBooked &&
                 r.status === "pending" &&
                 conflicts(r, item)
-              ? { ...r, status: "rejected", decisionNote: AUTO_REJECTION_NOTE }
+              ? {
+                  ...r,
+                  status: "rejected",
+                  decisionNote: AUTO_REJECTION_NOTE,
+                  updatedAt: now,
+                }
               : r
         )
       )
@@ -679,7 +718,12 @@ export async function staticMutation(
       change<Reservation>("reservations", (items) =>
         items.map((r) =>
           r.id === id
-            ? { ...r, status: "cancelled", decisionNote: value(args, "reason") }
+            ? {
+                ...r,
+                status: "cancelled",
+                decisionNote: value(args, "reason"),
+                updatedAt: now,
+              }
             : r
         )
       )
@@ -806,6 +850,31 @@ export async function staticMutation(
               }
             : f
         )
+      )
+      return null
+    }
+    case "facilities:remove": {
+      requireRole(["admin"])
+      const id = value(args, "facilityId")
+      required(state.facilities, id)
+      const hasActiveActivity =
+        state.reservations.some(
+          (r) =>
+            r.facilityId === id &&
+            (r.status === "pending" || r.status === "approved")
+        ) ||
+        state.reports.some(
+          (r) =>
+            r.facilityId === id &&
+            (r.status === "pending" || r.status === "in_progress")
+        )
+      if (hasActiveActivity) {
+        throw new Error(
+          "Fasilitas masih memiliki reservasi aktif atau laporan yang belum selesai. Selesaikan data tersebut atau gunakan Sembunyikan."
+        )
+      }
+      change<Facility>("facilities", (items) =>
+        items.filter((f) => f.id !== id)
       )
       return null
     }

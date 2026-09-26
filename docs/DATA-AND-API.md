@@ -58,6 +58,7 @@ Schema aktual ada di `convex/schema.ts`. Better Auth menyimpan user, credential,
 | `profiles`     | `current`, `completeRegistration`, `changePassword` | Session       | Profile dan password       |
 | `facilities`   | `listPublic`, `getPublicAvailability`               | Public        | Katalog dan blocked slots  |
 | `facilities`   | `listManaged`, `create`, `update`, `setStatus`      | Admin         | Master fasilitas           |
+| `facilities`   | `remove`                                            | Admin         | Hapus fasilitas            |
 | `reservations` | `listMine`, `create`, `cancelMine`                  | User          | Reservasi milik sendiri    |
 | `reservations` | `listQueue`, `decide`, `cancelByStaff`              | Officer/admin | Antrean dan keputusan      |
 | `reports`      | `generateUploadUrl`, `create`, `listMine`           | User          | Upload dan laporan sendiri |

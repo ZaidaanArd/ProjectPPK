@@ -30,6 +30,7 @@ const reservationListItemValidator = v.object({
   status: reservationStatusValidator,
   decisionNote: v.optional(v.string()),
   createdAt: v.number(),
+  updatedAt: v.number(),
 })
 
 async function approvedConflict(
@@ -100,6 +101,7 @@ export const listMine = query({
           status: reservation.status,
           decisionNote: reservation.decisionNote,
           createdAt: reservation.createdAt,
+          updatedAt: reservation.updatedAt,
         }
       })
     )

@@ -16,6 +16,7 @@ const publicFacilityValidator = v.object({
   capacity: v.number(),
   description: v.string(),
   status: facilityStatusValidator,
+  createdAt: v.number(),
 })
 
 const managedFacilityValidator = v.object({
@@ -55,6 +56,7 @@ export const listPublic = query({
         capacity: facility.capacity,
         description: facility.description,
         status: facility.status,
+        createdAt: facility.createdAt,
       }))
   },
 })
@@ -251,6 +253,75 @@ export const setStatus = mutation({
       actorId: actor._id,
       actorRole: actor.role,
       note: args.note?.trim() || undefined,
+    })
+
+    return null
+  },
+})
+
+export const remove = mutation({
+  args: { facilityId: v.id("facilities") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const actor = await requireRole(ctx, ["admin"])
+    const facility = await ctx.db.get("facilities", args.facilityId)
+
+    if (!facility) {
+      throw new ConvexError("Fasilitas tidak ditemukan")
+    }
+
+    const [
+      pendingReservation,
+      approvedReservation,
+      pendingReport,
+      activeReport,
+    ] = await Promise.all([
+      ctx.db
+        .query("reservations")
+        .withIndex("by_facility_status_start", (q) =>
+          q.eq("facilityId", facility._id).eq("status", "pending")
+        )
+        .first(),
+      ctx.db
+        .query("reservations")
+        .withIndex("by_facility_status_start", (q) =>
+          q.eq("facilityId", facility._id).eq("status", "approved")
+        )
+        .first(),
+      ctx.db
+        .query("reports")
+        .withIndex("by_facility_and_status", (q) =>
+          q.eq("facilityId", facility._id).eq("status", "pending")
+        )
+        .first(),
+      ctx.db
+        .query("reports")
+        .withIndex("by_facility_and_status", (q) =>
+          q.eq("facilityId", facility._id).eq("status", "in_progress")
+        )
+        .first(),
+    ])
+
+    if (
+      pendingReservation ||
+      approvedReservation ||
+      pendingReport ||
+      activeReport
+    ) {
+      throw new ConvexError(
+        "Fasilitas masih memiliki reservasi aktif atau laporan yang belum selesai. Selesaikan data tersebut atau gunakan Sembunyikan."
+      )
+    }
+
+    await ctx.db.delete("facilities", facility._id)
+
+    await recordAuditEvent(ctx, {
+      entityType: "facility",
+      entityId: facility._id,
+      action: "facility.deleted",
+      fromStatus: facility.status,
+      actorId: actor._id,
+      actorRole: actor.role,
     })
 
     return null

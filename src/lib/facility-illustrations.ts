@@ -2,26 +2,38 @@ const illustrations = {
   "Aula Gedung A": {
     src: "/images/facilities/16859956.jpg",
     alt: "Ilustrasi aula dengan deretan kursi seminar",
+    width: 800,
+    height: 533,
   },
   "Lab Komputer 3": {
     src: "/images/facilities/18471480.jpg",
     alt: "Ilustrasi laboratorium dengan deretan komputer",
+    width: 800,
+    height: 600,
   },
   "Ruang Seminar 2": {
     src: "/images/facilities/6602623.jpg",
     alt: "Ilustrasi ruang seminar dengan meja dan kursi",
+    width: 800,
+    height: 800,
   },
   "Lapangan Basket Outdoor": {
     src: "/images/facilities/2186251.jpg",
     alt: "Ilustrasi lapangan basket luar ruang",
+    width: 800,
+    height: 1200,
   },
   "Studio Multimedia": {
     src: "/images/facilities/7457920.jpg",
     alt: "Ilustrasi studio dengan perangkat komputer",
+    width: 800,
+    height: 600,
   },
   "Ruang Rapat Senat": {
     src: "/images/facilities/8102300.jpg",
     alt: "Ilustrasi ruang rapat dengan meja dan jendela besar",
+    width: 800,
+    height: 1200,
   },
 } as const
 

@@ -102,7 +102,7 @@ export function LoginForm({ addAccount = false }: { addAccount?: boolean }) {
       {/* Left — login panel */}
       <div className="login-form-panel relative z-10 flex flex-1 flex-col items-center overflow-y-auto px-8 pt-24 pb-12 lg:h-svh lg:max-w-[48%] lg:flex-none lg:basis-[48%] lg:rounded-r-2xl xl:basis-[44%]">
         <Link
-          href="/"
+          href={addAccount ? "/login" : "/"}
           className="absolute top-6 left-6 inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:top-8 sm:left-8"
         >
           <IconArrowLeft size={17} aria-hidden="true" />

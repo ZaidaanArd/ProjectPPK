@@ -7,6 +7,8 @@ import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
 import { FacilityGrid } from "@/components/facilities-dashboard/facility-grid"
 import { SlotGridModal } from "@/components/facilities-dashboard/slot-grid-modal"
+import { LandingMotion } from "@/components/public/landing-motion"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -28,6 +30,22 @@ import type {
   FacilityType,
   TimeSlot,
 } from "@/lib/facilities-dashboard/types"
+import { cn } from "@/lib/utils"
+
+type SortOrder = "nama" | "kapasitas" | "terbaru"
+
+const sortLabels: Record<SortOrder, string> = {
+  nama: "Nama A–Z",
+  kapasitas: "Kapasitas terbesar",
+  terbaru: "Terbaru",
+}
+
+const capacityLabels: Record<KapasitasFilter, string> = {
+  semua: "Semua kapasitas",
+  kecil: "< 30 orang",
+  sedang: "30–100 orang",
+  besar: "> 100 orang",
+}
 
 function dayRange(date: string) {
   const start = Date.parse(`${date}T00:00:00+07:00`)
@@ -156,6 +174,7 @@ export function PublicFacilities() {
   const [status, setStatus] = useState("semua")
   const [location, setLocation] = useState("semua")
   const [capacity, setCapacity] = useState<KapasitasFilter>("semua")
+  const [sort, setSort] = useState<SortOrder>("nama")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState("")
   const showSkeleton = useIntentionalSkeleton(facilities === undefined)
@@ -188,24 +207,71 @@ export function PublicFacilities() {
             },
           ],
           status: item.status === "active" ? "Aktif" : "Dalam Perbaikan",
+          createdAt: item.createdAt,
         }
       }),
     [facilities]
   )
   const selected = cards.find((item) => item.id === selectedId) ?? null
-  const filtered = cards.filter((item) => {
-    const term = search.trim().toLocaleLowerCase("id")
-    return (
-      (!term ||
-        `${item.nama} ${item.tipe} ${item.lokasi} ${item.deskripsi}`
-          .toLocaleLowerCase("id")
-          .includes(term)) &&
-      (type === "semua" || item.tipe === type) &&
-      (status === "semua" || item.status === status) &&
-      (location === "semua" || item.lokasi === location) &&
-      matchKapasitas(item.kapasitas, capacity)
-    )
-  })
+  const filtered = cards
+    .filter((item) => {
+      const term = search.trim().toLocaleLowerCase("id")
+      return (
+        (!term ||
+          `${item.nama} ${item.tipe} ${item.lokasi} ${item.deskripsi}`
+            .toLocaleLowerCase("id")
+            .includes(term)) &&
+        (type === "semua" || item.tipe === type) &&
+        (status === "semua" || item.status === status) &&
+        (location === "semua" || item.lokasi === location) &&
+        matchKapasitas(item.kapasitas, capacity)
+      )
+    })
+    .sort((a, b) => {
+      if (sort === "kapasitas") return b.kapasitas - a.kapasitas
+      if (sort === "terbaru") return (b.createdAt ?? 0) - (a.createdAt ?? 0)
+      return a.nama.localeCompare(b.nama, "id")
+    })
+  const maxCapacity = Math.max(
+    0,
+    ...(facilities ?? []).map((item) => item.capacity)
+  )
+  const activeFilters: { key: string; label: string; clear: () => void }[] = []
+  if (search.trim()) {
+    activeFilters.push({
+      key: "search",
+      label: `Cari: “${search.trim()}”`,
+      clear: () => setSearch(""),
+    })
+  }
+  if (type !== "semua") {
+    activeFilters.push({
+      key: "type",
+      label: `Tipe: ${type}`,
+      clear: () => setType("semua"),
+    })
+  }
+  if (status !== "semua") {
+    activeFilters.push({
+      key: "status",
+      label: `Status: ${status}`,
+      clear: () => setStatus("semua"),
+    })
+  }
+  if (location !== "semua") {
+    activeFilters.push({
+      key: "location",
+      label: `Lokasi: ${location}`,
+      clear: () => setLocation("semua"),
+    })
+  }
+  if (capacity !== "semua") {
+    activeFilters.push({
+      key: "capacity",
+      label: `Kapasitas: ${capacityLabels[capacity]}`,
+      clear: () => setCapacity("semua"),
+    })
+  }
   function resetFilters() {
     setSearch("")
     setType("semua")
@@ -216,185 +282,274 @@ export function PublicFacilities() {
   const loading = facilities === undefined || showSkeleton
 
   return (
-    <div className="sthana-container public-facilities-content space-y-5">
-      <div className="public-facilities-intro">
-        <div>
-          <h1>Fasilitas kampus</h1>
-          <p>
-            Cari fasilitas dan periksa jadwalnya sebelum mengajukan reservasi.
-          </p>
+    <LandingMotion>
+      <div className="sthana-container public-facilities-content space-y-5">
+        <div className="public-facilities-intro">
+          <div>
+            <h1>Fasilitas kampus</h1>
+            <p>
+              Cari fasilitas dan periksa jadwalnya sebelum mengajukan reservasi.
+            </p>
+            {facilities && (
+              <p className="public-facilities-summary">
+                {facilities.length} fasilitas · {types.length} tipe · kapasitas
+                hingga {maxCapacity} orang
+              </p>
+            )}
+          </div>
         </div>
-      </div>
-      <section
-        aria-label="Filter fasilitas"
-        className="rounded-4xl bg-card p-5 shadow-md ring-1 ring-foreground/5 sm:p-6 dark:ring-foreground/10"
-      >
-        <div className="relative">
-          <IconSearch
-            size={18}
-            aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted-foreground"
-          />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Cari nama, jenis, atau lokasi"
-            aria-label="Cari fasilitas"
-            className="pr-10 pl-10"
-          />
-          {search && (
-            <button
-              type="button"
-              aria-label="Hapus pencarian"
-              onClick={() => setSearch("")}
-              className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <IconX size={16} />
-            </button>
-          )}
-        </div>
-        <div className="mt-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <div className="grid gap-2">
-            <Label id="public-type-label">Tipe</Label>
+        <section
+          aria-label="Filter fasilitas"
+          className="public-facilities-filters rounded-4xl bg-card p-5 shadow-md ring-1 ring-foreground/5 sm:p-6 dark:ring-foreground/10"
+        >
+          <div className="relative">
+            <IconSearch
+              size={18}
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted-foreground"
+            />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Cari nama, jenis, atau lokasi"
+              aria-label="Cari fasilitas"
+              className="pr-10 pl-10"
+            />
+            {search && (
+              <button
+                type="button"
+                aria-label="Hapus pencarian"
+                onClick={() => setSearch("")}
+                className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <IconX size={16} />
+              </button>
+            )}
+          </div>
+          <div className="mt-5 grid grid-cols-1 gap-4 min-[360px]:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-2">
+              <Label id="public-type-label">Tipe</Label>
+              <Select
+                value={type}
+                onValueChange={(value) => setType(value ?? "semua")}
+              >
+                <SelectTrigger
+                  aria-labelledby="public-type-label"
+                  className="w-full"
+                >
+                  <SelectValue>
+                    {(value: string | null) =>
+                      value === "semua" ? "Semua tipe" : value
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="semua">Semua tipe</SelectItem>
+                  {types.map((item) => (
+                    <SelectItem key={item} value={item}>
+                      {item}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label id="public-status-label">Status</Label>
+              <Select
+                value={status}
+                onValueChange={(value) => setStatus(value ?? "semua")}
+              >
+                <SelectTrigger
+                  aria-labelledby="public-status-label"
+                  className="w-full"
+                >
+                  <SelectValue>
+                    {(value: string | null) =>
+                      value === "semua" ? "Semua status" : value
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="semua">Semua status</SelectItem>
+                  <SelectItem value="Aktif">Aktif</SelectItem>
+                  <SelectItem value="Dalam Perbaikan">
+                    Dalam Perbaikan
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label id="public-location-label">Lokasi</Label>
+              <Select
+                value={location}
+                onValueChange={(value) => setLocation(value ?? "semua")}
+              >
+                <SelectTrigger
+                  aria-labelledby="public-location-label"
+                  className="w-full"
+                >
+                  <SelectValue>
+                    {(value: string | null) =>
+                      value === "semua" ? "Semua lokasi" : value
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="semua">Semua lokasi</SelectItem>
+                  {locations.map((item) => (
+                    <SelectItem key={item} value={item}>
+                      {item}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label id="public-capacity-label">Kapasitas</Label>
+              <Select
+                value={capacity}
+                onValueChange={(value) =>
+                  setCapacity((value ?? "semua") as KapasitasFilter)
+                }
+              >
+                <SelectTrigger
+                  aria-labelledby="public-capacity-label"
+                  className="w-full"
+                >
+                  <SelectValue>
+                    {(value: string | null) =>
+                      capacityLabels[(value ?? "semua") as KapasitasFilter]
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="semua">Semua kapasitas</SelectItem>
+                  <SelectItem value="kecil">&lt; 30 orang</SelectItem>
+                  <SelectItem value="sedang">30–100 orang</SelectItem>
+                  <SelectItem value="besar">&gt; 100 orang</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </section>
+        {!loading && (
+          <fieldset
+            aria-label="Filter cepat tipe fasilitas"
+            className="m-0 -mx-1 flex min-w-0 gap-2 overflow-x-auto border-0 p-0 px-1 pb-1"
+          >
+            {["semua", ...types].map((item) => {
+              const active = type === item
+              return (
+                <button
+                  key={item}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setType(item)}
+                  className={cn(
+                    "shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+                    active
+                      ? "border-pink-600 bg-pink-600 text-white shadow-sm"
+                      : "border-border bg-card text-muted-foreground hover:border-pink-300 hover:text-foreground"
+                  )}
+                >
+                  {item === "semua" ? "Semua tipe" : item}
+                </button>
+              )
+            })}
+          </fieldset>
+        )}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm text-muted-foreground" aria-live="polite">
+              {loading ? "Memuat fasilitas…" : `${filtered.length} fasilitas`}
+            </p>
+            {activeFilters.map((filter) => (
+              <span
+                key={filter.key}
+                className="inline-flex items-center gap-1.5 rounded-full border border-pink-200 bg-pink-50 py-1 pr-1.5 pl-3 text-xs font-medium text-pink-800 dark:border-pink-300/20 dark:bg-pink-400/10 dark:text-pink-200"
+              >
+                {filter.label}
+                <button
+                  type="button"
+                  aria-label={`Hapus filter ${filter.label}`}
+                  onClick={filter.clear}
+                  className="inline-flex size-5 items-center justify-center rounded-full transition-colors hover:bg-pink-100 dark:hover:bg-pink-400/20"
+                >
+                  <IconX size={13} aria-hidden="true" />
+                </button>
+              </span>
+            ))}
+            {activeFilters.length > 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={resetFilters}
+              >
+                Reset filter
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Label id="public-sort-label" className="text-sm">
+              Urutkan
+            </Label>
             <Select
-              value={type}
-              onValueChange={(value) => setType(value ?? "semua")}
+              value={sort}
+              onValueChange={(value) => setSort((value ?? "nama") as SortOrder)}
             >
               <SelectTrigger
-                aria-labelledby="public-type-label"
-                className="w-full"
+                aria-labelledby="public-sort-label"
+                className="w-44"
               >
                 <SelectValue>
                   {(value: string | null) =>
-                    value === "semua" ? "Semua tipe" : value
+                    sortLabels[(value ?? "nama") as SortOrder]
                   }
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="semua">Semua tipe</SelectItem>
-                {types.map((item) => (
-                  <SelectItem key={item} value={item}>
-                    {item}
+                {(Object.keys(sortLabels) as SortOrder[]).map((order) => (
+                  <SelectItem key={order} value={order}>
+                    {sortLabels[order]}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          <div className="grid gap-2">
-            <Label id="public-status-label">Status</Label>
-            <Select
-              value={status}
-              onValueChange={(value) => setStatus(value ?? "semua")}
-            >
-              <SelectTrigger
-                aria-labelledby="public-status-label"
-                className="w-full"
-              >
-                <SelectValue>
-                  {(value: string | null) =>
-                    value === "semua" ? "Semua status" : value
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="semua">Semua status</SelectItem>
-                <SelectItem value="Aktif">Aktif</SelectItem>
-                <SelectItem value="Dalam Perbaikan">Dalam Perbaikan</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid gap-2">
-            <Label id="public-location-label">Lokasi</Label>
-            <Select
-              value={location}
-              onValueChange={(value) => setLocation(value ?? "semua")}
-            >
-              <SelectTrigger
-                aria-labelledby="public-location-label"
-                className="w-full"
-              >
-                <SelectValue>
-                  {(value: string | null) =>
-                    value === "semua" ? "Semua lokasi" : value
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="semua">Semua lokasi</SelectItem>
-                {locations.map((item) => (
-                  <SelectItem key={item} value={item}>
-                    {item}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid gap-2">
-            <Label id="public-capacity-label">Kapasitas</Label>
-            <Select
-              value={capacity}
-              onValueChange={(value) =>
-                setCapacity((value ?? "semua") as KapasitasFilter)
-              }
-            >
-              <SelectTrigger
-                aria-labelledby="public-capacity-label"
-                className="w-full"
-              >
-                <SelectValue>
-                  {(value: string | null) =>
-                    ({
-                      semua: "Semua kapasitas",
-                      kecil: "< 30 orang",
-                      sedang: "30–100 orang",
-                      besar: "> 100 orang",
-                    })[value ?? "semua"]
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="semua">Semua kapasitas</SelectItem>
-                <SelectItem value="kecil">&lt; 30 orang</SelectItem>
-                <SelectItem value="sedang">30–100 orang</SelectItem>
-                <SelectItem value="besar">&gt; 100 orang</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
-      </section>
-      <p className="text-sm text-muted-foreground" aria-live="polite">
-        {loading ? "Memuat fasilitas…" : `${filtered.length} fasilitas`}
-      </p>
-      {loading ? (
-        showSkeleton ? (
-          <FacilitySkeleton />
+        {loading ? (
+          showSkeleton ? (
+            <FacilitySkeleton />
+          ) : (
+            <div className="min-h-[430px]" aria-label="Memuat fasilitas" />
+          )
         ) : (
-          <div className="min-h-[430px]" aria-label="Memuat fasilitas" />
-        )
-      ) : (
-        <FacilityGrid
-          facilities={filtered}
-          viewerRole="pengguna"
-          illustrated
-          onCekSlot={(item) => {
-            setSelectedDate("")
-            setSelectedId(item.id)
-          }}
-          onEdit={() => {}}
-          onToggleNonaktif={() => {}}
-          onToggleMaintenance={() => {}}
-          onReset={resetFilters}
+          <FacilityGrid
+            facilities={filtered}
+            viewerRole="pengguna"
+            illustrated
+            reveal
+            onCekSlot={(item) => {
+              setSelectedDate("")
+              setSelectedId(item.id)
+            }}
+            onEdit={() => {}}
+            onToggleNonaktif={() => {}}
+            onToggleMaintenance={() => {}}
+            onReset={resetFilters}
+          />
+        )}
+        <p className="text-xs text-muted-foreground">
+          Gambar merupakan ilustrasi fasilitas.
+        </p>
+        <PublicSlotDialog
+          facility={selected}
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
+          onClose={() => setSelectedId(null)}
         />
-      )}
-      <p className="text-xs text-muted-foreground">
-        Gambar merupakan ilustrasi fasilitas.
-      </p>
-      <PublicSlotDialog
-        facility={selected}
-        selectedDate={selectedDate}
-        onSelectDate={setSelectedDate}
-        onClose={() => setSelectedId(null)}
-      />
-    </div>
+      </div>
+    </LandingMotion>
   )
 }
