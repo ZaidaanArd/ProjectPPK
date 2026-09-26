@@ -61,12 +61,14 @@ const toursByPath: Record<string, Step[]> = {
     step(
       "Reservasi saya",
       "Pantau status pengajuan dan jadwal Anda.",
-      "#reservation-overview"
+      "#reservation-overview",
+      "bottom-left"
     ),
     step(
       "Ajukan reservasi",
       "Buka formulir untuk memilih fasilitas dan waktu.",
-      "#reservation-primary-action"
+      "#reservation-primary-action",
+      "bottom-left"
     ),
   ],
   "/app/reservations/new": [
@@ -98,12 +100,14 @@ const toursByPath: Record<string, Step[]> = {
     step(
       "Laporan saya",
       "Pantau status penanganan kendala fasilitas.",
-      "#report-overview"
+      "#report-overview",
+      "bottom-left"
     ),
     step(
       "Buat laporan",
       "Buka formulir untuk melaporkan kendala.",
-      "#report-primary-action"
+      "#report-primary-action",
+      "bottom-left"
     ),
   ],
   "/app/reports/new": [
@@ -188,7 +192,7 @@ function TourCard({
       aria-modal="true"
       aria-labelledby="user-tour-title"
       onKeyDown={handleKeyDown}
-      className="relative m-0 w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-pink-200 bg-card p-4 text-card-foreground shadow-2xl dark:border-pink-300/20 dark:bg-[#2b202b]"
+      className="relative m-0 w-[min(20rem,calc(100vw-2rem))] animate-in rounded-2xl border border-pink-200 bg-card p-4 text-card-foreground shadow-2xl duration-100 fade-in-0 zoom-in-95 dark:border-pink-300/20 dark:bg-[#2b202b]"
     >
       <div className="flex items-start justify-between gap-3">
         <SthaniFace

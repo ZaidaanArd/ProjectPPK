@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/card"
 import type { DemoRole, FacilityItem } from "@/lib/facilities-dashboard/types"
 import { getCoverUrl } from "@/lib/facilities-dashboard/types"
+import { cn } from "@/lib/utils"
 import { StatusBadge } from "./status-badge"
 
 export function FacilityCard({
@@ -42,21 +43,35 @@ export function FacilityCard({
   const isAdmin = role === "admin"
   const bisaMaintenance = role === "admin" || role === "petugas"
   const nonaktif = facility.status === "Nonaktif"
+  const maintenance = facility.status === "Dalam Perbaikan"
+  const unavailable = nonaktif || maintenance
 
   const cover = getCoverUrl(facility)
   const hasMultiple = (facility.photos?.length ?? 0) > 1
 
   return (
-    <Card className="h-full">
+    <Card className={cover ? "h-full pt-0" : "h-full"}>
       {cover ? (
-        <div className="relative">
+        <div className="relative aspect-[16/9] overflow-hidden bg-[#f2f0ee] dark:bg-[#28252b]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={cover}
             alt={facility.photos?.[0]?.alt ?? facility.nama}
             loading="lazy"
-            className="aspect-[16/9] w-full object-cover"
+            className="h-full w-full object-cover object-top"
           />
+          {unavailable && (
+            <span
+              className={cn(
+                "absolute top-2 left-2 rounded-full px-2 py-0.5 text-[11px] font-medium shadow-sm backdrop-blur",
+                maintenance
+                  ? "bg-amber-100/95 text-amber-800 dark:bg-amber-400/20 dark:text-amber-200"
+                  : "bg-background/90 text-muted-foreground"
+              )}
+            >
+              {maintenance ? "Dalam Perbaikan" : "Nonaktif"}
+            </span>
+          )}
           {illustrated && (
             <span className="absolute bottom-2 left-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur">
               Ilustrasi
@@ -104,12 +119,24 @@ export function FacilityCard({
       <CardFooter className="mt-auto flex-col items-stretch gap-2">
         <Button
           type="button"
-          variant={nonaktif ? "secondary" : "default"}
+          variant={unavailable ? "secondary" : "default"}
           onClick={() => onCekSlot(facility)}
+          disabled={unavailable}
+          title={
+            maintenance
+              ? "Fasilitas sedang dalam perbaikan"
+              : nonaktif
+                ? "Fasilitas sedang tidak tersedia"
+                : undefined
+          }
           className="w-full"
         >
           <IconCalendarTime size={16} aria-hidden="true" />
-          Cek Jadwal Slot
+          {maintenance
+            ? "Sedang Perbaikan"
+            : nonaktif
+              ? "Tidak Tersedia"
+              : "Cek Jadwal Slot"}
         </Button>
 
         {(isAdmin || bisaMaintenance) && (

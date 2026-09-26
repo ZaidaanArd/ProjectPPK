@@ -30,6 +30,8 @@ export type FacilityItem = {
   /** Galeri foto ruangan — opsional biar mock lama tidak jebol. Maks 5 per fasilitas. */
   photos?: FacilityPhoto[]
   status: FacilityStatus
+  /** Waktu dibuat untuk pengurutan "Terbaru" di katalog publik. */
+  createdAt?: number
 }
 
 export type SlotStatus = "tersedia" | "terisi" | "terkunci" | "nonaktif"

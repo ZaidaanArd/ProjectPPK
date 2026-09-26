@@ -53,7 +53,7 @@ export function AppSidebar({
             <SidebarMenuButton
               size="lg"
               className="h-14 rounded-2xl group-data-[collapsible=icon]:rounded-xl data-open:bg-sidebar-accent"
-              render={<Link href={role.home} aria-label="Sthana Kampus" />}
+              render={<Link href="/" aria-label="Sthana Kampus — Beranda" />}
             >
               <span className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-pink-950/5 dark:bg-[#34212b] dark:ring-white/10">
                 <Image

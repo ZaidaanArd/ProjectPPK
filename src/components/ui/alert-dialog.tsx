@@ -6,8 +6,26 @@ import { cn } from "cn"
 
 import { Button } from "@/components/ui/button"
 
-function AlertDialog({ ...props }: AlertDialogPrimitive.Root.Props) {
-  return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />
+const AlertDialogOpenContext = React.createContext<boolean | undefined>(
+  undefined
+)
+
+function AlertDialog({
+  open,
+  children,
+  ...props
+}: AlertDialogPrimitive.Root.Props) {
+  return (
+    <AlertDialogOpenContext.Provider value={open}>
+      <AlertDialogPrimitive.Root
+        data-slot="alert-dialog"
+        open={open}
+        {...props}
+      >
+        {children}
+      </AlertDialogPrimitive.Root>
+    </AlertDialogOpenContext.Provider>
+  )
 }
 
 function AlertDialogTrigger({ ...props }: AlertDialogPrimitive.Trigger.Props) {
@@ -30,7 +48,7 @@ function AlertDialogOverlay({
     <AlertDialogPrimitive.Backdrop
       data-slot="alert-dialog-overlay"
       className={cn(
-        "fixed inset-0 isolate z-50 bg-black/30 duration-100 supports-backdrop-filter:backdrop-blur-sm data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        "fixed inset-0 isolate z-50 bg-black/30 duration-100 supports-backdrop-filter:backdrop-blur-sm data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 data-closed:fill-mode-forwards",
         className
       )}
       {...props}
@@ -41,10 +59,20 @@ function AlertDialogOverlay({
 function AlertDialogContent({
   className,
   size = "default",
+  children,
   ...props
 }: AlertDialogPrimitive.Popup.Props & {
   size?: "default" | "sm"
 }) {
+  const open = React.useContext(AlertDialogOpenContext)
+  // Bekukan konten terakhir saat terbuka supaya judul/deskripsi tidak
+  // berubah selama animasi keluar (khusus pemakaian controlled).
+  const [frozenChildren, setFrozenChildren] = React.useState(children)
+
+  if (open !== false && frozenChildren !== children) {
+    setFrozenChildren(children)
+  }
+
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
@@ -52,11 +80,13 @@ function AlertDialogContent({
         data-slot="alert-dialog-content"
         data-size={size}
         className={cn(
-          "group/alert-dialog-content fixed top-1/2 left-1/2 z-50 grid w-full -translate-x-1/2 -translate-y-1/2 gap-6 rounded-4xl bg-popover p-6 text-popover-foreground shadow-xl ring-1 ring-foreground/5 duration-100 outline-none data-[size=default]:max-w-xs data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-md dark:ring-foreground/10 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "group/alert-dialog-content fixed top-1/2 left-1/2 z-50 grid w-full -translate-x-1/2 -translate-y-1/2 gap-6 rounded-4xl bg-popover p-6 text-popover-foreground shadow-xl ring-1 ring-foreground/5 duration-100 outline-none data-[size=default]:max-w-xs data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-md dark:ring-foreground/10 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:fill-mode-forwards data-closed:zoom-out-95",
           className
         )}
         {...props}
-      />
+      >
+        {open === false ? frozenChildren : children}
+      </AlertDialogPrimitive.Popup>
     </AlertDialogPortal>
   )
 }

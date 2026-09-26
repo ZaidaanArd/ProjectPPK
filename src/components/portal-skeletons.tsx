@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 
 import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { cn } from "@/lib/utils"
 
 export function PortalShellLoading() {
   return (
@@ -61,7 +62,13 @@ export function MetricGridSkeleton({ count = 3 }: { count?: number }) {
   )
 }
 
-export function PortalListSkeleton({ rows = 3 }: { rows?: number }) {
+export function PortalListSkeleton({
+  rows = 3,
+  layout = "list",
+}: {
+  rows?: number
+  layout?: "list" | "grid"
+}) {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
@@ -72,7 +79,12 @@ export function PortalListSkeleton({ rows = 3 }: { rows?: number }) {
   return (
     <div className="min-h-24" aria-label="Memuat data" aria-busy="true">
       {visible ? (
-        <div className="space-y-3 motion-safe:animate-in motion-safe:duration-200 motion-safe:fade-in-0">
+        <div
+          className={cn(
+            "motion-safe:animate-in motion-safe:duration-200 motion-safe:fade-in-0",
+            layout === "grid" ? "grid gap-4 lg:grid-cols-2" : "space-y-3"
+          )}
+        >
           {Array.from({ length: rows }, (_, index) => (
             <Card key={index} className="gap-4 p-5">
               <div className="flex items-center justify-between gap-4">

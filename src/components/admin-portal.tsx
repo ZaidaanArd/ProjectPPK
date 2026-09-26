@@ -1,7 +1,13 @@
 "use client"
 
 import Link from "next/link"
-import { useState, type FormEvent, type ReactNode } from "react"
+import Image from "next/image"
+import {
+  useState,
+  type ElementType,
+  type FormEvent,
+  type ReactNode,
+} from "react"
 import { useAppMutation as useMutation } from "@/lib/data-hooks"
 import { isStaticMode } from "@/lib/data-mode"
 import { downloadStaticCsv } from "@/lib/static-data"
@@ -10,14 +16,18 @@ import {
   IconCalendar,
   IconDownload,
   IconFileAlert,
+  IconMapPin,
   IconPencil,
   IconPlus,
+  IconSearch,
+  IconTrash,
   IconUsers,
 } from "@tabler/icons-react"
 
 import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
 import { DashboardMetricCard } from "@/components/dashboard-metric-card"
+import { PortalPageHeader } from "@/components/portal-page-header"
 import { PortalListSkeleton } from "@/components/portal-skeletons"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -49,14 +59,85 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useAuthenticatedQuery } from "@/lib/use-authenticated-query"
+import { facilityIllustration } from "@/lib/facility-illustrations"
+import { cn } from "@/lib/utils"
 
 const statusLabel: Record<string, string> = {
   pending: "Menunggu",
+  approved: "Disetujui",
   active: "Aktif",
   rejected: "Ditolak",
+  cancelled: "Dibatalkan",
+  in_progress: "Ditangani",
+  resolved: "Selesai",
   disabled: "Nonaktif",
   maintenance: "Perawatan",
   inactive: "Disembunyikan",
+}
+
+const statusDotClass: Record<string, string> = {
+  pending: "bg-amber-500",
+  approved: "bg-emerald-500",
+  in_progress: "bg-sky-500",
+  resolved: "bg-emerald-500",
+  rejected: "bg-rose-500",
+  cancelled: "bg-muted-foreground/50",
+}
+
+const accountRoleLabel: Record<string, string> = {
+  user: "Pengguna",
+  officer: "Petugas",
+  admin: "Admin",
+}
+
+function StatusOverviewCard({
+  title,
+  description,
+  icon: Icon,
+  items,
+}: {
+  title: string
+  description: string
+  icon: ElementType
+  items: { status: string; count: number }[]
+}) {
+  return (
+    <Card className="gap-0 p-5 sm:p-6">
+      <div className="flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-muted text-foreground">
+          <Icon size={20} aria-hidden="true" />
+        </span>
+        <div>
+          <h2 className="font-heading font-bold">{title}</h2>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            {description}
+          </p>
+        </div>
+      </div>
+      <div className="mt-5">
+        {items.map((item) => (
+          <div
+            key={item.status}
+            className="flex items-center justify-between gap-3 border-b border-border/70 py-3 text-sm last:border-b-0"
+          >
+            <span className="flex items-center gap-2.5">
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "size-2 shrink-0 rounded-full",
+                  statusDotClass[item.status] ?? "bg-muted-foreground/50"
+                )}
+              />
+              {statusLabel[item.status] ?? item.status}
+            </span>
+            <strong className="font-heading font-semibold tabular-nums">
+              {item.count}
+            </strong>
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
 }
 
 export function AdminDashboard() {
@@ -64,72 +145,64 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-7">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="mb-2 text-xs font-semibold tracking-[0.16em] text-[#b00055] uppercase dark:text-pink-300">
-            Portal admin
-          </p>
-          <h1 className="font-heading text-3xl font-bold tracking-tight">
-            Ringkasan sistem
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Kondisi akun, fasilitas, reservasi, dan laporan saat ini.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {isStaticMode ? (
-            <button
-              type="button"
-              onClick={() => downloadStaticCsv("summary")}
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              <IconDownload aria-hidden="true" /> Rekap fasilitas CSV
-            </button>
-          ) : (
-            <Link
-              href="/api/admin/export?kind=summary"
-              prefetch={false}
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              <IconDownload aria-hidden="true" /> Rekap fasilitas CSV
-            </Link>
-          )}
-          {isStaticMode ? (
-            <button
-              type="button"
-              onClick={() => downloadStaticCsv("reservations")}
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              <IconDownload aria-hidden="true" /> Reservasi CSV
-            </button>
-          ) : (
-            <Link
-              href="/api/admin/export?kind=reservations"
-              prefetch={false}
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              <IconDownload aria-hidden="true" /> Reservasi CSV
-            </Link>
-          )}
-          {isStaticMode ? (
-            <button
-              type="button"
-              onClick={() => downloadStaticCsv("reports")}
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              <IconDownload aria-hidden="true" /> Laporan CSV
-            </button>
-          ) : (
-            <Link
-              href="/api/admin/export?kind=reports"
-              prefetch={false}
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              <IconDownload aria-hidden="true" /> Laporan CSV
-            </Link>
-          )}
-        </div>
-      </div>
+      <PortalPageHeader
+        eyebrow="Portal admin"
+        title="Ringkasan sistem"
+        description="Kondisi akun, fasilitas, reservasi, dan laporan saat ini."
+        icon={IconBuilding}
+      >
+        {isStaticMode ? (
+          <button
+            type="button"
+            onClick={() => downloadStaticCsv("summary")}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            <IconDownload aria-hidden="true" /> Rekap fasilitas CSV
+          </button>
+        ) : (
+          <Link
+            href="/api/admin/export?kind=summary"
+            prefetch={false}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            <IconDownload aria-hidden="true" /> Rekap fasilitas CSV
+          </Link>
+        )}
+        {isStaticMode ? (
+          <button
+            type="button"
+            onClick={() => downloadStaticCsv("reservations")}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            <IconDownload aria-hidden="true" /> Reservasi CSV
+          </button>
+        ) : (
+          <Link
+            href="/api/admin/export?kind=reservations"
+            prefetch={false}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            <IconDownload aria-hidden="true" /> Reservasi CSV
+          </Link>
+        )}
+        {isStaticMode ? (
+          <button
+            type="button"
+            onClick={() => downloadStaticCsv("reports")}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            <IconDownload aria-hidden="true" /> Laporan CSV
+          </button>
+        ) : (
+          <Link
+            href="/api/admin/export?kind=reports"
+            prefetch={false}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            <IconDownload aria-hidden="true" /> Laporan CSV
+          </Link>
+        )}
+      </PortalPageHeader>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <DashboardMetricCard
           label="Akun"
@@ -161,36 +234,62 @@ export function AdminDashboard() {
         />
       </div>
       {!analytics ? (
-        <PortalListSkeleton rows={2} />
+        <PortalListSkeleton rows={2} layout="grid" />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card className="p-5 sm:p-6">
-            <h2 className="font-heading font-bold">Status reservasi</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Distribusi keputusan untuk seluruh pengajuan.
-            </p>
-            <div className="mt-5 space-y-3">
-              {analytics.reservationsByStatus.map((item) => (
-                <div
-                  key={item.status}
-                  className="flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-3 text-sm"
-                >
-                  <span className="capitalize">
-                    {item.status.replace("_", " ")}
-                  </span>
-                  <strong className="rounded-full bg-background px-2.5 py-1 text-xs text-foreground shadow-sm">
-                    {item.count}
-                  </strong>
-                </div>
-              ))}
-            </div>
-          </Card>
+        <div className="space-y-4">
+          <div className="grid items-start gap-4 lg:grid-cols-2">
+            <StatusOverviewCard
+              title="Status reservasi"
+              description="Keputusan untuk seluruh pengajuan."
+              icon={IconCalendar}
+              items={analytics.reservationsByStatus}
+            />
+            <StatusOverviewCard
+              title="Status laporan"
+              description="Progres penanganan kendala fasilitas."
+              icon={IconFileAlert}
+              items={analytics.reportsByStatus}
+            />
+          </div>
           <Card className="p-5 sm:p-6">
             <h2 className="font-heading font-bold">Penggunaan fasilitas</h2>
             <p className="mt-1 text-xs text-muted-foreground">
               Rekap seluruh periode per fasilitas dan lokasi.
             </p>
-            <div className="mt-4">
+            <div className="mt-4 divide-y divide-border/70 lg:hidden">
+              {analytics.facilityUsage.map((item) => (
+                <div
+                  key={item.facilityId}
+                  className="py-4 first:pt-0 last:pb-0"
+                >
+                  <p className="font-medium">{item.name}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {item.location}
+                  </p>
+                  <dl className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                    <div>
+                      <dt className="text-muted-foreground">Disetujui</dt>
+                      <dd className="mt-1 font-semibold tabular-nums">
+                        {item.approvedReservations}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Menit</dt>
+                      <dd className="mt-1 font-semibold tabular-nums">
+                        {item.reservedMinutes}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Laporan</dt>
+                      <dd className="mt-1 font-semibold tabular-nums">
+                        {item.reports}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 hidden overflow-x-auto lg:block">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -259,6 +358,7 @@ function FacilityForm({
   onChange,
   onClose,
   onSubmit,
+  onDelete,
 }: {
   mode: "create" | "edit"
   draft: FacilityDraft
@@ -267,6 +367,7 @@ function FacilityForm({
   onChange: (draft: FacilityDraft) => void
   onClose: () => void
   onSubmit: (event: FormEvent) => void
+  onDelete?: () => void
 }) {
   const prefix = mode === "create" ? "create-facility" : "edit-facility"
 
@@ -357,6 +458,17 @@ function FacilityForm({
         </p>
       )}
       <DialogFooter className="border-t pt-5 sm:col-span-2 dark:border-white/10">
+        {mode === "edit" && onDelete && (
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={onDelete}
+            disabled={pending}
+            className="sm:mr-auto"
+          >
+            <IconTrash aria-hidden="true" /> Hapus ruangan
+          </Button>
+        )}
         <Button
           type="button"
           variant="outline"
@@ -384,12 +496,30 @@ export function AdminFacilities() {
   const createFacility = useMutation(api.facilities.create)
   const updateFacility = useMutation(api.facilities.update)
   const setStatus = useMutation(api.facilities.setStatus)
+  const removeFacility = useMutation(api.facilities.remove)
   const [createDraft, setCreateDraft] = useState<FacilityDraft | null>(null)
   const [editDraft, setEditDraft] = useState<FacilityEditDraft | null>(null)
   const [createMessage, setCreateMessage] = useState("")
   const [editMessage, setEditMessage] = useState("")
   const [creating, setCreating] = useState(false)
   const [updating, setUpdating] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: Id<"facilities">
+    name: string
+  } | null>(null)
+  const [deleteMessage, setDeleteMessage] = useState("")
+  const [deleting, setDeleting] = useState(false)
+  const [successMessage, setSuccessMessage] = useState("")
+  const [search, setSearch] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const searchTerm = search.trim().toLowerCase()
+  const visibleFacilities = (facilities ?? []).filter(
+    (facility) =>
+      (statusFilter === "all" || facility.status === statusFilter) &&
+      `${facility.name} ${facility.type} ${facility.location}`
+        .toLowerCase()
+        .includes(searchTerm)
+  )
 
   function valuesFrom(draft: FacilityDraft) {
     return {
@@ -435,6 +565,7 @@ export function AdminFacilities() {
     if (!editDraft) return
     setUpdating(true)
     setEditMessage("")
+    setSuccessMessage("")
     try {
       await updateFacility({
         facilityId: editDraft.id,
@@ -450,24 +581,104 @@ export function AdminFacilities() {
     }
   }
 
+  function closeDeleteDialog() {
+    if (deleting) return
+    setDeleteTarget(null)
+    setDeleteMessage("")
+  }
+
+  async function submitDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    setDeleteMessage("")
+    try {
+      await removeFacility({ facilityId: deleteTarget.id })
+      setDeleteTarget(null)
+      setEditDraft(null)
+      setEditMessage("")
+      setSuccessMessage(`Fasilitas ${deleteTarget.name} berhasil dihapus.`)
+    } catch (error) {
+      setDeleteMessage(
+        error instanceof Error ? error.message : "Fasilitas gagal dihapus"
+      )
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-2xl font-bold">Kelola fasilitas</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Tambah, ubah, dan atur visibilitas fasilitas.
-          </p>
-        </div>
+      <PortalPageHeader
+        eyebrow="Data fasilitas"
+        title="Kelola fasilitas"
+        description="Tambah, ubah, dan atur visibilitas fasilitas."
+        icon={IconBuilding}
+      >
         <Button
           onClick={() => {
             setEditDraft(null)
             setCreateMessage("")
+            setSuccessMessage("")
             setCreateDraft({ ...emptyFacility })
           }}
         >
           <IconPlus aria-hidden="true" /> Tambah fasilitas
         </Button>
+      </PortalPageHeader>
+
+      {successMessage && (
+        <output className="block text-sm font-medium text-emerald-700 dark:text-emerald-300">
+          {successMessage}
+        </output>
+      )}
+
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="relative w-full flex-none sm:max-w-sm sm:min-w-64 sm:flex-1">
+          <IconSearch
+            size={18}
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
+          />
+          <Input
+            aria-label="Cari fasilitas"
+            placeholder="Cari nama, tipe, atau lokasi"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label id="facility-status-filter-label">Status</Label>
+          <Select
+            value={statusFilter}
+            onValueChange={(value) => value && setStatusFilter(value)}
+          >
+            <SelectTrigger
+              aria-labelledby="facility-status-filter-label"
+              className="w-40"
+            >
+              <SelectValue>
+                {(value: string | null) =>
+                  value === "all"
+                    ? "Semua"
+                    : (statusLabel[value ?? ""] ?? "Status")
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua</SelectItem>
+              <SelectItem value="active">Aktif</SelectItem>
+              <SelectItem value="maintenance">Perawatan</SelectItem>
+              <SelectItem value="inactive">Disembunyikan</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {facilities && (
+          <p className="pb-2 text-xs text-muted-foreground" aria-live="polite">
+            Menampilkan {visibleFacilities.length} dari {facilities.length}{" "}
+            fasilitas
+          </p>
+        )}
       </div>
 
       <Dialog
@@ -546,86 +757,197 @@ export function AdminFacilities() {
             onChange={(draft) => setEditDraft({ ...editDraft, ...draft })}
             onClose={closeEditDialog}
             onSubmit={submitEdit}
+            onDelete={() => {
+              setDeleteMessage("")
+              setDeleteTarget({
+                id: editDraft.id,
+                name: editDraft.name.trim() || editDraft.originalName,
+              })
+            }}
           />
         )}
       </Dialog>
 
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onClose={closeDeleteDialog}
+        size="md"
+        labelledBy="delete-facility-title"
+      >
+        <DialogHeader className="mb-4">
+          <div className="flex items-start gap-3">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
+              <IconTrash size={20} aria-hidden="true" />
+            </span>
+            <div>
+              <DialogTitle
+                id="delete-facility-title"
+                className="text-xl font-bold"
+              >
+                Hapus ruangan ini?
+              </DialogTitle>
+              <DialogDescription className="leading-relaxed">
+                {deleteTarget
+                  ? `Fasilitas ${deleteTarget.name} akan dihapus permanen dari katalog. Tindakan ini tidak dapat dibatalkan.`
+                  : ""}
+              </DialogDescription>
+            </div>
+          </div>
+          <DialogCloseButton onClose={closeDeleteDialog} />
+        </DialogHeader>
+        {deleteMessage && (
+          <p role="alert" className="text-sm font-medium text-destructive">
+            {deleteMessage}
+          </p>
+        )}
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={closeDeleteDialog}
+            disabled={deleting}
+          >
+            Batal
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={submitDelete}
+            disabled={deleting}
+          >
+            {deleting ? "Menghapus…" : "Ya, hapus"}
+          </Button>
+        </DialogFooter>
+      </Dialog>
+
       {!facilities ? (
-        <PortalListSkeleton />
+        <PortalListSkeleton layout="grid" />
+      ) : facilities.length === 0 ? (
+        <Card className="items-center border border-dashed border-border px-6 py-10 text-center text-muted-foreground">
+          Belum ada fasilitas. Tambahkan fasilitas pertama untuk memulai.
+        </Card>
+      ) : visibleFacilities.length === 0 ? (
+        <Card className="items-center border border-dashed border-border px-6 py-10 text-center text-muted-foreground">
+          Tidak ada fasilitas yang cocok dengan pencarian atau filter.
+        </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {facilities.map((facility) => (
-            <Card key={facility.id} className="gap-3 p-5">
-              <div className="flex justify-between gap-3">
-                <div>
-                  <h2 className="font-semibold">{facility.name}</h2>
-                  <p className="text-sm text-muted-foreground">
-                    {facility.location}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <Badge variant="secondary">
+        <div className="columns-1 gap-4 lg:columns-2">
+          {visibleFacilities.map((facility) => {
+            const illustration = facilityIllustration(
+              facility.name,
+              facility.type
+            )
+            return (
+              <Card
+                key={facility.id}
+                className="mb-4 break-inside-avoid gap-0 overflow-hidden p-0 transition-shadow duration-200 hover:shadow-lg"
+              >
+                <div className="relative aspect-[16/9] overflow-hidden bg-muted/30">
+                  <Image
+                    src={illustration.src}
+                    alt={illustration.alt}
+                    fill
+                    sizes="(max-width: 1023px) 100vw, 50vw"
+                    className="object-cover object-top"
+                  />
+                  <Badge
+                    variant="secondary"
+                    className={cn(
+                      "absolute top-3 right-3 border border-background/70 bg-background/90 shadow-sm backdrop-blur",
+                      facility.status === "active" &&
+                        "text-emerald-800 dark:text-emerald-300",
+                      facility.status === "maintenance" &&
+                        "text-amber-800 dark:text-amber-300"
+                    )}
+                  >
                     {statusLabel[facility.status]}
                   </Badge>
-                  <Button
-                    type="button"
-                    size="icon-sm"
-                    variant="outline"
-                    aria-label={`Ubah ${facility.name}`}
-                    title={`Ubah ${facility.name}`}
-                    onClick={() => {
-                      setCreateDraft(null)
-                      setEditMessage("")
-                      setEditDraft({
-                        id: facility.id,
-                        originalName: facility.name,
-                        name: facility.name,
-                        type: facility.type,
-                        location: facility.location,
-                        capacity: String(facility.capacity),
-                        description: facility.description,
-                      })
-                    }}
-                  >
-                    <IconPencil aria-hidden="true" />
-                  </Button>
                 </div>
-              </div>
-              <p className="text-sm">
-                {facility.type} · {facility.capacity} orang
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {facility.description}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    setStatus({
-                      facilityId: facility.id,
-                      status:
-                        facility.status === "active" ? "inactive" : "active",
-                    })
-                  }
-                >
-                  {facility.status === "active" ? "Sembunyikan" : "Aktifkan"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    setStatus({
-                      facilityId: facility.id,
-                      status: "maintenance",
-                    })
-                  }
-                >
-                  Perawatan
-                </Button>
-              </div>
-            </Card>
-          ))}
+                <div className="flex flex-1 flex-col p-5 sm:p-6">
+                  <div className="flex items-start justify-between gap-3">
+                    <h2 className="font-heading text-base font-semibold break-words">
+                      {facility.name}
+                    </h2>
+                    <Button
+                      type="button"
+                      size="icon-sm"
+                      variant="outline"
+                      aria-label={`Ubah ${facility.name}`}
+                      title={`Ubah ${facility.name}`}
+                      onClick={() => {
+                        setCreateDraft(null)
+                        setEditMessage("")
+                        setSuccessMessage("")
+                        setEditDraft({
+                          id: facility.id,
+                          originalName: facility.name,
+                          name: facility.name,
+                          type: facility.type,
+                          location: facility.location,
+                          capacity: String(facility.capacity),
+                          description: facility.description,
+                        })
+                      }}
+                    >
+                      <IconPencil aria-hidden="true" />
+                    </Button>
+                  </div>
+                  <p className="mt-1 flex items-start gap-1.5 text-sm break-words text-muted-foreground">
+                    <IconMapPin
+                      size={16}
+                      className="mt-0.5 shrink-0"
+                      aria-hidden="true"
+                    />
+                    {facility.location}
+                  </p>
+                  <p className="mt-4 flex items-center gap-1.5 text-sm font-medium">
+                    <IconUsers
+                      size={16}
+                      className="shrink-0 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                    {facility.type} · {facility.capacity} orang
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed break-words text-muted-foreground">
+                    {facility.description}
+                  </p>
+                  <div className="mt-5 flex flex-wrap gap-2 border-t border-border/70 pt-4">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setStatus({
+                          facilityId: facility.id,
+                          status:
+                            facility.status === "active"
+                              ? "inactive"
+                              : "active",
+                        })
+                      }
+                    >
+                      {facility.status === "active"
+                        ? "Sembunyikan"
+                        : "Aktifkan"}
+                    </Button>
+                    {facility.status !== "maintenance" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setStatus({
+                            facilityId: facility.id,
+                            status: "maintenance",
+                          })
+                        }
+                      >
+                        Perawatan
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            )
+          })}
         </div>
       )}
     </div>
@@ -662,6 +984,16 @@ export function AdminUsers() {
   const [role, setRole] = useState<"user" | "officer" | "admin">("officer")
   const [message, setMessage] = useState("")
   const [creating, setCreating] = useState(false)
+  const [search, setSearch] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const searchTerm = search.trim().toLowerCase()
+  const visibleAccounts = (accounts ?? []).filter(
+    (account) =>
+      (statusFilter === "all" || account.status === statusFilter) &&
+      `${account.name} ${account.email} ${account.role} ${account.institutionalId ?? ""}`
+        .toLowerCase()
+        .includes(searchTerm)
+  )
 
   function closeCreateDialog() {
     if (creating) return
@@ -690,13 +1022,12 @@ export function AdminUsers() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-2xl font-bold">Kelola akun</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Verifikasi pendaftaran dan buat akun petugas.
-          </p>
-        </div>
+      <PortalPageHeader
+        eyebrow="Akses pengguna"
+        title="Kelola akun"
+        description="Verifikasi pendaftaran dan buat akun petugas."
+        icon={IconUsers}
+      >
         <Button
           onClick={() => {
             setMessage("")
@@ -705,6 +1036,55 @@ export function AdminUsers() {
         >
           <IconPlus aria-hidden="true" /> Buat akun
         </Button>
+      </PortalPageHeader>
+
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="relative w-full flex-none sm:max-w-sm sm:min-w-64 sm:flex-1">
+          <IconSearch
+            size={18}
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
+          />
+          <Input
+            aria-label="Cari akun"
+            placeholder="Cari nama, email, atau NIM/NIP"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label id="account-status-filter-label">Status</Label>
+          <Select
+            value={statusFilter}
+            onValueChange={(value) => value && setStatusFilter(value)}
+          >
+            <SelectTrigger
+              aria-labelledby="account-status-filter-label"
+              className="w-40"
+            >
+              <SelectValue>
+                {(value: string | null) =>
+                  value === "all"
+                    ? "Semua"
+                    : (statusLabel[value ?? ""] ?? "Status")
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua</SelectItem>
+              <SelectItem value="pending">Menunggu</SelectItem>
+              <SelectItem value="active">Aktif</SelectItem>
+              <SelectItem value="disabled">Nonaktif</SelectItem>
+              <SelectItem value="rejected">Ditolak</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {accounts && (
+          <p className="pb-2 text-xs text-muted-foreground" aria-live="polite">
+            Menampilkan {visibleAccounts.length} dari {accounts.length} akun
+          </p>
+        )}
       </div>
 
       <Dialog
@@ -818,90 +1198,139 @@ export function AdminUsers() {
       </Dialog>
 
       {!accounts ? (
-        <PortalListSkeleton />
+        <PortalListSkeleton layout="grid" />
+      ) : accounts.length === 0 ? (
+        <Card className="border-dashed p-8 text-center text-sm text-muted-foreground">
+          Belum ada akun yang tercatat.
+        </Card>
+      ) : visibleAccounts.length === 0 ? (
+        <Card className="border-dashed p-8 text-center text-sm text-muted-foreground">
+          Tidak ada akun yang cocok dengan pencarian atau status ini.
+        </Card>
       ) : (
-        <div className="space-y-3">
-          {accounts.map((account) => (
-            <Card key={account.id} className="gap-3 p-5">
-              <div className="flex flex-wrap justify-between gap-3">
-                <div>
-                  <h2 className="font-semibold">{account.name}</h2>
-                  <p className="text-sm text-muted-foreground">
-                    {account.email} · {account.role}
-                  </p>
+        <div className="grid items-start gap-4 lg:grid-cols-2">
+          {visibleAccounts.map((account) => (
+            <Card
+              key={account.id}
+              className="gap-0 p-5 transition-shadow duration-200 hover:shadow-lg sm:p-6"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground">
+                    {account.name.trim().slice(0, 1).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="font-semibold break-words">
+                      {account.name}
+                    </h2>
+                    <p className="text-sm break-all text-muted-foreground">
+                      {account.email}
+                    </p>
+                  </div>
                 </div>
-                <Badge variant="secondary">{statusLabel[account.status]}</Badge>
+                <Badge
+                  variant="secondary"
+                  className={cn(
+                    account.status === "active" &&
+                      "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+                    account.status === "pending" &&
+                      "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                  )}
+                >
+                  {statusLabel[account.status]}
+                </Badge>
               </div>
-              {account.institutionalId && (
-                <p className="text-sm">
-                  {account.userKind === "lecturer" ? "NIP" : "NIM"}:{" "}
-                  {account.institutionalId}
-                </p>
+              <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                <span className="rounded-md bg-muted px-2.5 py-1 font-medium text-foreground">
+                  {accountRoleLabel[account.role] ?? account.role}
+                </span>
+                {account.institutionalId && (
+                  <span className="rounded-md bg-muted px-2.5 py-1">
+                    {account.userKind === "lecturer" ? "NIP" : "NIM"}:{" "}
+                    {account.institutionalId}
+                  </span>
+                )}
+              </div>
+              {(account.status === "pending" ||
+                account.status === "active" ||
+                account.status === "disabled") && (
+                <div className="mt-5 space-y-3 border-t pt-4">
+                  {(account.status === "pending" ||
+                    account.status === "active") && (
+                    <Input
+                      aria-label="Alasan tindakan"
+                      placeholder={
+                        account.status === "pending"
+                          ? "Alasan jika ditolak"
+                          : "Alasan jika dinonaktifkan"
+                      }
+                      value={reasons[account.id] ?? ""}
+                      onChange={(e) =>
+                        setReasons((current) => ({
+                          ...current,
+                          [account.id]: e.target.value,
+                        }))
+                      }
+                    />
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {account.status === "pending" && (
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            review({
+                              profileId: account.id,
+                              decision: "active",
+                            })
+                          }
+                        >
+                          Setujui
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() =>
+                            review({
+                              profileId: account.id,
+                              decision: "rejected",
+                              reason: reasons[account.id],
+                            })
+                          }
+                        >
+                          Tolak
+                        </Button>
+                      </>
+                    )}
+                    {account.status === "active" && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() =>
+                          setStatus({
+                            profileId: account.id,
+                            status: "disabled",
+                            reason: reasons[account.id],
+                          })
+                        }
+                      >
+                        Nonaktifkan
+                      </Button>
+                    )}
+                    {account.status === "disabled" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setStatus({ profileId: account.id, status: "active" })
+                        }
+                      >
+                        Aktifkan
+                      </Button>
+                    )}
+                  </div>
+                </div>
               )}
-              <Input
-                aria-label="Alasan tindakan"
-                placeholder="Alasan penolakan/nonaktif"
-                value={reasons[account.id] ?? ""}
-                onChange={(e) =>
-                  setReasons((current) => ({
-                    ...current,
-                    [account.id]: e.target.value,
-                  }))
-                }
-              />
-              <div className="flex flex-wrap gap-2">
-                {account.status === "pending" && (
-                  <>
-                    <Button
-                      size="sm"
-                      onClick={() =>
-                        review({ profileId: account.id, decision: "active" })
-                      }
-                    >
-                      Setujui
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() =>
-                        review({
-                          profileId: account.id,
-                          decision: "rejected",
-                          reason: reasons[account.id],
-                        })
-                      }
-                    >
-                      Tolak
-                    </Button>
-                  </>
-                )}
-                {account.status === "active" && (
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() =>
-                      setStatus({
-                        profileId: account.id,
-                        status: "disabled",
-                        reason: reasons[account.id],
-                      })
-                    }
-                  >
-                    Nonaktifkan
-                  </Button>
-                )}
-                {account.status === "disabled" && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      setStatus({ profileId: account.id, status: "active" })
-                    }
-                  >
-                    Aktifkan
-                  </Button>
-                )}
-              </div>
             </Card>
           ))}
         </div>
