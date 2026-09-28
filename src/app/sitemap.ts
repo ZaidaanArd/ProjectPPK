@@ -1,8 +1,9 @@
 import type { MetadataRoute } from "next"
+import { publicDocs } from "@/lib/public-docs"
 import { siteUrl } from "@/lib/site"
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const lastModified = new Date("2026-09-22T00:00:00+07:00")
+  const lastModified = new Date("2026-09-29T00:00:00+07:00")
 
   return siteUrl
     ? [
@@ -24,6 +25,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
           changeFrequency: "monthly",
           priority: 0.7,
         },
+        {
+          url: siteUrl + "/docs",
+          lastModified,
+          changeFrequency: "monthly",
+          priority: 0.6,
+        },
+        ...publicDocs.map((doc) => ({
+          url: siteUrl + "/docs/" + doc.slug,
+          lastModified,
+          changeFrequency: "monthly" as const,
+          priority: 0.4,
+        })),
       ]
     : []
 }

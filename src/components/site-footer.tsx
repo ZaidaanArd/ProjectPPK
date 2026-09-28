@@ -53,6 +53,7 @@ export function SiteFooter() {
           <Link href="/facilities">Daftar fasilitas</Link>
           <Link href="/app/reservations/new">Ajukan reservasi</Link>
           <Link href="/app/reports/new">Lapor kerusakan</Link>
+          <Link href="/docs">Dokumentasi</Link>
         </nav>
         <nav aria-label="Portal">
           <h2>Portal</h2>

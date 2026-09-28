@@ -1,6 +1,9 @@
 # Roadmap Implementasi
 
-> Fondasi dan seluruh user story sudah diimplementasikan pada branch Convex. Tabel berikut dipertahankan sebagai breakdown pekerjaan dan bahan review; status resmi ada di [REQUIREMENTS.md](./REQUIREMENTS.md).
+> Arsip perencanaan awal. Beberapa item di bawah (misalnya Drizzle/PostgreSQL)
+> tidak mencerminkan implementasi Convex saat ini dan **bukan** instruksi setup.
+> Lihat [arsitektur](./ARCHITECTURE.md), [ADR](./adr/README.md), dan
+> [UAT](./UAT.md) untuk kondisi sekarang.
 
 ## Cara memakai roadmap
 

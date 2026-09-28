@@ -3,8 +3,8 @@
 Set `SITE_URL` to the final HTTPS production origin before building the production deployment. Leave it unset locally. On Vercel, configure it for the Production environment only.
 
 - Without a production URL, pages use `noindex, nofollow`, robots disallows crawling, and the sitemap is empty.
-- With a production URL, the homepage and `/tentang` receive canonical URLs, remain indexable, and appear in the sitemap. The homepage defines the website, web application, and creator; `/tentang` describes the same entities in visible text and structured data.
-- Login, registration, portals, forbidden, and the facilities placeholder remain noindex. Update that page and the sitemap when the actual facility catalogue ships.
+- With a production URL, the homepage, `/facilities`, `/tentang`, and the public `/docs` pages receive canonical URLs, remain indexable, and appear in the sitemap. The homepage defines the website, web application, and creator; `/facilities` defines the collection page; `/tentang` describes the same entities in visible text and structured data.
+- Login, registration, portals, and forbidden remain noindex. The facilities catalogue has shipped and is included in the sitemap.
 - Vercel preview builds stay noindex even when SITE_URL is present.
 - `/opengraph-image` generates the 1200×630 sharing image from the local brand mark. The primary Search favicon is the stable 96×96 PNG, with a conventional `/favicon.ico` fallback; app icons and the manifest remain in `public`.
 
@@ -32,3 +32,9 @@ Use the verified `myudak.com` Domain property, which also covers `sthana.myudak.
 On 2026-09-13, Search Console initially reported `/tentang` as "Discovered - currently not indexed", which is expected for a newly published URL. Its live test passed before the indexing request was submitted.
 
 The Rich Results Test detected one valid Software Application item. Its only notices were the optional `offers` and `aggregateRating` fields; they remain omitted because the scaffold has no real pricing or ratings.
+
+## Bing Webmaster Tools
+
+Use `https://sthana.myudak.com/` as the site URL. Verify ownership in Bing Webmaster Tools (or import the verified Google Search Console property), then submit `https://sthana.myudak.com/sitemap.xml`. Check URL Inspection for `/`, `/facilities`, `/tentang`, and `/docs`, and review any crawl or indexing errors. Do not mark this complete until the site is visible in the Bing account and sitemap submission is confirmed there.
+
+The sitemap's `lastModified` is a release date, not a build timestamp. Update it when these public pages actually change. IndexNow can be added if public content starts changing frequently; a submission is a crawl notification, not an indexing guarantee.

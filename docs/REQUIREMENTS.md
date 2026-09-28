@@ -1,17 +1,20 @@
 # Requirements Sthana Kampus
 
-Dokumen ini merangkum brief tugas. Status implementasi harus diperbarui ketika pull request fitur sudah di-merge, bukan ketika placeholder dibuat.
+Dokumen ini merangkum brief tugas. Tabel status di bawah adalah jejak perencanaan
+implementasi, bukan hasil UAT per deployment. Untuk penerimaan terkini gunakan
+[UAT](./UAT.md) dan [Test Report](./TEST-REPORT.md).
 
 ## Status
 
-| Simbol | Arti                                                |
-| ------ | --------------------------------------------------- |
-| ⬜     | Belum dikerjakan                                    |
-| 🟨     | Sedang dikerjakan                                   |
-| 🧪     | Sudah lulus verifikasi lokal, menunggu review/merge |
-| ✅     | Sudah di-merge dan diverifikasi                     |
+| Simbol | Arti                                                           |
+| ------ | -------------------------------------------------------------- |
+| ⬜     | Belum dikerjakan                                               |
+| 🟨     | Sedang dikerjakan                                              |
+| 🧪     | Implementasi tersedia; perlu verifikasi pada deployment target |
+| ✅     | Sudah di-merge dan diverifikasi                                |
 
-Seluruh user story berada pada tahap 🧪 di branch implementasi Convex. Status berubah menjadi ✅ setelah review dan merge ke `main`.
+Seluruh user story tetap ditandai 🧪 sampai hasil uji penerimaan pada deployment
+target dicatat. Merge ke main saja tidak mengubah status menjadi ✅.
 
 ## Ketentuan umum
 

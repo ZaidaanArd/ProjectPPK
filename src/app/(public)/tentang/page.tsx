@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import Image from "next/image"
+import Link from "next/link"
 import {
   IconArrowRight,
   IconBrandGithub,
@@ -9,6 +10,7 @@ import { LandingMotion } from "@/components/public/landing-motion"
 import { DialogMascot } from "@/components/dialog-mascot"
 import { ImagesBadge } from "@/components/ui/images-badge"
 import { SthaniFace, type SthaniExpression } from "@/components/sthani-face"
+import { publicDocHref, publicDocs, qaSheetUrl } from "@/lib/public-docs"
 import { site, siteUrl } from "@/lib/site"
 
 const pageUrl = siteUrl ? `${siteUrl}/tentang` : undefined
@@ -67,6 +69,19 @@ const expressions: { label: string; face: SthaniExpression }[] = [
   { label: "Terkejut", face: "terkejut" },
   { label: "Sayang", face: "sayang" },
 ]
+
+const documentCardSlugs = new Set([
+  "user-guide",
+  "data-and-api",
+  "adr",
+  "operations",
+  "changelog",
+  "case-study",
+  "sla-legal",
+])
+const documentCards = publicDocs.filter((doc) =>
+  documentCardSlugs.has(doc.slug)
+)
 
 const teamMembers = [
   {
@@ -377,6 +392,121 @@ export default function AboutPage() {
               </li>
             ))}
           </ol>
+        </section>
+
+        <section
+          id="dokumentasi"
+          className="about-docs"
+          aria-labelledby="about-docs-heading"
+          data-reveal
+        >
+          <div className="sthana-container">
+            <div className="about-docs-heading">
+              <h2 id="about-docs-heading">Dokumentasi proyek</h2>
+              <Link href="/docs" className="about-docs-all">
+                Semua dokumen
+                <IconArrowRight size={18} aria-hidden="true" />
+              </Link>
+            </div>
+
+            <div className="about-docs-previews">
+              <details className="about-docs-preview" open>
+                <summary>
+                  <span>Cara kerja sistem</span>
+                  <span>Next.js, Better Auth, Convex</span>
+                </summary>
+                <div className="about-docs-preview-body">
+                  <p>
+                    Halaman dan auth proxy berjalan di Next.js. Better Auth
+                    mengelola sesi; fungsi Convex memeriksa izin dan menyimpan
+                    data reservasi, laporan, serta fasilitas.
+                  </p>
+                  <ol className="about-docs-flow" aria-label="Alur sistem">
+                    <li>
+                      <strong>Browser</strong>
+                      <span>Halaman dan portal</span>
+                    </li>
+                    <li>
+                      <strong>Next.js</strong>
+                      <span>Halaman dan auth proxy</span>
+                    </li>
+                    <li>
+                      <strong>Better Auth</strong>
+                      <span>Identitas dan sesi</span>
+                    </li>
+                    <li>
+                      <strong>Convex</strong>
+                      <span>Aturan, data, dan foto</span>
+                    </li>
+                  </ol>
+                  <Link href="/docs/architecture">
+                    Baca arsitektur{" "}
+                    <IconArrowRight size={16} aria-hidden="true" />
+                  </Link>
+                </div>
+              </details>
+
+              <details className="about-docs-preview">
+                <summary>
+                  <span>Pengujian dan UAT</span>
+                  <span>Belum disetujui</span>
+                </summary>
+                <div className="about-docs-preview-body">
+                  <p>
+                    UAT memuat 17 skenario penerimaan. Laporan test mencatat
+                    pemeriksaan yang benar-benar dijalankan; sheet adalah log
+                    temuan, bukan keputusan penerimaan.
+                  </p>
+                  <div className="about-docs-preview-links">
+                    <Link href="/docs/uat">Baca UAT</Link>
+                    <Link href="/docs/test-report">Laporan test</Link>
+                    <a
+                      href={qaSheetUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Log temuan QA
+                      <IconExternalLink size={15} aria-hidden="true" />
+                    </a>
+                  </div>
+                  <p className="about-docs-caveat">
+                    Status “FIXED” di sheet tidak berarti sudah lulus retest
+                    atau tersedia di production.
+                  </p>
+                </div>
+              </details>
+
+              <details className="about-docs-preview">
+                <summary>
+                  <span>Keamanan dan privasi</span>
+                  <span>Kontrol dan batasan</span>
+                </summary>
+                <div className="about-docs-preview-body">
+                  <p>
+                    Akses portal diperiksa menurut sesi, status akun, dan peran.
+                    Catatan keamanan menjelaskan data yang disimpan serta
+                    kebijakan yang belum ditetapkan, termasuk retensi data.
+                  </p>
+                  <Link href="/docs/security-privacy">
+                    Baca catatan keamanan
+                    <IconArrowRight size={16} aria-hidden="true" />
+                  </Link>
+                </div>
+              </details>
+            </div>
+
+            <ul className="about-docs-grid">
+              {documentCards.map((doc) => (
+                <li key={doc.slug}>
+                  <Link href={publicDocHref(doc)}>
+                    <span>{doc.title}</span>
+                    <p>{doc.summary}</p>
+                    <IconArrowRight size={18} aria-hidden="true" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
         </section>
 
         <section

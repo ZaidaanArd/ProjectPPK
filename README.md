@@ -16,6 +16,8 @@
   <a href="./docs/ARCHITECTURE.md">Arsitektur</a>
   ·
   <a href="./docs/REQUIREMENTS.md">User story</a>
+  ·
+  <a href="./docs/README.md">Semua dokumentasi</a>
 </p>
 
 <p align="center">
@@ -72,7 +74,9 @@ flowchart LR
 - **Zod** untuk kontrak validasi, **Vitest** dan **Playwright** untuk pengujian, serta **Oxfmt**, **Oxlint**, dan **React Doctor** untuk quality gate.
 
 Rancangan lengkap tersedia di [dokumentasi arsitektur](./docs/ARCHITECTURE.md)
-dan [kontrak data/API](./docs/DATA-AND-API.md).
+dan [kontrak data/API](./docs/DATA-AND-API.md). Panduan penggunaan, UAT,
+laporan test, runbook, catatan keamanan, ADR, dan changelog ada di
+[indeks dokumentasi](./docs/README.md).
 
 ## Menjalankan secara lokal
 
@@ -200,7 +204,7 @@ src/
 ├── components/        # Public UI, auth UI, dan portal berbasis peran
 └── lib/               # Auth client/server, data statis, dan shared helpers
 
-docs/                  # Requirements, arsitektur, roadmap, data/API, SEO, dan tim
+docs/                  # Panduan, UAT, test report, operasi, ADR, dan desain
 public/                # Brand, favicon, serta ilustrasi fasilitas
 ```
 
