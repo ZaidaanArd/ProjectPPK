@@ -32,6 +32,13 @@ export const metadata: Metadata = {
   authors: [{ name: site.creator.name, url: site.creator.url }],
   creator: site.creator.name,
   robots: { index: Boolean(siteUrl), follow: Boolean(siteUrl) },
+  ...(siteUrl
+    ? {
+        verification: {
+          other: { "msvalidate.01": "896FFFB10C644A9A818D036CA0D1279D" },
+        },
+      }
+    : {}),
   manifest: "/site.webmanifest",
   icons: {
     icon: [

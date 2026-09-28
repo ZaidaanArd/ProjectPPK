@@ -8,7 +8,7 @@ export const site = {
     sameAs: ["https://github.com/myudak"],
   },
   repository: "https://github.com/ZaidaanArd/ProjectPPK",
-  lastUpdated: "2026-09-22",
+  lastUpdated: "2026-09-29",
 }
 
 function productionUrl() {
