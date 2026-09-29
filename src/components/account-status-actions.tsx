@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { MAX_DEVICE_ACCOUNTS } from "@/lib/account-routing"
+import { toastError } from "@/lib/toast"
 import {
   accountErrorMessage,
   getActiveSessionToken,
@@ -59,8 +60,14 @@ export function AccountStatusActions() {
     try {
       await switchDeviceAccount(token)
       window.location.replace("/portal")
-    } catch {
-      setError("Tidak dapat mengganti akun. Coba lagi.")
+    } catch (cause) {
+      setError(
+        toastError(
+          "Tidak dapat mengganti akun",
+          cause,
+          "Tidak dapat mengganti akun. Coba lagi."
+        )
+      )
       setPending(false)
     }
   }
@@ -71,8 +78,14 @@ export function AccountStatusActions() {
     try {
       await leaveCurrentAccount()
       window.location.replace("/portal")
-    } catch {
-      setError("Tidak dapat keluar dari akun ini. Coba lagi.")
+    } catch (cause) {
+      setError(
+        toastError(
+          "Tidak dapat keluar dari akun",
+          cause,
+          "Tidak dapat keluar dari akun ini. Coba lagi."
+        )
+      )
       setPending(false)
     }
   }

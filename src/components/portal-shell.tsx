@@ -16,6 +16,8 @@ import {
 } from "@/lib/data-hooks"
 import { IconInfoCircle } from "@tabler/icons-react"
 
+import { toast } from "sonner"
+
 import { api } from "../../convex/_generated/api"
 import { AppSidebar } from "@/components/app-sidebar"
 import { DialogMascot } from "@/components/dialog-mascot"
@@ -57,7 +59,6 @@ import {
 } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import {
-  accountErrorMessage,
   leaveAllAccounts,
   leaveCurrentAccount,
   removeDeviceAccount,
@@ -69,6 +70,7 @@ import {
   type PortalRole,
 } from "@/lib/portal-navigation"
 import { resolveOnboardingVisit } from "@/lib/portal-onboarding-storage"
+import { toastError } from "@/lib/toast"
 
 const UserOnboardingTour = dynamic(() =>
   import("@/components/user-onboarding-tour").then(
@@ -119,11 +121,14 @@ function PasswordDialog({
       setConfirmation("")
       onPasswordChanged()
       onOpenChange(false)
+      toast.success("Password berhasil diganti")
     } catch (error) {
       setMessage(
-        error instanceof Error
-          ? error.message
-          : "Password lama tidak sesuai atau password baru tidak valid."
+        toastError(
+          "Password gagal diganti",
+          error,
+          "Password lama tidak sesuai atau password baru tidak valid."
+        )
       )
     } finally {
       setPending(false)
@@ -300,7 +305,11 @@ export function PortalShell({
     } catch (cause) {
       setNavigationPending(false)
       setAccountError(
-        accountErrorMessage(cause, "Tidak dapat mengganti akun. Coba lagi.")
+        toastError(
+          "Tidak dapat mengganti akun",
+          cause,
+          "Tidak dapat mengganti akun. Coba lagi."
+        )
       )
     }
   }
@@ -323,7 +332,11 @@ export function PortalShell({
       setNavigationPending(false)
       setLogoutKind(null)
       setAccountError(
-        accountErrorMessage(cause, "Tidak dapat keluar dari akun. Coba lagi.")
+        toastError(
+          "Tidak dapat keluar dari akun",
+          cause,
+          "Tidak dapat keluar dari akun. Coba lagi."
+        )
       )
     }
   }
@@ -337,7 +350,11 @@ export function PortalShell({
     } catch (cause) {
       setRemoveTarget(null)
       setAccountError(
-        accountErrorMessage(cause, "Akun tidak dapat dilepas. Coba lagi.")
+        toastError(
+          "Akun tidak dapat dilepas",
+          cause,
+          "Akun tidak dapat dilepas. Coba lagi."
+        )
       )
     } finally {
       setRemovePending(false)

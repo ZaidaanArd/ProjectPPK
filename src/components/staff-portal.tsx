@@ -2,7 +2,9 @@
 
 import Link from "next/link"
 import { useMemo, useState } from "react"
+import { toast } from "sonner"
 import { useAppMutation as useMutation } from "@/lib/data-hooks"
+import { toastError } from "@/lib/toast"
 import {
   IconChecklist,
   IconClockHour4,
@@ -506,6 +508,7 @@ export function StaffReservations({
       if (action === "cancelled") {
         await cancel({ reservationId: id, reason: note })
         setSuccess("Reservasi dibatalkan.")
+        toast.success("Reservasi dibatalkan")
       } else {
         await decide({
           reservationId: id,
@@ -515,9 +518,12 @@ export function StaffReservations({
         setSuccess(
           action === "approved" ? "Reservasi disetujui." : "Reservasi ditolak."
         )
+        toast.success(
+          action === "approved" ? "Reservasi disetujui" : "Reservasi ditolak"
+        )
       }
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Tindakan gagal")
+      setMessage(toastError("Tindakan gagal", error))
     } finally {
       setIsSubmitting(false)
       setConfirmAction(null)
@@ -869,15 +875,16 @@ export function StaffReports({
         note,
         facilityMaintenance: maintenanceOverride ?? maintenance[reportId],
       })
-      if (status === "in_progress") {
-        setSuccess("Laporan mulai ditangani.")
-      } else if (status === "resolved") {
-        setSuccess("Laporan ditandai selesai dan fasilitas diaktifkan kembali.")
-      } else {
-        setSuccess("Laporan ditolak.")
-      }
+      const successText =
+        status === "in_progress"
+          ? "Laporan mulai ditangani."
+          : status === "resolved"
+            ? "Laporan ditandai selesai dan fasilitas diaktifkan kembali."
+            : "Laporan ditolak."
+      setSuccess(successText)
+      toast.success(successText)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Pembaruan gagal")
+      setMessage(toastError("Pembaruan laporan gagal", error))
     } finally {
       setIsSubmitting(false)
       setConfirmAction(null)

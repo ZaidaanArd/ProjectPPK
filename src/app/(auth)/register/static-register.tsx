@@ -2,17 +2,17 @@
 
 import Link from "next/link"
 import { useState, type FormEvent } from "react"
+import { toast } from "sonner"
 import { BrandLogo } from "@/components/brand-logo"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { getErrorMessage } from "@/lib/errors"
 import { createStaticRegistration, hydrateStaticData } from "@/lib/static-data"
 
 export function StaticRegister() {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
-  const [institutionalId, setInstitutionalId] = useState("")
-  const [userKind, setUserKind] = useState<"student" | "lecturer">("student")
   const [message, setMessage] = useState("")
   const [done, setDone] = useState(false)
 
@@ -20,15 +20,18 @@ export function StaticRegister() {
     event.preventDefault()
     try {
       await hydrateStaticData()
-      createStaticRegistration({ name, email, userKind, institutionalId })
+      createStaticRegistration({ name, email })
       setDone(true)
       setMessage(
         "Pendaftaran demo tersimpan. Masuk sebagai Admin untuk meninjaunya."
       )
+      toast.success("Pendaftaran demo tersimpan", {
+        description: "Masuk sebagai Admin untuk meninjaunya.",
+      })
     } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : "Pendaftaran demo gagal"
-      )
+      const message = getErrorMessage(error, "Pendaftaran demo gagal")
+      setMessage(message)
+      toast.error("Pendaftaran demo gagal", { description: message })
     }
   }
 
@@ -61,29 +64,6 @@ export function StaticRegister() {
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="demo-kind">Jenis pengguna</Label>
-              <select
-                id="demo-kind"
-                className="h-9 w-full rounded-md border bg-background px-3 text-sm"
-                value={userKind}
-                onChange={(event) =>
-                  setUserKind(event.target.value as typeof userKind)
-                }
-              >
-                <option value="student">Mahasiswa</option>
-                <option value="lecturer">Dosen</option>
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="demo-id">NIM/NIP</Label>
-              <Input
-                id="demo-id"
-                value={institutionalId}
-                onChange={(event) => setInstitutionalId(event.target.value)}
                 required
               />
             </div>
