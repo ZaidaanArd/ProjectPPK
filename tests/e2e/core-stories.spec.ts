@@ -1,38 +1,12 @@
-import { expect, test, type Page } from "@playwright/test"
+import { expect, test } from "@playwright/test"
+
+import { enterDemo, expectScrollUnlocked } from "./helpers"
 
 test.skip(
   process.env.PLAYWRIGHT_STATIC_MODE !== "1" ||
     !process.env.PLAYWRIGHT_BASE_URL?.startsWith("http://localhost:"),
   "Tes ini hanya untuk demo statis lokal; tidak mengubah data production."
 )
-
-async function enterDemo(page: Page, role: "Petugas" | "Admin" | "Pengguna") {
-  await page.goto("/login")
-  await page.evaluate(() => {
-    for (const [id, role] of [
-      ["demo-user", "user"],
-      ["demo-officer", "officer"],
-      ["demo-admin", "admin"],
-    ]) {
-      localStorage.setItem(`sthana:onboarding:v1:${id}:${role}:seen`, "1")
-    }
-  })
-  await page.getByRole("button", { name: `Masuk sebagai ${role}` }).click()
-  await expect(page.getByText(`Mode demo · ${role}`)).toBeVisible()
-  await expect(page.getByRole("dialog")).toHaveCount(0)
-}
-
-async function expectScrollUnlocked(page: Page) {
-  await expect
-    .poll(() =>
-      page.evaluate(
-        () =>
-          document.documentElement.style.overflow === "hidden" ||
-          document.body.style.overflow === "hidden"
-      )
-    )
-    .toBe(false)
-}
 
 test("US-09: slot reservasi yang sudah disetujui ditandai terisi", async ({
   page,

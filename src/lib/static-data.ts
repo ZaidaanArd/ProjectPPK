@@ -96,8 +96,6 @@ export const initialStaticData: StaticData = {
       email: "pengguna@demo.local",
       role: "user",
       status: "active",
-      userKind: "student",
-      institutionalId: "2026001",
       mustChangePassword: false,
       createdAt: seedTime,
     },
@@ -125,8 +123,6 @@ export const initialStaticData: StaticData = {
       email: "calon@demo.local",
       role: "user",
       status: "pending",
-      userKind: "student",
-      institutionalId: "2026002",
       mustChangePassword: false,
       createdAt: seedTime,
     },
@@ -932,8 +928,6 @@ export async function staticMutation(
 export function createStaticRegistration(input: {
   name: string
   email: string
-  userKind: "student" | "lecturer"
-  institutionalId: string
 }) {
   const email = input.email.trim().toLowerCase()
   if (state.accounts.some((a) => a.email === email))
@@ -946,8 +940,6 @@ export function createStaticRegistration(input: {
       email,
       role: "user",
       status: "pending",
-      userKind: input.userKind,
-      institutionalId: input.institutionalId,
       mustChangePassword: false,
       createdAt: Date.now(),
     },

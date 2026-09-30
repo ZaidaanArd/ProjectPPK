@@ -25,7 +25,9 @@ Untuk browser demo statis, jalankan server lokal dengan NEXT_PUBLIC_DATA_MODE=st
 
     $env:PLAYWRIGHT_BASE_URL = "http://localhost:3000"
     $env:PLAYWRIGHT_STATIC_MODE = "1"
-    pnpm exec playwright test tests/e2e/core-stories.spec.ts
+    pnpm exec playwright test tests/e2e/core-stories.spec.ts tests/e2e/user-stories.spec.ts
+
+`tests/e2e/user-stories.spec.ts` berisi satu walkthrough untuk setiap US-01–US-17. Tambahkan `PLAYWRIGHT_SAVE_VIDEOS=1` untuk merekam ulang video di [docs/videos](./videos/README.md).
 
 Untuk registrasi pending, gunakan frontend localhost yang terhubung **hanya** ke Convex development, tanpa PLAYWRIGHT_STATIC_MODE, lalu jalankan tests/e2e/auth-pending.spec.ts. Jangan arahkan test yang membuat akun/data ke production. Konfigurasi lengkap: [panduan Playwright](../tests/e2e/README.md).
 

@@ -4,6 +4,7 @@ import type { Metadata } from "next"
 import localFont from "next/font/local"
 import type { ReactNode } from "react"
 import { ConvexClientProvider } from "./convex-client-provider"
+import { Toaster } from "@/components/ui/sonner"
 import { isStaticMode } from "@/lib/data-mode"
 import { cn } from "@/lib/utils"
 import { site, siteUrl } from "@/lib/site"
@@ -87,6 +88,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         ) : (
           <ConvexClientProvider>{children}</ConvexClientProvider>
         )}
+        <Toaster position="top-center" richColors closeButton />
       </body>
     </html>
   )

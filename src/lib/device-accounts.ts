@@ -1,4 +1,5 @@
 import { authClient } from "@/lib/auth-client"
+import { getErrorMessage } from "./errors"
 
 export type DeviceAccount = NonNullable<
   Awaited<ReturnType<typeof authClient.multiSession.listDeviceSessions>>["data"]
@@ -7,8 +8,7 @@ export type DeviceAccount = NonNullable<
 type AuthError = { message?: string; status?: number } | null | undefined
 
 export function accountErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof Error && error.message) return error.message
-  return fallback
+  return getErrorMessage(error, fallback)
 }
 
 function assertSuccess(error: AuthError) {

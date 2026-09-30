@@ -13,6 +13,7 @@ Perintah `test:e2e:record` membuka situs dan Playwright Inspector. Klik alur yan
 - `pnpm test:e2e` menjalankan tes browser.
 - `pnpm exec playwright test tests/onlineTest/online1.test.ts --headed` menjalankan satu tes di browser terlihat.
 - `pnpm test:e2e:ui` membuka antarmuka untuk menjalankan dan melihat langkah tes.
+- `user-stories.spec.ts` berisi satu tes per user story (US-01–US-17) untuk demo statis lokal. Dengan `PLAYWRIGHT_SAVE_VIDEOS=1`, setiap tes direkam ke `docs/videos/US-XX.webm`; lihat [daftar video](../../docs/videos/README.md).
 - Untuk menguji server lokal di PowerShell: `$env:PLAYWRIGHT_BASE_URL="http://localhost:3000"; pnpm test:e2e`.
 - Untuk merekam di server lokal: `pnpm exec playwright codegen http://localhost:3000`.
 - Untuk merekam halaman login production: `pnpm exec playwright codegen https://sthana.myudak.com/login`.

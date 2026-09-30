@@ -11,6 +11,8 @@ import {
 import { useAppMutation as useMutation } from "@/lib/data-hooks"
 import { isStaticMode } from "@/lib/data-mode"
 import { downloadStaticCsv } from "@/lib/static-data"
+import { toast } from "sonner"
+import { runWithToast, toastError } from "@/lib/toast"
 import {
   IconBuilding,
   IconCalendar,
@@ -550,11 +552,10 @@ export function AdminFacilities() {
     setCreateMessage("")
     try {
       await createFacility(valuesFrom(createDraft))
+      toast.success(`Fasilitas ${createDraft.name.trim()} ditambahkan`)
       setCreateDraft(null)
     } catch (error) {
-      setCreateMessage(
-        error instanceof Error ? error.message : "Fasilitas gagal ditambahkan"
-      )
+      setCreateMessage(toastError("Fasilitas gagal ditambahkan", error))
     } finally {
       setCreating(false)
     }
@@ -571,11 +572,10 @@ export function AdminFacilities() {
         facilityId: editDraft.id,
         ...valuesFrom(editDraft),
       })
+      toast.success("Perubahan fasilitas disimpan")
       setEditDraft(null)
     } catch (error) {
-      setEditMessage(
-        error instanceof Error ? error.message : "Perubahan gagal disimpan"
-      )
+      setEditMessage(toastError("Perubahan gagal disimpan", error))
     } finally {
       setUpdating(false)
     }
@@ -597,10 +597,9 @@ export function AdminFacilities() {
       setEditDraft(null)
       setEditMessage("")
       setSuccessMessage(`Fasilitas ${deleteTarget.name} berhasil dihapus.`)
+      toast.success("Fasilitas dihapus")
     } catch (error) {
-      setDeleteMessage(
-        error instanceof Error ? error.message : "Fasilitas gagal dihapus"
-      )
+      setDeleteMessage(toastError("Fasilitas gagal dihapus", error))
     } finally {
       setDeleting(false)
     }
@@ -916,13 +915,23 @@ export function AdminFacilities() {
                       size="sm"
                       variant="outline"
                       onClick={() =>
-                        setStatus({
-                          facilityId: facility.id,
-                          status:
-                            facility.status === "active"
-                              ? "inactive"
-                              : "active",
-                        })
+                        void runWithToast(
+                          () =>
+                            setStatus({
+                              facilityId: facility.id,
+                              status:
+                                facility.status === "active"
+                                  ? "inactive"
+                                  : "active",
+                            }),
+                          {
+                            success:
+                              facility.status === "active"
+                                ? `${facility.name} disembunyikan`
+                                : `${facility.name} diaktifkan`,
+                            error: "Status fasilitas gagal diubah",
+                          }
+                        )
                       }
                     >
                       {facility.status === "active"
@@ -934,10 +943,17 @@ export function AdminFacilities() {
                         size="sm"
                         variant="outline"
                         onClick={() =>
-                          setStatus({
-                            facilityId: facility.id,
-                            status: "maintenance",
-                          })
+                          void runWithToast(
+                            () =>
+                              setStatus({
+                                facilityId: facility.id,
+                                status: "maintenance",
+                              }),
+                            {
+                              success: `${facility.name} dalam perawatan`,
+                              error: "Status fasilitas gagal diubah",
+                            }
+                          )
                         }
                       >
                         Perawatan
@@ -1007,14 +1023,13 @@ export function AdminUsers() {
     setMessage("")
     try {
       await createAccount({ name, email, temporaryPassword: password, role })
+      toast.success(`Akun ${name.trim()} dibuat`)
       setName("")
       setEmail("")
       setPassword("")
       setCreateOpen(false)
     } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : "Pembuatan akun gagal"
-      )
+      setMessage(toastError("Pembuatan akun gagal", error))
     } finally {
       setCreating(false)
     }
@@ -1047,7 +1062,7 @@ export function AdminUsers() {
           />
           <Input
             aria-label="Cari akun"
-            placeholder="Cari nama, email, atau NIM/NIP"
+            placeholder="Cari nama atau email"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className="pl-10"
@@ -1279,10 +1294,17 @@ export function AdminUsers() {
                         <Button
                           size="sm"
                           onClick={() =>
-                            review({
-                              profileId: account.id,
-                              decision: "active",
-                            })
+                            void runWithToast(
+                              () =>
+                                review({
+                                  profileId: account.id,
+                                  decision: "active",
+                                }),
+                              {
+                                success: `Akun ${account.name} disetujui`,
+                                error: "Persetujuan akun gagal",
+                              }
+                            )
                           }
                         >
                           Setujui
@@ -1291,11 +1313,18 @@ export function AdminUsers() {
                           size="sm"
                           variant="destructive"
                           onClick={() =>
-                            review({
-                              profileId: account.id,
-                              decision: "rejected",
-                              reason: reasons[account.id],
-                            })
+                            void runWithToast(
+                              () =>
+                                review({
+                                  profileId: account.id,
+                                  decision: "rejected",
+                                  reason: reasons[account.id],
+                                }),
+                              {
+                                success: `Akun ${account.name} ditolak`,
+                                error: "Penolakan akun gagal",
+                              }
+                            )
                           }
                         >
                           Tolak
@@ -1307,11 +1336,18 @@ export function AdminUsers() {
                         size="sm"
                         variant="destructive"
                         onClick={() =>
-                          setStatus({
-                            profileId: account.id,
-                            status: "disabled",
-                            reason: reasons[account.id],
-                          })
+                          void runWithToast(
+                            () =>
+                              setStatus({
+                                profileId: account.id,
+                                status: "disabled",
+                                reason: reasons[account.id],
+                              }),
+                            {
+                              success: `Akun ${account.name} dinonaktifkan`,
+                              error: "Akun gagal dinonaktifkan",
+                            }
+                          )
                         }
                       >
                         Nonaktifkan
@@ -1322,7 +1358,17 @@ export function AdminUsers() {
                         size="sm"
                         variant="outline"
                         onClick={() =>
-                          setStatus({ profileId: account.id, status: "active" })
+                          void runWithToast(
+                            () =>
+                              setStatus({
+                                profileId: account.id,
+                                status: "active",
+                              }),
+                            {
+                              success: `Akun ${account.name} diaktifkan`,
+                              error: "Akun gagal diaktifkan",
+                            }
+                          )
                         }
                       >
                         Aktifkan

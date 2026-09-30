@@ -4,6 +4,7 @@ import Link from "next/link"
 import { BrandLogo } from "@/components/brand-logo"
 import { useEffect, useState } from "react"
 import type { FormEvent } from "react"
+import { toast } from "sonner"
 import {
   IconArrowLeft,
   IconEye,
@@ -86,13 +87,17 @@ export function LoginForm({ addAccount = false }: { addAccount?: boolean }) {
         ACCOUNT_REJECTED: "Pendaftaran akun ini ditolak. Hubungi admin.",
         ACCOUNT_DISABLED: "Akun ini dinonaktifkan. Hubungi admin.",
       }
-      setError(
+      const message =
         statusMessage[result.error?.code ?? ""] ??
-          "Email atau password tidak sesuai."
-      )
+        "Email atau password tidak sesuai."
+      setError(message)
+      toast.error("Gagal masuk", { description: message })
       setLoading(false)
     } catch {
       setError("Tidak dapat terhubung. Silakan coba lagi.")
+      toast.error("Gagal masuk", {
+        description: "Tidak dapat terhubung. Silakan coba lagi.",
+      })
       setLoading(false)
     }
   }

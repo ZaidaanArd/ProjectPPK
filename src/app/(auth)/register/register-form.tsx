@@ -4,6 +4,7 @@ import { useState } from "react"
 import type { FormEvent } from "react"
 import Link from "next/link"
 import { useMutation } from "convex/react"
+import { toast } from "sonner"
 import {
   IconArrowLeft,
   IconCheck,
@@ -19,8 +20,7 @@ import { Button, buttonVariants } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Separator } from "@/components/ui/separator"
+import { getErrorMessage } from "@/lib/errors"
 import { cn } from "@/lib/utils"
 import { api } from "../../../../convex/_generated/api"
 
@@ -76,29 +76,14 @@ function PasswordToggle({
   )
 }
 
-const userTypes = [
-  {
-    value: "mahasiswa",
-    label: "Mahasiswa",
-    desc: "Saya adalah mahasiswa aktif",
-  },
-  {
-    value: "dosen",
-    label: "Dosen",
-    desc: "Saya adalah tenaga pengajar",
-  },
-] as const
-
 export function RegisterForm() {
   const register = useMutation(api.profiles.register)
   const [nama, setNama] = useState("")
-  const [nomorInduk, setNomorInduk] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [konfirmasi, setKonfirmasi] = useState("")
   const [showPass, setShowPass] = useState(false)
   const [showKonfirmasi, setShowKonfirmasi] = useState(false)
-  const [tipe, setTipe] = useState<string>("mahasiswa")
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [duplicateEmail, setDuplicateEmail] = useState(false)
@@ -108,7 +93,6 @@ export function RegisterForm() {
   const passwordMismatch = konfirmasi.length > 0 && password !== konfirmasi
   const canSubmit =
     nama.length > 0 &&
-    nomorInduk.length > 0 &&
     email.length > 0 &&
     password.length >= 8 &&
     konfirmasi.length > 0 &&
@@ -126,17 +110,26 @@ export function RegisterForm() {
         name: nama.trim(),
         email: email.trim().toLowerCase(),
         password,
-        userKind: tipe === "dosen" ? "lecturer" : "student",
-        institutionalId: nomorInduk.trim(),
       })
       if (result === "exists") {
         setDuplicateEmail(true)
         setError("Email sudah terdaftar. Masuk untuk melihat status akun.")
+        toast.error("Email sudah terdaftar", {
+          description: "Masuk untuk melihat status akun Anda.",
+        })
       } else {
         setSubmitted(true)
+        toast.success("Pendaftaran berhasil", {
+          description: "Akun Anda menunggu persetujuan admin.",
+        })
       }
-    } catch {
-      setError("Pendaftaran gagal. Periksa data Anda lalu coba lagi.")
+    } catch (cause) {
+      const message = getErrorMessage(
+        cause,
+        "Pendaftaran gagal. Periksa data Anda lalu coba lagi."
+      )
+      setError(message)
+      toast.error("Pendaftaran gagal", { description: message })
     } finally {
       setSubmitting(false)
     }
@@ -163,8 +156,7 @@ export function RegisterForm() {
                 Buat Akun Sthana Kampus!
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Mahasiswa dan dosen mendaftar di sini. Akun petugas dibuat oleh
-                admin.
+                Cukup nama, email, dan password. Akun petugas dibuat oleh admin.
               </p>
             </div>
           </div>
@@ -196,38 +188,6 @@ export function RegisterForm() {
             </Card>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-              {/* Tipe pengguna */}
-              <div className="flex flex-col gap-3">
-                <p className="text-sm font-semibold text-foreground">
-                  Tipe Pengguna
-                </p>
-                <RadioGroup value={tipe} onValueChange={setTipe}>
-                  {userTypes.map((opt) => (
-                    <div key={opt.value} className="flex items-start gap-3">
-                      <RadioGroupItem
-                        value={opt.value}
-                        id={`tipe-${opt.value}`}
-                        className="mt-0.5"
-                      />
-                      <Label
-                        htmlFor={`tipe-${opt.value}`}
-                        className="flex-col items-start gap-0.5 font-normal"
-                      >
-                        <span className="text-sm font-medium text-foreground">
-                          {opt.label}
-                        </span>
-                        <span className="text-xs font-normal text-muted-foreground">
-                          {opt.desc}
-                        </span>
-                      </Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-              </div>
-
-              {/* Divider */}
-              <Separator />
-
               {/* Form fields */}
               <div className="flex flex-col gap-3">
                 <Field label="Nama Lengkap" htmlFor="nama">
@@ -239,25 +199,6 @@ export function RegisterForm() {
                     onChange={(e) => setNama(e.target.value)}
                     required
                     autoComplete="name"
-                    className="rounded-lg border-border bg-background"
-                  />
-                </Field>
-
-                <Field
-                  label={tipe === "mahasiswa" ? "NIM" : "NIP"}
-                  htmlFor="nomor-induk"
-                >
-                  <Input
-                    id="nomor-induk"
-                    type="text"
-                    placeholder={
-                      tipe === "mahasiswa"
-                        ? "Masukkan NIM Anda"
-                        : "Masukkan NIP Anda"
-                    }
-                    value={nomorInduk}
-                    onChange={(e) => setNomorInduk(e.target.value)}
-                    required
                     className="rounded-lg border-border bg-background"
                   />
                 </Field>

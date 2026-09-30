@@ -55,16 +55,13 @@ export const register = mutation({
     name: v.string(),
     email: v.string(),
     password: v.string(),
-    userKind: v.union(v.literal("student"), v.literal("lecturer")),
-    institutionalId: v.string(),
   },
   returns: v.union(v.literal("created"), v.literal("exists")),
   handler: async (ctx, args) => {
     const name = args.name.trim()
     const email = args.email.trim().toLowerCase()
-    const institutionalId = args.institutionalId.trim()
-    if (!name || !email || !institutionalId) {
-      throw new ConvexError("Nama, email, dan NIM/NIP wajib diisi")
+    if (!name || !email) {
+      throw new ConvexError("Nama dan email wajib diisi")
     }
     if (args.password.length < 8) {
       throw new ConvexError("Password minimal 8 karakter")
@@ -84,38 +81,7 @@ export const register = mutation({
       .query("profiles")
       .withIndex("by_auth_user_id", (q) => q.eq("authUserId", result.user.id))
       .unique()
-    if (!profile) return "exists"
-
-    await ctx.db.patch("profiles", profile._id, {
-      userKind: args.userKind,
-      institutionalId,
-      updatedAt: Date.now(),
-    })
-    return "created"
-  },
-})
-
-export const completeRegistration = mutation({
-  args: {
-    userKind: v.union(v.literal("student"), v.literal("lecturer")),
-    institutionalId: v.string(),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const profile = await requireProfile(ctx)
-    const institutionalId = args.institutionalId.trim()
-
-    if (!institutionalId) {
-      throw new ConvexError("NIM/NIP wajib diisi")
-    }
-
-    await ctx.db.patch("profiles", profile._id, {
-      userKind: args.userKind,
-      institutionalId,
-      updatedAt: Date.now(),
-    })
-
-    return null
+    return profile ? "created" : "exists"
   },
 })
 

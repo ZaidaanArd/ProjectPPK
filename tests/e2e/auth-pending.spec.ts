@@ -16,7 +16,6 @@ test("pendaftaran pending tidak membuat sesi dan status baru terlihat setelah lo
 
   await page.goto("/register")
   await page.getByLabel("Nama Lengkap").fill("QA Pending")
-  await page.getByLabel("NIM", { exact: true }).fill("QA-PLAYWRIGHT")
   await page.getByLabel("Email", { exact: true }).fill(email)
   await page.getByLabel("Password", { exact: true }).fill(password)
   await page.getByLabel("Konfirmasi Password", { exact: true }).fill(password)
@@ -31,7 +30,6 @@ test("pendaftaran pending tidak membuat sesi dan status baru terlihat setelah lo
 
   await page.goto("/register")
   await page.getByLabel("Nama Lengkap").fill("QA Pending")
-  await page.getByLabel("NIM", { exact: true }).fill("QA-PLAYWRIGHT")
   await page.getByLabel("Email", { exact: true }).fill(email)
   await page.getByLabel("Password", { exact: true }).fill(password)
   await page.getByLabel("Konfirmasi Password", { exact: true }).fill(password)

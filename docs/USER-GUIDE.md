@@ -10,7 +10,7 @@ Situs: https://sthana.myudak.com. Versi yang berjalan dapat berbeda dari checkou
 
 ## Daftar dan masuk
 
-Mahasiswa dan dosen dapat mendaftar sendiri dengan nama, NIM/NIDN, email, dan password minimal delapan karakter. Pendaftaran baru menunggu persetujuan admin dan tidak langsung membuat sesi login. Akun petugas dibuat oleh admin. Setelah disetujui, masuk di /login; /portal mengarahkan ke dashboard sesuai peran. Bila ditolak atau dinonaktifkan, hubungi administrator.
+Siapa pun dari civitas kampus dapat mendaftar sendiri cukup dengan nama, email, dan password minimal delapan karakter; tidak perlu memilih mahasiswa/dosen atau mengisi NIM/NIP. Pendaftaran baru menunggu persetujuan admin dan tidak langsung membuat sesi login. Akun petugas dibuat oleh admin. Setelah disetujui, masuk di /login; /portal mengarahkan ke dashboard sesuai peran. Bila ditolak atau dinonaktifkan, hubungi administrator.
 
 ## Pengguna
 

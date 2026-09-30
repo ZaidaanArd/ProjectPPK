@@ -2,11 +2,13 @@
 
 import Link from "next/link"
 import { useMemo, useRef, useState, type FormEvent } from "react"
+import { toast } from "sonner"
 import {
   useAppMutation as useMutation,
   useAppQuery as useQuery,
 } from "@/lib/data-hooks"
 import { isStaticMode } from "@/lib/data-mode"
+import { toastError } from "@/lib/toast"
 import { saveStaticPhoto } from "@/lib/static-data"
 import {
   IconBuilding,
@@ -617,8 +619,9 @@ export function ReservationList() {
     setMessage("")
     try {
       await cancel({ reservationId: id })
+      toast.success("Reservasi berhasil dibatalkan")
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Pembatalan gagal")
+      setMessage(toastError("Pembatalan gagal", error))
     }
   }
 
@@ -916,8 +919,11 @@ export function ReservationForm({
       setStartTime("07:00")
       setEndTime("08:00")
       setPurpose("")
+      toast.success("Reservasi terkirim", {
+        description: `${selectedFacility.name} menunggu persetujuan petugas.`,
+      })
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Reservasi gagal")
+      setMessage(toastError("Reservasi gagal diajukan", error))
     } finally {
       setPending(false)
     }
@@ -1533,10 +1539,11 @@ export function ReportForm() {
       setPhoto(null)
       formRef.current?.reset()
       if (photoInputRef.current) photoInputRef.current.value = ""
+      toast.success("Laporan terkirim", {
+        description: `Laporan ${selectedFacility.name} akan ditinjau petugas.`,
+      })
     } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : "Laporan gagal dikirim"
-      )
+      setMessage(toastError("Laporan gagal dikirim", error))
     } finally {
       setPending(false)
     }
