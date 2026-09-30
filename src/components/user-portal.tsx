@@ -27,6 +27,7 @@ import {
   IconMapPin,
   IconPhoto,
   IconSearch,
+  IconShare,
   IconTool,
   IconUpload,
 } from "@tabler/icons-react"
@@ -53,6 +54,8 @@ import { ProgressStepper } from "@/components/ui/progress-stepper"
 import { reportSteps } from "@/lib/status-steps"
 import { PortalListSkeleton } from "@/components/portal-skeletons"
 import { ReservationDatePicker } from "@/components/reservation-date-picker"
+import { ShareDialog } from "@/components/share/share-dialog"
+import type { ShareSubject } from "@/components/share/share-card"
 import { SthaniFace } from "@/components/sthani-face"
 import { TimeSlotPicker } from "@/components/time-slot-picker"
 import {
@@ -578,6 +581,7 @@ export function UserDashboard() {
 }
 
 export function ReservationList() {
+  const [shareSubject, setShareSubject] = useState<ShareSubject | null>(null)
   const reservations = useAuthenticatedQuery(api.reservations.listMine, {})
   const cancel = useMutation(api.reservations.cancelMine)
   const [message, setMessage] = useState("")
@@ -617,6 +621,10 @@ export function ReservationList() {
 
   return (
     <div className="space-y-6">
+      <ShareDialog
+        subject={shareSubject}
+        onClose={() => setShareSubject(null)}
+      />
       <header className="relative border-b border-border/70 pb-6 sm:pb-7">
         <IconCalendarPlus
           size={88}
@@ -704,15 +712,39 @@ export function ReservationList() {
                     createdAt={item.createdAt}
                     updatedAt={item.updatedAt}
                   >
-                    {["pending", "approved"].includes(item.status) ? (
+                    <div className="flex flex-wrap gap-2">
                       <Button
-                        variant="outline"
                         size="sm"
-                        onClick={() => cancelReservation(item.id)}
+                        variant="secondary"
+                        onClick={() =>
+                          setShareSubject({
+                            kind: "reservation",
+                            facilityName: item.facilityName,
+                            location: item.facilityLocation,
+                            startAt: item.startAt,
+                            endAt: item.endAt,
+                            status: item.status,
+                            statusLabel:
+                              statusLabel[item.status] ?? item.status,
+                            purpose: item.purpose,
+                            createdAt: item.createdAt,
+                            updatedAt: item.updatedAt,
+                          })
+                        }
                       >
-                        Batalkan
+                        <IconShare aria-hidden="true" />
+                        Bagikan
                       </Button>
-                    ) : null}
+                      {["pending", "approved"].includes(item.status) ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => cancelReservation(item.id)}
+                        >
+                          Batalkan
+                        </Button>
+                      ) : null}
+                    </div>
                   </ReservationTicket>
                 ))}
               </div>
@@ -1180,6 +1212,7 @@ export function ReservationForm({
 }
 
 export function ReportList() {
+  const [shareSubject, setShareSubject] = useState<ShareSubject | null>(null)
   const reports = useAuthenticatedQuery(api.reports.listMine, {})
   const [activeTab, setActiveTab] = useState<ReportTab>("menunggu")
 
@@ -1205,6 +1238,10 @@ export function ReportList() {
 
   return (
     <div className="space-y-6">
+      <ShareDialog
+        subject={shareSubject}
+        onClose={() => setShareSubject(null)}
+      />
       <header className="relative border-b border-border/70 pb-6 sm:pb-7">
         <IconFilePlus
           size={88}
@@ -1284,7 +1321,28 @@ export function ReportList() {
                     createdAt={report.createdAt}
                     updatedAt={report.updatedAt}
                     reportedLabel={`Dilaporkan ${formatDate(report.createdAt)}`}
-                  />
+                  >
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() =>
+                        setShareSubject({
+                          kind: "report",
+                          facilityName: report.facilityName,
+                          category: report.category,
+                          description: report.description,
+                          status: report.status,
+                          statusLabel:
+                            statusLabel[report.status] ?? report.status,
+                          createdAt: report.createdAt,
+                          updatedAt: report.updatedAt,
+                        })
+                      }
+                    >
+                      <IconShare aria-hidden="true" />
+                      Bagikan
+                    </Button>
+                  </ReportTicket>
                 ))}
               </div>
             ) : (

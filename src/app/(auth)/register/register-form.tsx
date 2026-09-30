@@ -76,7 +76,10 @@ function PasswordToggle({
   )
 }
 
-export function RegisterForm() {
+export function RegisterForm({
+  fromAddAccount = false,
+}: { fromAddAccount?: boolean } = {}) {
+  const loginHref = fromAddAccount ? "/login/add-account" : "/login"
   const register = useMutation(api.profiles.register)
   const [nama, setNama] = useState("")
   const [email, setEmail] = useState("")
@@ -140,7 +143,7 @@ export function RegisterForm() {
       {/* Left — register panel */}
       <div className="login-form-panel relative z-10 flex flex-1 flex-col items-center overflow-y-auto px-8 pt-24 pb-12 lg:h-svh lg:max-w-[48%] lg:flex-none lg:basis-[48%] lg:rounded-r-2xl xl:basis-[44%]">
         <Link
-          href="/"
+          href={fromAddAccount ? "/login/add-account" : "/"}
           className="absolute top-6 left-6 inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:top-8 sm:left-8"
         >
           <IconArrowLeft size={17} aria-hidden="true" />
@@ -156,7 +159,9 @@ export function RegisterForm() {
                 Buat Akun Sthana Kampus!
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Cukup nama, email, dan password. Akun petugas dibuat oleh admin.
+                {fromAddAccount
+                  ? "Daftarkan akun baru tanpa keluar dari akun yang sedang aktif."
+                  : "Cukup nama, email, dan password. Akun petugas dibuat oleh admin."}
               </p>
             </div>
           </div>
@@ -177,7 +182,7 @@ export function RegisterForm() {
                 </p>
               </div>
               <Link
-                href="/login"
+                href={loginHref}
                 className={cn(
                   buttonVariants({ variant: "secondary" }),
                   "rounded-lg border"
@@ -307,7 +312,7 @@ export function RegisterForm() {
                     {error}
                     {duplicateEmail ? (
                       <Link
-                        href="/login"
+                        href={loginHref}
                         className="ml-1 font-semibold underline"
                       >
                         Masuk
@@ -324,7 +329,7 @@ export function RegisterForm() {
             <p className="mt-5 text-center text-sm text-muted-foreground">
               Sudah punya akun?{" "}
               <Link
-                href="/login"
+                href={loginHref}
                 className="font-medium text-foreground transition-opacity hover:opacity-70"
               >
                 Masuk

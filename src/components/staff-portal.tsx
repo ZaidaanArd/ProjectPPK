@@ -901,7 +901,8 @@ export function StaffReports({
       return
     }
     if (status === "in_progress") {
-      void execute(reportId, status)
+      // Starting work puts the facility under maintenance unless unticked.
+      void execute(reportId, status, maintenance[reportId] ?? true)
       return
     }
     setConfirmAction({ reportId, status })
@@ -910,10 +911,14 @@ export function StaffReports({
   function confirmProcess() {
     if (!confirmAction) return
     setIsSubmitting(true)
+    const report = reports?.find((item) => item.id === confirmAction.reportId)
+    // Closing a report that was being handled reactivates its facility.
     void execute(
       confirmAction.reportId,
       confirmAction.status,
-      confirmAction.status === "resolved" ? false : undefined
+      confirmAction.status === "resolved" || report?.status === "in_progress"
+        ? false
+        : undefined
     )
   }
 
@@ -1051,7 +1056,7 @@ export function StaffReports({
                         >
                           <Checkbox
                             id={`maintenance-${report.id}`}
-                            checked={maintenance[report.id] ?? false}
+                            checked={maintenance[report.id] ?? true}
                             onCheckedChange={(checked) =>
                               setMaintenance((current) => ({
                                 ...current,
@@ -1061,6 +1066,10 @@ export function StaffReports({
                           />
                           Tandai fasilitas dalam perbaikan
                         </label>
+                        <p className="-mt-1 text-xs text-muted-foreground">
+                          Otomatis dicentang saat laporan mulai ditangani —
+                          hapus centang bila fasilitas masih bisa dipakai.
+                        </p>
                         <div className="flex flex-wrap gap-2">
                           {report.status === "pending" && (
                             <Button
