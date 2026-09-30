@@ -31,7 +31,7 @@ export function FacilitySelectionCard({
   return (
     <label
       className={cn(
-        "group relative flex cursor-pointer flex-col overflow-hidden rounded-3xl border bg-card shadow-sm transition-[border-color,box-shadow,transform] duration-200 focus-within:ring-2 focus-within:ring-pink-400/40 hover:-translate-y-0.5 hover:shadow-lg",
+        "group relative flex min-h-24 cursor-pointer overflow-hidden rounded-2xl border bg-card shadow-sm transition-[border-color,box-shadow,transform] duration-200 focus-within:ring-2 focus-within:ring-pink-400/40 hover:-translate-y-0.5 hover:shadow-lg",
         selected
           ? "border-pink-500 ring-2 ring-pink-400/40 dark:border-pink-400"
           : "border-border/80 hover:border-pink-300 dark:hover:border-pink-500/50"
@@ -46,40 +46,45 @@ export function FacilitySelectionCard({
         required
         className="sr-only"
       />
-      <span className="relative block aspect-[16/9] overflow-hidden bg-muted/30">
+      <span className="relative w-24 shrink-0 overflow-hidden bg-muted/30 sm:w-28">
         <Image
           src={illustration.src}
           alt={illustration.alt}
           fill
-          sizes="(max-width: 1023px) 100vw, 50vw"
-          className="object-cover object-top"
+          sizes="112px"
+          className="object-cover transition-transform duration-300 group-hover:scale-105"
         />
-        <span className="absolute bottom-3 left-3 rounded-full bg-background/90 px-3 py-1 text-xs font-medium text-foreground shadow-sm backdrop-blur">
-          {facility.type}
-        </span>
         {selected && (
-          <span className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-pink-600 px-3 py-1 text-xs font-semibold text-white shadow-sm">
-            <IconCheck size={14} aria-hidden="true" /> Dipilih
+          <span className="absolute inset-0 grid place-items-center bg-pink-600/55 text-white">
+            <span className="grid size-8 place-items-center rounded-full bg-white text-pink-600 shadow">
+              <IconCheck size={18} stroke={3} aria-hidden="true" />
+            </span>
           </span>
         )}
       </span>
-      <span className="flex flex-1 flex-col p-4 sm:p-5">
-        <span className="font-heading text-base font-semibold break-words">
-          {facility.name}
+      <span className="flex min-w-0 flex-1 flex-col gap-1 p-3.5">
+        <span className="flex items-start justify-between gap-2">
+          <span className="font-heading text-sm font-semibold break-words">
+            {facility.name}
+          </span>
+          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+            {facility.type}
+          </span>
         </span>
-        <span className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+        <span className="line-clamp-1 text-xs text-muted-foreground">
           {facility.description}
         </span>
-        <span className="mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-4 text-xs text-muted-foreground">
+        <span className="mt-auto flex flex-wrap gap-x-3 gap-y-0.5 pt-1.5 text-[11px] text-muted-foreground">
           <span className="inline-flex items-center gap-1">
-            <IconMapPin size={14} aria-hidden="true" />
+            <IconMapPin size={12} aria-hidden="true" />
             {facility.location}
           </span>
           <span className="inline-flex items-center gap-1">
-            <IconUsers size={14} aria-hidden="true" />
+            <IconUsers size={12} aria-hidden="true" />
             {facility.capacity} orang
           </span>
         </span>
+        {selected && <span className="sr-only">Dipilih</span>}
       </span>
     </label>
   )

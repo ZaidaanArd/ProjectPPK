@@ -10,6 +10,7 @@ import {
   IconClockHour4,
   IconFileAlert,
   IconProgress,
+  IconAlertTriangle,
 } from "@tabler/icons-react"
 
 import { api } from "../../convex/_generated/api"
@@ -21,6 +22,7 @@ import {
   DashboardSkeletonRows,
 } from "@/components/dashboard-sections"
 import { PortalPageHeader } from "@/components/portal-page-header"
+import { ReportTicket, ReservationTicket } from "@/components/portal-cards"
 import { PortalListSkeleton } from "@/components/portal-skeletons"
 import {
   AlertDialog,
@@ -476,6 +478,24 @@ export function StaffReservations({
     return counts
   }, [reservations])
 
+  // Pending requests that clash with each other; approving one rejects the rest.
+  const overlaps = useMemo(() => {
+    const pending = (reservations ?? []).filter(
+      (item) => item.status === "pending"
+    )
+    const counts: Record<string, number> = {}
+    for (const item of pending) {
+      counts[item.id] = pending.filter(
+        (other) =>
+          other.id !== item.id &&
+          other.facilityName === item.facilityName &&
+          other.startAt < item.endAt &&
+          item.startAt < other.endAt
+      ).length
+    }
+    return counts
+  }, [reservations])
+
   const visibleReservations = useMemo(() => {
     if (!reservations) return undefined
     const filtered = reservations.filter((item) =>
@@ -640,61 +660,35 @@ export function StaffReservations({
           ) : (
             <div className="grid items-start gap-4 lg:grid-cols-2">
               {visibleReservations.map((item) => (
-                <Card
+                <ReservationTicket
                   key={item.id}
-                  className="gap-4 p-5 transition-shadow duration-200 hover:shadow-lg sm:p-6"
+                  facilityName={item.facilityName}
+                  startAt={item.startAt}
+                  endAt={item.endAt}
+                  status={item.status}
+                  statusLabel={labels[item.status] ?? item.status}
+                  purpose={item.purpose}
+                  decisionNote={item.decisionNote}
+                  createdAt={item.createdAt}
+                  meta={`${item.applicantName} · ${item.applicantEmail}`}
+                  alert={
+                    item.status === "pending" && overlaps[item.id] ? (
+                      <p className="flex items-start gap-2 rounded-2xl border border-amber-300/60 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900 dark:border-amber-300/20 dark:bg-amber-400/10 dark:text-amber-100">
+                        <IconAlertTriangle
+                          size={16}
+                          className="mt-px shrink-0"
+                          aria-hidden="true"
+                        />
+                        Bentrok dengan {overlaps[item.id]} pengajuan lain pada
+                        jam yang sama — pengajuan itu otomatis ditolak jika ini
+                        disetujui.
+                      </p>
+                    ) : null
+                  }
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <h2 className="font-heading font-semibold break-words">
-                        {item.facilityName}
-                      </h2>
-                      <p className="mt-1 text-sm break-words text-muted-foreground">
-                        {item.applicantName} · {item.applicantEmail}
-                      </p>
-                    </div>
-                    <Badge
-                      variant="secondary"
-                      className={cn(
-                        "shrink-0",
-                        item.status === "approved" &&
-                          "bg-emerald-100 text-emerald-800 dark:bg-emerald-400/15 dark:text-emerald-300"
-                      )}
-                    >
-                      {labels[item.status]}
-                    </Badge>
-                  </div>
-                  <div className="flex items-start gap-2 rounded-2xl border border-border/70 bg-muted/25 p-3 text-sm">
-                    <IconClockHour4
-                      size={18}
-                      className="mt-0.5 shrink-0 text-muted-foreground"
-                      aria-hidden="true"
-                    />
-                    <span className="break-words">
-                      {formatDate(item.startAt)} – {formatDate(item.endAt)}
-                    </span>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-muted-foreground">
-                      Tujuan penggunaan
-                    </p>
-                    <p className="mt-1 text-sm leading-relaxed break-words whitespace-pre-wrap">
-                      {item.purpose}
-                    </p>
-                  </div>
-                  {item.decisionNote && (
-                    <div className="min-w-0 rounded-xl bg-muted p-3.5">
-                      <p className="text-xs font-medium text-muted-foreground">
-                        Catatan keputusan
-                      </p>
-                      <p className="mt-1 text-sm leading-relaxed break-words whitespace-pre-wrap">
-                        {item.decisionNote}
-                      </p>
-                    </div>
-                  )}
                   {(item.status === "pending" ||
                     item.status === "approved") && (
-                    <div className="space-y-3 border-t border-border/70 pt-4">
+                    <div className="space-y-3">
                       <Input
                         id={`reservation-note-${item.id}`}
                         aria-label="Catatan keputusan"
@@ -739,7 +733,7 @@ export function StaffReservations({
                       </div>
                     </div>
                   )}
-                </Card>
+                </ReservationTicket>
               ))}
             </div>
           )}
@@ -1009,136 +1003,101 @@ export function StaffReports({
             </Card>
           ) : (
             <div className="grid items-start gap-4 lg:grid-cols-2">
-              {visibleReports.map((report) => (
-                <Card
-                  key={report.id}
-                  className="gap-4 p-5 transition-shadow duration-200 hover:shadow-lg sm:p-6"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <h2 className="font-heading font-semibold break-words">
-                        {report.facilityName}
-                      </h2>
-                      <p className="mt-1 text-sm break-words text-muted-foreground">
-                        {report.reporterName} · {report.reporterEmail}
-                      </p>
-                    </div>
-                    <Badge
-                      variant="secondary"
-                      className={cn(
-                        "shrink-0",
-                        report.status === "resolved" &&
-                          "bg-emerald-100 text-emerald-800 dark:bg-emerald-400/15 dark:text-emerald-300",
-                        report.status === "in_progress" &&
-                          "bg-sky-100 text-sky-800 dark:bg-sky-400/15 dark:text-sky-300"
-                      )}
-                    >
-                      {labels[report.status]}
-                    </Badge>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-muted-foreground">
-                      {report.category}
-                    </p>
-                    <p className="mt-1 text-sm leading-relaxed break-words whitespace-pre-wrap">
-                      {report.description}
-                    </p>
-                  </div>
-                  {report.photoUrl && (
-                    <div className="flex min-h-40 items-center justify-center rounded-xl bg-muted/30 p-2">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={report.photoUrl}
-                        alt="Bukti laporan"
-                        className="block max-h-72 w-full rounded-lg object-contain"
-                      />
-                    </div>
-                  )}
-                  {report.status === "pending" ||
-                  report.status === "in_progress" ? (
-                    <div className="space-y-3 border-t border-border/70 pt-4">
-                      <div className="space-y-1.5">
-                        <Label htmlFor={`report-note-${report.id}`}>
-                          Catatan penanganan
-                        </Label>
-                        <Input
-                          id={`report-note-${report.id}`}
-                          placeholder="Wajib untuk selesai atau ditolak"
-                          value={
-                            notes[report.id] ?? report.resolutionNote ?? ""
-                          }
-                          onChange={(event) =>
-                            setNotes((current) => ({
-                              ...current,
-                              [report.id]: event.target.value,
-                            }))
-                          }
-                        />
-                      </div>
-                      <label
-                        htmlFor={`maintenance-${report.id}`}
-                        className="flex items-center gap-2 text-sm"
-                      >
-                        <Checkbox
-                          id={`maintenance-${report.id}`}
-                          checked={maintenance[report.id] ?? false}
-                          onCheckedChange={(checked) =>
-                            setMaintenance((current) => ({
-                              ...current,
-                              [report.id]: checked === true,
-                            }))
-                          }
-                        />
-                        Tandai fasilitas dalam perbaikan
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {report.status === "pending" && (
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              requestProcess(report.id, "in_progress")
+              {visibleReports.map((report) => {
+                const open =
+                  report.status === "pending" || report.status === "in_progress"
+                return (
+                  <ReportTicket
+                    key={report.id}
+                    facilityName={report.facilityName}
+                    category={report.category}
+                    description={report.description}
+                    photoUrl={report.photoUrl}
+                    status={report.status}
+                    statusLabel={labels[report.status] ?? report.status}
+                    resolutionNote={
+                      open
+                        ? undefined
+                        : report.resolutionNote || "Tidak ada catatan."
+                    }
+                    createdAt={report.createdAt}
+                    updatedAt={report.updatedAt}
+                    meta={`${report.reporterName} · ${report.reporterEmail}`}
+                    reportedLabel={`Dilaporkan ${formatDate(report.createdAt)} · Diperbarui ${formatDate(report.updatedAt)}`}
+                  >
+                    {open ? (
+                      <div className="space-y-3">
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`report-note-${report.id}`}>
+                            Catatan penanganan
+                          </Label>
+                          <Input
+                            id={`report-note-${report.id}`}
+                            placeholder="Wajib untuk selesai atau ditolak"
+                            value={
+                              notes[report.id] ?? report.resolutionNote ?? ""
                             }
-                          >
-                            Mulai tangani
-                          </Button>
-                        )}
-                        {report.status === "in_progress" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              requestProcess(report.id, "resolved")
+                            onChange={(event) =>
+                              setNotes((current) => ({
+                                ...current,
+                                [report.id]: event.target.value,
+                              }))
                             }
-                          >
-                            Selesaikan + aktifkan fasilitas
-                          </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => requestProcess(report.id, "rejected")}
+                          />
+                        </div>
+                        <label
+                          htmlFor={`maintenance-${report.id}`}
+                          className="flex items-center gap-2 text-sm"
                         >
-                          Tolak
-                        </Button>
+                          <Checkbox
+                            id={`maintenance-${report.id}`}
+                            checked={maintenance[report.id] ?? false}
+                            onCheckedChange={(checked) =>
+                              setMaintenance((current) => ({
+                                ...current,
+                                [report.id]: checked === true,
+                              }))
+                            }
+                          />
+                          Tandai fasilitas dalam perbaikan
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {report.status === "pending" && (
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                requestProcess(report.id, "in_progress")
+                              }
+                            >
+                              Mulai tangani
+                            </Button>
+                          )}
+                          {report.status === "in_progress" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                requestProcess(report.id, "resolved")
+                              }
+                            >
+                              Selesaikan + aktifkan fasilitas
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() =>
+                              requestProcess(report.id, "rejected")
+                            }
+                          >
+                            Tolak
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2 border-t border-border/70 pt-4">
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground">
-                          Catatan penanganan
-                        </p>
-                        <p className="mt-1 text-sm leading-relaxed break-words whitespace-pre-wrap">
-                          {report.resolutionNote || "Tidak ada catatan."}
-                        </p>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Diperbarui {formatDate(report.updatedAt)}
-                      </p>
-                    </div>
-                  )}
-                </Card>
-              ))}
+                    ) : null}
+                  </ReportTicket>
+                )
+              })}
             </div>
           )}
         </TabsPanel>

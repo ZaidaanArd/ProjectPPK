@@ -14,9 +14,8 @@ test("US-09: slot reservasi yang sudah disetujui ditandai terisi", async ({
   await enterDemo(page, "Pengguna")
   await page.goto("/app/reservations/new")
   await page.getByText("Aula Gedung A", { exact: true }).click()
-  await page.getByRole("combobox", { name: "Jam mulai" }).click()
   await expect(
-    page.getByRole("option", { name: /09.00.*Terisi/ })
+    page.getByRole("button", { name: /09.00.*Terisi/ })
   ).toBeDisabled()
 })
 
@@ -42,7 +41,9 @@ test("US-10: pembatalan meminta alasan dan memfokuskan input", async ({
   await expect(page.getByText("Praktikum bersama")).toBeHidden()
   await page.getByRole("tab", { name: /Riwayat/ }).click()
   await expect(page.getByText("Praktikum bersama")).toBeVisible()
-  await expect(page.getByText("Dibatalkan", { exact: true })).toBeVisible()
+  await expect(
+    page.getByText("Dibatalkan", { exact: true }).first()
+  ).toBeVisible()
 })
 
 test("US-10: keputusan setujui memerlukan konfirmasi", async ({ page }) => {
@@ -76,7 +77,9 @@ test("US-11/12: mulai tanpa catatan, perbaikan, lalu aktif kembali", async ({
     "Laporan mulai ditangani"
   )
   await page.getByRole("tab", { name: /Sedang ditangani/ }).click()
-  await expect(page.getByText("Ditangani", { exact: true })).toBeVisible()
+  await expect(
+    page.getByText("Ditangani", { exact: true }).first()
+  ).toBeVisible()
 
   await page.goto("/facilities")
   const lab = page
@@ -103,7 +106,7 @@ test("US-11/12: mulai tanpa catatan, perbaikan, lalu aktif kembali", async ({
     "Laporan ditandai selesai"
   )
   await page.getByRole("tab", { name: /Riwayat/ }).click()
-  await expect(page.getByText("Selesai", { exact: true })).toBeVisible()
+  await expect(page.getByText("Selesai", { exact: true }).first()).toBeVisible()
   await page.goto("/facilities")
   await expect(lab).toContainText("Aktif")
 })
@@ -130,7 +133,7 @@ test("US-11: tolak laporan memerlukan catatan dan konfirmasi", async ({
   await page.getByRole("button", { name: "Ya, tolak" }).click()
   await expect(page.getByRole("status")).toContainText("Laporan ditolak")
   await page.getByRole("tab", { name: /Riwayat/ }).click()
-  await expect(page.getByText("Ditolak", { exact: true })).toBeVisible()
+  await expect(page.getByText("Ditolak", { exact: true }).first()).toBeVisible()
 })
 
 test("US-17: rekap per fasilitas/lokasi tersedia dan CSV dapat diunduh", async ({
