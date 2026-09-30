@@ -34,7 +34,7 @@ export function FacilitySelectionCard({
         "group relative flex min-h-24 cursor-pointer overflow-hidden rounded-2xl border bg-card shadow-sm transition-[border-color,box-shadow,transform] duration-200 focus-within:ring-2 focus-within:ring-pink-400/40 hover:-translate-y-0.5 hover:shadow-lg",
         selected
           ? "border-pink-500 ring-2 ring-pink-400/40 dark:border-pink-400"
-          : "border-border/80 hover:border-pink-300 dark:hover:border-pink-500/50"
+          : "border-border/80"
       )}
     >
       <input

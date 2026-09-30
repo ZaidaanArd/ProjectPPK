@@ -433,7 +433,7 @@ export function PortalShell({
                 {role.label}
               </span>
               <AnimatedThemeToggler
-                className="flex size-9 items-center justify-center rounded-xl border border-transparent text-[#8a2958] transition-colors hover:border-pink-200 hover:bg-pink-50 dark:text-pink-200 dark:hover:border-pink-800 dark:hover:bg-pink-950/50 [&_svg]:size-4"
+                className="flex size-9 items-center justify-center rounded-xl border border-transparent text-[#8a2958] transition-colors hover:bg-pink-50 dark:text-pink-200 dark:hover:bg-pink-950/50 [&_svg]:size-4"
                 aria-label="Ganti tema terang atau gelap"
                 title="Ganti tema"
               />

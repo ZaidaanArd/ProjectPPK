@@ -6,12 +6,12 @@ import {
   IconBuilding,
   IconCalendarEvent,
   IconCheck,
-  IconChevronDown,
   IconMapPin,
   IconUsers,
   IconTool as IconWrench,
 } from "@tabler/icons-react"
 import { DashboardPreview } from "@/components/public/dashboard-preview"
+import { FaqAccordion } from "@/components/public/faq-accordion"
 import { LandingMotion } from "@/components/public/landing-motion"
 import { StepsShowcase, type Step } from "@/components/public/steps-showcase"
 import { SthaniFace } from "@/components/sthani-face"
@@ -85,7 +85,7 @@ const faqs = [
   },
   {
     question: "Bagaimana cara melaporkan fasilitas yang rusak?",
-    text: "Buat laporan dari akunmu, jelaskan kendalanya — misalnya AC mati atau kursi rusak — dan sebutkan lokasinya. Petugas akan menindaklanjuti dan memperbarui progresnya.",
+    text: "Buat laporan dari akunmu, jelaskan kendalanya misalnya AC mati atau kursi rusak dan sebutkan lokasinya. Petugas akan menindaklanjuti dan memperbarui progresnya.",
   },
 ]
 export default function HomePage() {
@@ -145,7 +145,7 @@ export default function HomePage() {
           <div className="sthana-container hero-grid">
             <div className="hero-copy">
               <h1>
-                Pinjam ruangan kampus <span>tanpa drama antre.</span>
+                Pinjam ruangan kampus <span>tanpa drama antri</span>
               </h1>
               <p>
                 Sthana Kampus membantu mencari fasilitas, mengajukan reservasi,
@@ -189,8 +189,8 @@ export default function HomePage() {
           >
             <div className="section-heading">
               <div>
-                <h2 id="facilities-heading">Ruang untuk setiap rencana.</h2>
-                <p>Temukan fasilitas yang pas untuk kegiatanmu.</p>
+                <h2 id="facilities-heading">Ruang untuk setiap rencana</h2>
+                <p>Temukan fasilitas yang pas untuk kegiatanmu</p>
               </div>
               <Link
                 href="/facilities"
@@ -248,42 +248,28 @@ export default function HomePage() {
                 </article>
               ))}
             </div>
-            <p className="demo-note">
-              Katalog contoh · Foto merupakan ilustrasi fasilitas.
-            </p>
           </section>
           <section id="cara-kerja" data-reveal aria-labelledby="steps-heading">
             <div className="section-heading">
               <h2 id="steps-heading">
                 Dari cari ruangan
                 <br />
-                sampai urusan beres.
+                sampai urusan beres
               </h2>
-              <p>Empat langkah, semuanya tercatat.</p>
             </div>
             <StepsShowcase steps={steps} />
           </section>
           <section data-reveal aria-labelledby="faq-heading">
             <div className="faq-layout">
               <div className="faq-intro">
-                <h2 id="faq-heading">Sering ditanyakan.</h2>
+                <h2 id="faq-heading">Sering ditanyakan</h2>
                 <p>
                   Jawaban singkat untuk hal yang paling sering ditanyakan soal
                   reservasi dan pelaporan fasilitas.
                 </p>
                 <SthaniFace expression="bingung" className="faq-mascot" />
               </div>
-              <div className="faq-list">
-                {faqs.map(({ question, text }) => (
-                  <details key={question} className="faq-item">
-                    <summary className="faq-question">
-                      {question}
-                      <IconChevronDown size={18} aria-hidden="true" />
-                    </summary>
-                    <p className="faq-answer">{text}</p>
-                  </details>
-                ))}
-              </div>
+              <FaqAccordion items={faqs} />
             </div>
           </section>
           <section className="report-banner" data-reveal>

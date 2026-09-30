@@ -8,6 +8,7 @@ import type { Id } from "../../convex/_generated/dataModel"
 import { FacilityGrid } from "@/components/facilities-dashboard/facility-grid"
 import { SlotGridModal } from "@/components/facilities-dashboard/slot-grid-modal"
 import { LandingMotion } from "@/components/public/landing-motion"
+import { SthaniFace } from "@/components/sthani-face"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -284,23 +285,39 @@ export function PublicFacilities() {
   return (
     <LandingMotion>
       <div className="sthana-container public-facilities-content space-y-5">
-        <div className="public-facilities-intro">
-          <div>
-            <h1>Fasilitas kampus</h1>
-            <p>
-              Cari fasilitas dan periksa jadwalnya sebelum mengajukan reservasi.
-            </p>
-            {facilities && (
-              <p className="public-facilities-summary">
-                {facilities.length} fasilitas · {types.length} tipe · kapasitas
-                hingga {maxCapacity} orang
+        <div className="public-facilities-hero">
+          <div className="public-facilities-intro">
+            <div>
+              <h1>Fasilitas kampus</h1>
+              <p>
+                Cari fasilitas dan periksa jadwalnya sebelum mengajukan
+                reservasi.
               </p>
-            )}
+              {facilities && (
+                <div
+                  className="public-facilities-stats"
+                  aria-label="Ringkasan fasilitas"
+                >
+                  <span>
+                    <strong>{facilities.length}</strong> Fasilitas
+                  </span>
+                  <span>
+                    <strong>{types.length}</strong> Tipe
+                  </span>
+                  <span>
+                    Hingga <strong>{maxCapacity}</strong> Orang
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
+          <span className="public-facilities-hero-art" aria-hidden="true">
+            <SthaniFace expression="senang" />
+          </span>
         </div>
         <section
           aria-label="Filter fasilitas"
-          className="public-facilities-filters rounded-4xl bg-card p-5 shadow-md ring-1 ring-foreground/5 sm:p-6 dark:ring-foreground/10"
+          className="public-facilities-filters rounded-4xl p-5 sm:p-6"
         >
           <div className="relative">
             <IconSearch
@@ -326,7 +343,7 @@ export function PublicFacilities() {
               </button>
             )}
           </div>
-          <div className="mt-5 grid grid-cols-1 gap-4 min-[360px]:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-5 grid grid-cols-1 gap-4 min-[440px]:grid-cols-2 lg:grid-cols-4">
             <div className="grid gap-2">
               <Label id="public-type-label">Tipe</Label>
               <Select
@@ -335,7 +352,7 @@ export function PublicFacilities() {
               >
                 <SelectTrigger
                   aria-labelledby="public-type-label"
-                  className="w-full"
+                  className="public-facilities-select w-full"
                 >
                   <SelectValue>
                     {(value: string | null) =>
@@ -343,7 +360,10 @@ export function PublicFacilities() {
                     }
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent
+                  className="public-facilities-options"
+                  alignItemWithTrigger={false}
+                >
                   <SelectItem value="semua">Semua tipe</SelectItem>
                   {types.map((item) => (
                     <SelectItem key={item} value={item}>
@@ -361,7 +381,7 @@ export function PublicFacilities() {
               >
                 <SelectTrigger
                   aria-labelledby="public-status-label"
-                  className="w-full"
+                  className="public-facilities-select w-full"
                 >
                   <SelectValue>
                     {(value: string | null) =>
@@ -369,7 +389,10 @@ export function PublicFacilities() {
                     }
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent
+                  className="public-facilities-options"
+                  alignItemWithTrigger={false}
+                >
                   <SelectItem value="semua">Semua status</SelectItem>
                   <SelectItem value="Aktif">Aktif</SelectItem>
                   <SelectItem value="Dalam Perbaikan">
@@ -386,7 +409,7 @@ export function PublicFacilities() {
               >
                 <SelectTrigger
                   aria-labelledby="public-location-label"
-                  className="w-full"
+                  className="public-facilities-select w-full"
                 >
                   <SelectValue>
                     {(value: string | null) =>
@@ -394,7 +417,10 @@ export function PublicFacilities() {
                     }
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent
+                  className="public-facilities-options"
+                  alignItemWithTrigger={false}
+                >
                   <SelectItem value="semua">Semua lokasi</SelectItem>
                   {locations.map((item) => (
                     <SelectItem key={item} value={item}>
@@ -414,7 +440,7 @@ export function PublicFacilities() {
               >
                 <SelectTrigger
                   aria-labelledby="public-capacity-label"
-                  className="w-full"
+                  className="public-facilities-select w-full"
                 >
                   <SelectValue>
                     {(value: string | null) =>
@@ -422,7 +448,10 @@ export function PublicFacilities() {
                     }
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent
+                  className="public-facilities-options"
+                  alignItemWithTrigger={false}
+                >
                   <SelectItem value="semua">Semua kapasitas</SelectItem>
                   <SelectItem value="kecil">&lt; 30 orang</SelectItem>
                   <SelectItem value="sedang">30–100 orang</SelectItem>
@@ -432,48 +461,85 @@ export function PublicFacilities() {
             </div>
           </div>
         </section>
-        {!loading && (
-          <fieldset
-            aria-label="Filter cepat tipe fasilitas"
-            className="m-0 -mx-1 flex min-w-0 gap-2 overflow-x-auto border-0 p-0 px-1 pb-1"
-          >
-            {["semua", ...types].map((item) => {
-              const active = type === item
-              return (
-                <button
-                  key={item}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => setType(item)}
-                  className={cn(
-                    "shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
-                    active
-                      ? "border-pink-600 bg-pink-600 text-white shadow-sm"
-                      : "border-border bg-card text-muted-foreground hover:border-pink-300 hover:text-foreground"
-                  )}
-                >
-                  {item === "semua" ? "Semua tipe" : item}
-                </button>
-              )
-            })}
-          </fieldset>
-        )}
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="public-facilities-toolbar">
+          {!loading && (
+            <fieldset
+              aria-label="Filter cepat tipe fasilitas"
+              className="public-facilities-categories m-0 flex min-w-0 gap-2 overflow-x-auto border-0 p-0 pb-1"
+            >
+              {["semua", ...types].map((item) => {
+                const active = type === item
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setType(item)}
+                    className={cn(
+                      "public-facilities-category shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-500",
+                      active
+                        ? "border-pink-600 bg-pink-600 text-white shadow-sm"
+                        : "border-border bg-card text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                    )}
+                  >
+                    {item === "semua" ? "Semua tipe" : item}
+                  </button>
+                )
+              })}
+            </fieldset>
+          )}
+          <div className="public-facilities-sort flex items-center gap-2">
+            <Label id="public-sort-label" className="text-sm">
+              Urutkan
+            </Label>
+            <Select
+              value={sort}
+              onValueChange={(value) => setSort((value ?? "nama") as SortOrder)}
+            >
+              <SelectTrigger
+                aria-labelledby="public-sort-label"
+                className="public-facilities-select w-44"
+              >
+                <SelectValue>
+                  {(value: string | null) =>
+                    sortLabels[(value ?? "nama") as SortOrder]
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent
+                className="public-facilities-options"
+                alignItemWithTrigger={false}
+              >
+                {(Object.keys(sortLabels) as SortOrder[]).map((order) => (
+                  <SelectItem key={order} value={order}>
+                    {sortLabels[order]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="public-facilities-results-row flex flex-wrap items-center gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm text-muted-foreground" aria-live="polite">
-              {loading ? "Memuat fasilitas…" : `${filtered.length} fasilitas`}
+            <p
+              className="text-sm font-medium text-foreground"
+              aria-live="polite"
+            >
+              {loading
+                ? "Memuat fasilitas…"
+                : `${filtered.length} fasilitas ditemukan`}
             </p>
             {activeFilters.map((filter) => (
               <span
                 key={filter.key}
-                className="inline-flex items-center gap-1.5 rounded-full border border-pink-200 bg-pink-50 py-1 pr-1.5 pl-3 text-xs font-medium text-pink-800 dark:border-pink-300/20 dark:bg-pink-400/10 dark:text-pink-200"
+                className="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-full border border-pink-200 bg-pink-50 py-1 pr-1.5 pl-3 text-xs font-medium text-pink-800 dark:border-pink-300/20 dark:bg-pink-400/10 dark:text-pink-200"
               >
-                {filter.label}
+                <span className="min-w-0 truncate">{filter.label}</span>
                 <button
                   type="button"
                   aria-label={`Hapus filter ${filter.label}`}
                   onClick={filter.clear}
-                  className="inline-flex size-5 items-center justify-center rounded-full transition-colors hover:bg-pink-100 dark:hover:bg-pink-400/20"
+                  className="inline-flex size-5 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-pink-100 dark:hover:bg-pink-400/20"
                 >
                   <IconX size={13} aria-hidden="true" />
                 </button>
@@ -489,33 +555,6 @@ export function PublicFacilities() {
                 Reset filter
               </Button>
             )}
-          </div>
-          <div className="flex items-center gap-2">
-            <Label id="public-sort-label" className="text-sm">
-              Urutkan
-            </Label>
-            <Select
-              value={sort}
-              onValueChange={(value) => setSort((value ?? "nama") as SortOrder)}
-            >
-              <SelectTrigger
-                aria-labelledby="public-sort-label"
-                className="w-44"
-              >
-                <SelectValue>
-                  {(value: string | null) =>
-                    sortLabels[(value ?? "nama") as SortOrder]
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(sortLabels) as SortOrder[]).map((order) => (
-                  <SelectItem key={order} value={order}>
-                    {sortLabels[order]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
         </div>
         {loading ? (
@@ -540,9 +579,6 @@ export function PublicFacilities() {
             onReset={resetFilters}
           />
         )}
-        <p className="text-xs text-muted-foreground">
-          Gambar merupakan ilustrasi fasilitas.
-        </p>
         <PublicSlotDialog
           facility={selected}
           selectedDate={selectedDate}

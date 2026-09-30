@@ -24,7 +24,6 @@ export function DashboardPreview() {
         Ilustrasi dashboard Sthana Kampus dengan fasilitas dan jadwal reservasi
         contoh
       </figcaption>
-      <div className="preview-ribbon" aria-hidden="true" />
       <div className="dashboard-window" aria-hidden="true">
         <div className="preview-sidebar">
           <BrandLogo />

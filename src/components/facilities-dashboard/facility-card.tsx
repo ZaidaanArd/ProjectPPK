@@ -50,9 +50,14 @@ export function FacilityCard({
   const hasMultiple = (facility.photos?.length ?? 0) > 1
 
   return (
-    <Card className={cover ? "h-full pt-0" : "h-full"}>
+    <Card
+      className={cn(
+        cover ? "h-full pt-0" : "h-full",
+        illustrated && "public-catalog-card"
+      )}
+    >
       {cover ? (
-        <div className="relative aspect-[16/9] overflow-hidden bg-[#f2f0ee] dark:bg-[#28252b]">
+        <div className="public-catalog-image relative aspect-[16/9] overflow-hidden bg-[#f2f0ee] dark:bg-[#28252b]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={cover}
@@ -60,7 +65,10 @@ export function FacilityCard({
             loading="lazy"
             className="h-full w-full object-cover object-top"
           />
-          {unavailable && (
+          {illustrated && (
+            <span className="public-catalog-image-shade" aria-hidden="true" />
+          )}
+          {unavailable && !illustrated && (
             <span
               className={cn(
                 "absolute top-2 left-2 rounded-full px-2 py-0.5 text-[11px] font-medium shadow-sm backdrop-blur",
@@ -73,7 +81,7 @@ export function FacilityCard({
             </span>
           )}
           {illustrated && (
-            <span className="absolute bottom-2 left-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur">
+            <span className="public-catalog-illustration absolute bottom-2 left-2 rounded-full px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
               Ilustrasi
             </span>
           )}
@@ -92,31 +100,58 @@ export function FacilityCard({
         </div>
       )}
 
-      <CardHeader>
+      <CardHeader className={illustrated ? "public-catalog-header" : undefined}>
         <div className="flex items-start justify-between gap-2">
-          <CardTitle className="leading-snug">{facility.nama}</CardTitle>
+          <CardTitle
+            className={cn(
+              "leading-snug",
+              illustrated && "public-catalog-title"
+            )}
+          >
+            {facility.nama}
+          </CardTitle>
           <StatusBadge status={facility.status} />
         </div>
         <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
           <Badge variant="secondary">{facility.tipe}</Badge>
           <span className="inline-flex items-center gap-1">
-            <IconMapPin size={13} aria-hidden="true" />
+            <IconMapPin size={illustrated ? 15 : 13} aria-hidden="true" />
             {facility.lokasi}
           </span>
-          <span className="inline-flex items-center gap-1">
-            <IconUsers size={13} aria-hidden="true" />
+          {!illustrated && (
+            <span className="inline-flex items-center gap-1">
+              <IconUsers size={13} aria-hidden="true" />
+              {facility.kapasitas} orang
+            </span>
+          )}
+        </div>
+        {illustrated && (
+          <span className="public-catalog-capacity inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+            <IconUsers size={15} aria-hidden="true" />
             {facility.kapasitas} orang
           </span>
-        </div>
+        )}
       </CardHeader>
 
-      <CardContent>
-        <p className="line-clamp-2 text-sm text-muted-foreground">
+      <CardContent
+        className={illustrated ? "public-catalog-content" : undefined}
+      >
+        <p
+          className={cn(
+            "line-clamp-2 text-sm text-muted-foreground",
+            illustrated && "public-catalog-description"
+          )}
+        >
           {facility.deskripsi || "Belum ada deskripsi."}
         </p>
       </CardContent>
 
-      <CardFooter className="mt-auto flex-col items-stretch gap-2">
+      <CardFooter
+        className={cn(
+          "mt-auto flex-col items-stretch gap-2",
+          illustrated && "public-catalog-footer"
+        )}
+      >
         <Button
           type="button"
           variant={unavailable ? "secondary" : "default"}
@@ -129,7 +164,7 @@ export function FacilityCard({
                 ? "Fasilitas sedang tidak tersedia"
                 : undefined
           }
-          className="w-full"
+          className={cn("w-full", illustrated && "public-catalog-cta")}
         >
           <IconCalendarTime size={16} aria-hidden="true" />
           {maintenance

@@ -1,6 +1,6 @@
-import type { Metadata } from "next"
-import Image from "next/image"
-import Link from "next/link"
+import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
 import {
   IconArrowRight,
   IconBook,
@@ -13,18 +13,18 @@ import {
   IconHistory,
   IconServer,
   IconPlayerPlay,
-} from "@tabler/icons-react"
-import { LandingMotion } from "@/components/public/landing-motion"
-import { DocsExplorer } from "@/components/about/docs-explorer"
-import { DialogMascot } from "@/components/dialog-mascot"
-import { ImagesBadge } from "@/components/ui/images-badge"
-import { SthaniFace, type SthaniExpression } from "@/components/sthani-face"
-import { publicDocHref, publicDocs, qaSheetUrl } from "@/lib/public-docs"
-import { site, siteUrl } from "@/lib/site"
+} from "@tabler/icons-react";
+import { LandingMotion } from "@/components/public/landing-motion";
+import { DocsExplorer } from "@/components/about/docs-explorer";
+import { DialogMascot } from "@/components/dialog-mascot";
+import { ImagesBadge } from "@/components/ui/images-badge";
+import { SthaniFace, type SthaniExpression } from "@/components/sthani-face";
+import { publicDocHref, publicDocs, qaSheetUrl } from "@/lib/public-docs";
+import { site, siteUrl } from "@/lib/site";
 
-const pageUrl = siteUrl ? `${siteUrl}/tentang` : undefined
+const pageUrl = siteUrl ? `${siteUrl}/tentang` : undefined;
 const description =
-  "Cerita di balik nama, rancangan, identitas visual, dan tim Sthana Kampus—proyek reservasi dan pelaporan fasilitas kampus untuk Project PPK 2026."
+  "Cerita di balik nama, rancangan, identitas visual, dan tim Sthana Kampus—proyek reservasi dan pelaporan fasilitas kampus untuk Project PPK 2026.";
 
 export const metadata: Metadata = {
   title: {
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     type: "website",
     ...(pageUrl ? { url: pageUrl } : {}),
   },
-}
+};
 
 const roles = [
   {
@@ -59,14 +59,14 @@ const roles = [
     description:
       "Menjaga data fasilitas, akun, akses, dan rekap aktivitas tetap tertata.",
   },
-] as const
+] as const;
 
 const colors = [
   { name: "Sthana Berry", hex: "#52082B", className: "about-swatch-berry" },
   { name: "Campus Pink", hex: "#D00064", className: "about-swatch-pink" },
   { name: "Soft Blush", hex: "#FFE5F2", className: "about-swatch-blush" },
   { name: "Deep Ink", hex: "#1C172F", className: "about-swatch-ink" },
-] as const
+] as const;
 
 const expressions: { label: string; face: SthaniExpression }[] = [
   { label: "Senang", face: "senang" },
@@ -77,7 +77,7 @@ const expressions: { label: string; face: SthaniExpression }[] = [
   { label: "Keren", face: "keren" },
   { label: "Terkejut", face: "terkejut" },
   { label: "Sayang", face: "sayang" },
-]
+];
 
 const documentCardSlugs = new Set([
   "user-guide",
@@ -86,8 +86,8 @@ const documentCardSlugs = new Set([
   "operations",
   "changelog",
   "case-study",
-])
-const docIconProps = { size: 20, stroke: 1.7 } as const
+]);
+const docIconProps = { size: 20, stroke: 1.7 } as const;
 const docIcons: Record<string, React.ReactNode> = {
   "user-guide": <IconBook {...docIconProps} />,
   "data-and-api": <IconDatabase {...docIconProps} />,
@@ -96,11 +96,11 @@ const docIcons: Record<string, React.ReactNode> = {
   changelog: <IconHistory {...docIconProps} />,
   "case-study": <IconBulb {...docIconProps} />,
   default: <IconFileText {...docIconProps} />,
-}
+};
 
 const documentCards = publicDocs.filter((doc) =>
-  documentCardSlugs.has(doc.slug)
-)
+  documentCardSlugs.has(doc.slug),
+);
 
 const videos = [
   {
@@ -115,7 +115,7 @@ const videos = [
     description:
       "Logo, Sthani, dan antarmuka Sthana dalam satu gerakan tanpa putus.",
   },
-] as const
+] as const;
 
 const teamMembers = [
   {
@@ -166,7 +166,7 @@ const teamMembers = [
     portraitSide: "right",
     primary: false,
   },
-] as const
+] as const;
 
 export default function AboutPage() {
   return (
@@ -225,7 +225,7 @@ export default function AboutPage() {
         <section className="about-hero">
           <div className="sthana-container about-hero-grid">
             <div className="about-hero-copy">
-              <h1>Ruang kampus, dibuat lebih mudah dipakai.</h1>
+              <h1>Ruang kampus, dibuat lebih mudah dipakai</h1>
               <p>
                 Sthana Kampus adalah aplikasi web untuk reservasi ruang dan
                 pelaporan fasilitas kampus. Satu alur yang dapat diikuti
@@ -270,7 +270,7 @@ export default function AboutPage() {
           data-reveal
         >
           <div className="sthana-container">
-            <h2 id="about-videos-heading">Lihat Sthana bergerak.</h2>
+            <h2 id="about-videos-heading">Lihat Sthana bergerak</h2>
             <ul className="about-video-grid">
               {videos.map((video) => (
                 <li key={video.id}>
@@ -301,7 +301,7 @@ export default function AboutPage() {
             <span className="about-section-number" aria-hidden="true">
               01
             </span>
-            <h2>Satu nama untuk tempat yang dipakai bersama.</h2>
+            <h2>Satu nama untuk tempat yang dipakai bersama</h2>
           </div>
           <div className="about-origin-copy">
             <p>
@@ -342,7 +342,7 @@ export default function AboutPage() {
               <span className="about-section-number" aria-hidden="true">
                 02
               </span>
-              <h2>Pink yang terasa hidup, bukan sekadar dekorasi.</h2>
+              <h2>Pink yang terasa hidup, bukan sekadar dekorasi</h2>
               <p>
                 Pink dipilih agar Sthana mudah dikenali di antara produk kampus
                 yang cenderung formal. Berry yang gelap menjaga teks tetap
@@ -444,7 +444,7 @@ export default function AboutPage() {
             <span className="about-section-number" aria-hidden="true">
               03
             </span>
-            <h2>Satu sistem, tiga sudut kerja.</h2>
+            <h2>Satu sistem, tiga sudut kerja</h2>
             <p>
               Setiap peran memperoleh informasi dan tindakan yang memang
               dibutuhkan—tanpa mencampurkan antrean atau kewenangan.
@@ -505,7 +505,7 @@ export default function AboutPage() {
               <span className="about-section-number" aria-hidden="true">
                 04
               </span>
-              <h2 id="team-heading">Tim di balik Sthana.</h2>
+              <h2 id="team-heading">Tim di balik Sthana</h2>
             </div>
             <p>
               Empat fokus kerja, satu repository utama. Setiap anggota memegang
@@ -583,7 +583,7 @@ export default function AboutPage() {
 
         <section className="sthana-container about-project" data-reveal>
           <div>
-            <h2>Dibangun terbuka, masih terus dikembangkan.</h2>
+            <h2>Dibangun terbuka, masih terus dikembangkan</h2>
             <p>
               Sthana merupakan proyek akademik. Alur utama, autentikasi, data,
               dan portal peran sedang dikembangkan bertahap berdasarkan 17 user
@@ -610,5 +610,5 @@ export default function AboutPage() {
         </section>
       </main>
     </LandingMotion>
-  )
+  );
 }

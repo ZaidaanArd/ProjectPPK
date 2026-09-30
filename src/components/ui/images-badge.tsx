@@ -148,7 +148,7 @@ export function ImagesBadge({
           pinnedRef.current = !pinnedRef.current
           setOpen(pinnedRef.current)
         }}
-        className="group inline-flex min-h-12 items-center gap-4 rounded-xl border border-pink-200 bg-pink-50 px-3.5 text-xs font-semibold whitespace-nowrap text-[#9d174d] transition-colors hover:border-pink-300 hover:bg-pink-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 dark:border-pink-300/20 dark:bg-pink-300/10 dark:text-pink-200 dark:hover:bg-pink-300/20"
+        className="group inline-flex min-h-12 items-center gap-4 rounded-xl border border-pink-200 bg-pink-50 px-3.5 text-xs font-semibold whitespace-nowrap text-[#9d174d] transition-colors hover:bg-pink-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 dark:border-pink-300/20 dark:bg-pink-300/10 dark:text-pink-200 dark:hover:bg-pink-300/20"
       >
         <span
           className="relative flex shrink-0 items-end"

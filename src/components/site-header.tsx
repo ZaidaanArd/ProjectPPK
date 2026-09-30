@@ -1,7 +1,7 @@
 "use client"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { IconMenu2, IconX } from "@tabler/icons-react"
 import { BrandLogo } from "@/components/brand-logo"
 import { PublicAccountLinks } from "@/components/public-account-links"
@@ -13,7 +13,56 @@ const nav = [
 ]
 export function SiteHeader() {
   const [open, setOpen] = useState(false)
+  const [indicator, setIndicator] = useState<{
+    left: number
+    width: number
+  } | null>(null)
+  const [indicatorReady, setIndicatorReady] = useState(false)
+  const navRef = useRef<HTMLElement>(null)
   const pathname = usePathname()
+
+  const moveIndicator = useCallback((element: HTMLElement | null) => {
+    const container = navRef.current
+    if (!container || !element) return
+    setIndicator({ left: element.offsetLeft, width: element.offsetWidth })
+  }, [])
+
+  const moveIndicatorToActive = useCallback(() => {
+    moveIndicator(
+      navRef.current?.querySelector<HTMLElement>('a[aria-current="page"]') ??
+        null
+    )
+  }, [moveIndicator])
+
+  useEffect(() => {
+    moveIndicatorToActive()
+  }, [pathname, moveIndicatorToActive])
+
+  useEffect(() => {
+    const container = navRef.current
+    if (!container) return
+    const frame = window.requestAnimationFrame(() => setIndicatorReady(true))
+    const observer =
+      "ResizeObserver" in window
+        ? new ResizeObserver(moveIndicatorToActive)
+        : null
+    observer?.observe(container)
+    const onPointerLeave = () => moveIndicatorToActive()
+    const onFocusOut = (event: FocusEvent) => {
+      if (!container.contains(event.relatedTarget as Node | null)) {
+        moveIndicatorToActive()
+      }
+    }
+    container.addEventListener("pointerleave", onPointerLeave)
+    container.addEventListener("focusout", onFocusOut)
+    document.fonts.ready.then(moveIndicatorToActive).catch(() => {})
+    return () => {
+      window.cancelAnimationFrame(frame)
+      observer?.disconnect()
+      container.removeEventListener("pointerleave", onPointerLeave)
+      container.removeEventListener("focusout", onFocusOut)
+    }
+  }, [moveIndicatorToActive])
 
   useEffect(() => {
     if (!open) return
@@ -34,16 +83,28 @@ export function SiteHeader() {
         >
           <BrandLogo />
         </Link>
-        <nav className="desktop-nav" aria-label="Navigasi utama">
+        <nav ref={navRef} className="desktop-nav" aria-label="Navigasi utama">
           {nav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               aria-current={pathname === item.href ? "page" : undefined}
+              onPointerEnter={(event) => moveIndicator(event.currentTarget)}
+              onFocus={(event) => moveIndicator(event.currentTarget)}
             >
               {item.label}
             </Link>
           ))}
+          <span
+            aria-hidden="true"
+            className="desktop-nav-indicator"
+            data-ready={indicatorReady ? "true" : undefined}
+            style={
+              indicator
+                ? { left: indicator.left, width: indicator.width }
+                : undefined
+            }
+          />
         </nav>
         <div className="header-actions">
           <AnimatedThemeToggler
@@ -74,6 +135,7 @@ export function SiteHeader() {
             <Link
               key={item.href}
               href={item.href}
+              aria-current={pathname === item.href ? "page" : undefined}
               onClick={() => setOpen(false)}
             >
               {item.label}

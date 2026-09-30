@@ -93,7 +93,7 @@ export function ReservationDatePicker({
         id="reservation-date"
         type="button"
         aria-label={`Tanggal reservasi: ${fullDate.format(selectedDate)}`}
-        className="flex h-11 w-full items-center gap-2 rounded-2xl border border-border bg-background px-3 text-left text-sm transition-colors outline-none hover:border-pink-300 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
+        className="flex h-11 w-full items-center gap-2 rounded-2xl border border-border bg-background px-3 text-left text-sm transition-colors outline-none hover:bg-muted/40 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
       >
         <IconCalendarEvent
           size={18}
