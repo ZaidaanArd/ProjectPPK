@@ -12,6 +12,7 @@ import {
   IconGitBranch,
   IconHistory,
   IconServer,
+  IconPlayerPlay,
 } from "@tabler/icons-react"
 import { LandingMotion } from "@/components/public/landing-motion"
 import { DocsExplorer } from "@/components/about/docs-explorer"
@@ -100,6 +101,21 @@ const docIcons: Record<string, React.ReactNode> = {
 const documentCards = publicDocs.filter((doc) =>
   documentCardSlugs.has(doc.slug)
 )
+
+const videos = [
+  {
+    id: "blKjczYoeqw",
+    title: "Demo produk: pinjam ruangan tanpa drama antre",
+    description:
+      "Satu reservasi dari awal sampai akhir: cari ruangan, pilih slot, kirim, lalu petugas menyetujui.",
+  },
+  {
+    id: "8BEWSXyEkTQ",
+    title: "One-take motion reel",
+    description:
+      "Logo, Sthani, dan antarmuka Sthana dalam satu gerakan tanpa putus.",
+  },
+] as const
 
 const teamMembers = [
   {
@@ -224,6 +240,10 @@ export default function AboutPage() {
                   <IconBrandGithub size={18} aria-hidden="true" /> Lihat source
                   code
                 </a>
+                <a href="#video" className="about-text-link">
+                  <IconPlayerPlay size={17} aria-hidden="true" /> Tonton
+                  videonya
+                </a>
                 <a href="#cerita-nama" className="about-text-link">
                   Cerita di balik nama
                   <IconArrowRight size={17} aria-hidden="true" />
@@ -240,6 +260,35 @@ export default function AboutPage() {
                 tempat · kediaman · lokasi
               </span>
             </div>
+          </div>
+        </section>
+
+        <section
+          id="video"
+          className="about-videos"
+          aria-labelledby="about-videos-heading"
+          data-reveal
+        >
+          <div className="sthana-container">
+            <h2 id="about-videos-heading">Lihat Sthana bergerak.</h2>
+            <ul className="about-video-grid">
+              {videos.map((video) => (
+                <li key={video.id}>
+                  <div className="about-video-frame">
+                    <iframe
+                      src={`https://www.youtube-nocookie.com/embed/${video.id}?rel=0`}
+                      title={video.title}
+                      loading="lazy"
+                      allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      referrerPolicy="strict-origin-when-cross-origin"
+                      allowFullScreen
+                    />
+                  </div>
+                  <h3>{video.title}</h3>
+                  <p>{video.description}</p>
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
 
