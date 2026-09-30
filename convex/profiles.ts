@@ -55,6 +55,10 @@ export const register = mutation({
     name: v.string(),
     email: v.string(),
     password: v.string(),
+    // Ignored. Accepted so frontends cached from before sign-up was
+    // simplified keep working after a backend deploy.
+    userKind: v.optional(v.union(v.literal("student"), v.literal("lecturer"))),
+    institutionalId: v.optional(v.string()),
   },
   returns: v.union(v.literal("created"), v.literal("exists")),
   handler: async (ctx, args) => {
