@@ -8,12 +8,12 @@ import {
   IconCheck,
   IconChevronDown,
   IconMapPin,
-  IconSearch,
   IconUsers,
   IconTool as IconWrench,
 } from "@tabler/icons-react"
 import { DashboardPreview } from "@/components/public/dashboard-preview"
 import { LandingMotion } from "@/components/public/landing-motion"
+import { StepsShowcase, type Step } from "@/components/public/steps-showcase"
 import { SthaniFace } from "@/components/sthani-face"
 import { facilities } from "@/lib/facilities"
 import { site, siteUrl } from "@/lib/site"
@@ -44,24 +44,24 @@ const features = [
     text: "Ikuti progres penanganan",
   },
 ]
-const steps = [
+const steps: Step[] = [
   {
-    icon: IconSearch,
+    key: "search",
     title: "Cari fasilitas",
     text: "Temukan ruangan sesuai lokasi, kapasitas, dan kebutuhanmu.",
   },
   {
-    icon: IconCalendarEvent,
+    key: "reserve",
     title: "Ajukan reservasi",
     text: "Pilih tanggal dan waktu, lalu isi keperluan penggunaan.",
   },
   {
-    icon: IconCheck,
+    key: "approve",
     title: "Tunggu persetujuan",
     text: "Petugas memeriksa jadwal. Pantau status dari akunmu.",
   },
   {
-    icon: IconWrench,
+    key: "report",
     title: "Laporkan kendala",
     text: "Ada yang rusak? Kirim laporan dan ikuti penanganannya.",
   },
@@ -261,27 +261,7 @@ export default function HomePage() {
               </h2>
               <p>Empat langkah, semuanya tercatat.</p>
             </div>
-            <div className="steps-grid">
-              {steps.map(({ icon: Icon, title, text }, i) => (
-                <article key={title}>
-                  <div className="step-top">
-                    <span className="feature-icon">
-                      <Icon size={26} stroke={1.7} aria-hidden="true" />
-                    </span>
-                    <span className="step-number">0{i + 1}</span>
-                  </div>
-                  <h3>{title}</h3>
-                  <p>{text}</p>
-                  {i < 3 && (
-                    <IconArrowRight
-                      className="step-arrow"
-                      size={20}
-                      aria-hidden="true"
-                    />
-                  )}
-                </article>
-              ))}
-            </div>
+            <StepsShowcase steps={steps} />
           </section>
           <section data-reveal aria-labelledby="faq-heading">
             <div className="faq-layout">
