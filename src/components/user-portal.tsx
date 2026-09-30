@@ -10,6 +10,13 @@ import {
 import { isStaticMode } from "@/lib/data-mode"
 import { toastError } from "@/lib/toast"
 import { saveStaticPhoto } from "@/lib/static-data"
+import { facilityIllustration } from "@/lib/facility-illustrations"
+import {
+  displayDuration,
+  displayTime,
+  rangeIsBusy,
+  toTimestamp,
+} from "@/lib/reservation-slots"
 import {
   IconBuilding,
   IconCalendarCheck,
@@ -35,10 +42,19 @@ import {
   statusBadgeClass,
 } from "@/components/dashboard-sections"
 import { FacilitySelectionCard } from "@/components/facility-selection-card"
+import { FormProgress, FormSummaryBar } from "@/components/form-progress"
 import { PortalPageHeader } from "@/components/portal-page-header"
+import {
+  DateBlock,
+  ReportTicket,
+  ReservationTicket,
+} from "@/components/portal-cards"
+import { ProgressStepper } from "@/components/ui/progress-stepper"
+import { reportSteps } from "@/lib/status-steps"
 import { PortalListSkeleton } from "@/components/portal-skeletons"
 import { ReservationDatePicker } from "@/components/reservation-date-picker"
 import { SthaniFace } from "@/components/sthani-face"
+import { TimeSlotPicker } from "@/components/time-slot-picker"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,13 +76,6 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Tabs, TabsList, TabsPanel, TabsTab } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
@@ -137,6 +146,13 @@ const jakartaReservationTime = new Intl.DateTimeFormat("id-ID", {
   timeZone: "Asia/Jakarta",
 })
 
+const summaryDate = new Intl.DateTimeFormat("id-ID", {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  timeZone: "Asia/Jakarta",
+})
+
 function formatDate(value: number) {
   return jakartaDateTime.format(value)
 }
@@ -146,30 +162,6 @@ function tomorrow() {
   date.setUTCDate(date.getUTCDate() + 1)
   return date.toISOString().slice(0, 10)
 }
-
-function toTimestamp(date: string, time: string) {
-  return Date.parse(`${date}T${time}:00+07:00`)
-}
-
-const reservationTimes = Array.from({ length: 27 }, (_, index) => {
-  const hour = 7 + Math.floor(index / 2)
-  return `${String(hour).padStart(2, "0")}:${index % 2 ? "30" : "00"}`
-})
-
-function displayTime(time: string) {
-  return time.replace(":", ".")
-}
-
-function displayDuration(minutes: number) {
-  const hours = Math.floor(minutes / 60)
-  const remaining = minutes % 60
-  return [hours && `${hours} jam`, remaining && `${remaining} menit`]
-    .filter(Boolean)
-    .join(" ")
-}
-
-const listCardClassName =
-  "gap-0 p-5 transition-shadow duration-200 hover:shadow-lg sm:p-6"
 
 function FormStepBadge({ number }: { number: number }) {
   return (
@@ -258,32 +250,39 @@ function DashboardUpcomingCard({
           {upcoming.map((item) => (
             <li
               key={item.id}
-              className="rounded-2xl border border-border/70 bg-muted/20 p-4"
+              className="flex items-stretch gap-3 rounded-2xl border border-border/70 bg-muted/20 p-3 transition-colors hover:bg-muted/40"
             >
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <p className="min-w-0 font-medium break-words">
-                  {item.facilityName}
+              <DateBlock
+                at={item.startAt}
+                status={item.status}
+                className="w-16"
+              />
+              <div className="min-w-0 flex-1 py-1">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p className="min-w-0 font-medium break-words">
+                    {item.facilityName}
+                  </p>
+                  {jakartaReservationDate.format(item.startAt) ===
+                    jakartaReservationDate.format(now) && (
+                    <Badge
+                      variant="secondary"
+                      className="bg-pink-100 text-pink-800 dark:bg-pink-400/15 dark:text-pink-300"
+                    >
+                      Hari ini
+                    </Badge>
+                  )}
+                </div>
+                <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <IconCalendarCheck size={16} aria-hidden="true" />
+                  {jakartaReservationDate.format(item.startAt)} ·{" "}
+                  {jakartaReservationTime.format(item.startAt)}–
+                  {jakartaReservationTime.format(item.endAt)} WIB
                 </p>
-                {jakartaReservationDate.format(item.startAt) ===
-                  jakartaReservationDate.format(now) && (
-                  <Badge
-                    variant="secondary"
-                    className="bg-pink-100 text-pink-800 dark:bg-pink-400/15 dark:text-pink-300"
-                  >
-                    Hari ini
-                  </Badge>
-                )}
+                <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <IconMapPin size={14} aria-hidden="true" />
+                  {item.facilityLocation}
+                </p>
               </div>
-              <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-                <IconCalendarCheck size={16} aria-hidden="true" />
-                {jakartaReservationDate.format(item.startAt)} ·{" "}
-                {jakartaReservationTime.format(item.startAt)}–
-                {jakartaReservationTime.format(item.endAt)} WIB
-              </p>
-              <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                <IconMapPin size={14} aria-hidden="true" />
-                {item.facilityLocation}
-              </p>
             </li>
           ))}
         </ul>
@@ -346,21 +345,12 @@ function DashboardActiveReportsCard({
                     {statusLabel[item.status]}
                   </Badge>
                 </div>
-                <div
-                  className="mt-3 grid grid-cols-3 gap-1.5"
-                  aria-hidden="true"
-                >
-                  {reportProgressSteps.map((label, index) => (
-                    <span
-                      key={label}
-                      className={cn(
-                        "h-1.5 rounded-full",
-                        index <= step ? "bg-pink-500" : "bg-muted"
-                      )}
-                    />
-                  ))}
-                </div>
-                <p className="mt-1.5 text-xs text-muted-foreground">
+                <ProgressStepper
+                  className="mt-4"
+                  label={`Progres laporan ${item.facilityName}`}
+                  steps={reportSteps(item)}
+                />
+                <p className="mt-2 text-xs text-muted-foreground">
                   Tahap: {reportProgressSteps[step]}
                 </p>
               </li>
@@ -701,93 +691,29 @@ export function ReservationList() {
             {visibleReservations && visibleReservations.length > 0 ? (
               <div className="grid gap-4 lg:grid-cols-2">
                 {visibleReservations.map((item) => (
-                  <Card
+                  <ReservationTicket
                     key={item.id}
-                    className={cn("h-full", listCardClassName)}
+                    facilityName={item.facilityName}
+                    location={item.facilityLocation}
+                    startAt={item.startAt}
+                    endAt={item.endAt}
+                    status={item.status}
+                    statusLabel={statusLabel[item.status] ?? item.status}
+                    purpose={item.purpose}
+                    decisionNote={item.decisionNote}
+                    createdAt={item.createdAt}
+                    updatedAt={item.updatedAt}
                   >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <h2 className="font-heading text-base font-semibold break-words">
-                          {item.facilityName}
-                        </h2>
-                        <p className="mt-1 flex items-start gap-1.5 text-sm break-words text-muted-foreground">
-                          <IconMapPin
-                            size={16}
-                            className="mt-0.5 shrink-0"
-                            aria-hidden="true"
-                          />
-                          <span className="min-w-0">
-                            {item.facilityLocation}
-                          </span>
-                        </p>
-                      </div>
-                      <Badge
-                        variant="secondary"
-                        className={cn(
-                          "shrink-0",
-                          item.status === "approved" &&
-                            "bg-emerald-100 text-emerald-800 dark:bg-emerald-400/15 dark:text-emerald-300"
-                        )}
+                    {["pending", "approved"].includes(item.status) ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => cancelReservation(item.id)}
                       >
-                        {statusLabel[item.status]}
-                      </Badge>
-                    </div>
-                    <div className="mt-5 rounded-2xl border border-border/70 bg-muted/30 p-3.5">
-                      <p className="flex items-start gap-2 text-sm font-medium break-words">
-                        <IconCalendarCheck
-                          size={18}
-                          className="mt-0.5 shrink-0 text-muted-foreground"
-                          aria-hidden="true"
-                        />
-                        <span>
-                          {jakartaReservationDate.format(item.startAt)}
-                          {jakartaReservationDate.format(item.startAt) !==
-                            jakartaReservationDate.format(item.endAt) &&
-                            ` – ${jakartaReservationDate.format(item.endAt)}`}
-                        </span>
-                      </p>
-                      <p className="mt-2 flex items-start gap-2 text-sm break-words">
-                        <IconClockHour4
-                          size={18}
-                          className="mt-0.5 shrink-0 text-muted-foreground"
-                          aria-hidden="true"
-                        />
-                        <span>
-                          {jakartaReservationTime.format(item.startAt)} –{" "}
-                          {jakartaReservationTime.format(item.endAt)} WIB
-                        </span>
-                      </p>
-                    </div>
-                    <div className="mt-5 min-w-0">
-                      <p className="text-xs font-medium text-muted-foreground">
-                        Tujuan penggunaan
-                      </p>
-                      <p className="mt-1 text-sm leading-relaxed break-words whitespace-pre-wrap">
-                        {item.purpose}
-                      </p>
-                    </div>
-                    {item.decisionNote && (
-                      <div className="mt-4 min-w-0 rounded-xl bg-muted p-3.5">
-                        <p className="text-xs font-medium text-muted-foreground">
-                          Catatan keputusan
-                        </p>
-                        <p className="mt-1 text-sm leading-relaxed break-words whitespace-pre-wrap">
-                          {item.decisionNote}
-                        </p>
-                      </div>
-                    )}
-                    {["pending", "approved"].includes(item.status) && (
-                      <div className="mt-auto pt-5">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => cancelReservation(item.id)}
-                        >
-                          Batalkan
-                        </Button>
-                      </div>
-                    )}
-                  </Card>
+                        Batalkan
+                      </Button>
+                    ) : null}
+                  </ReservationTicket>
                 ))}
               </div>
             ) : (
@@ -855,31 +781,16 @@ export function ReservationForm({
       : "skip"
   )
 
-  function rangeConflicts(start: string, end: string) {
-    if (!availability || !start || !end) return false
-    const startAt = toTimestamp(date, start)
-    const endAt = toTimestamp(date, end)
-    return availability.reservations.some(
-      (item) => item.startAt < endAt && startAt < item.endAt
-    )
-  }
-
-  const conflict = rangeConflicts(startTime, endTime)
+  const conflict = availability
+    ? rangeIsBusy(date, startTime, endTime, availability.reservations)
+    : false
   const durationMinutes =
     startTime && endTime
       ? (toTimestamp(date, endTime) - toTimestamp(date, startTime)) / 60000
       : 0
-
-  function chooseStartTime(nextStart: string) {
-    setStartTime(nextStart)
-    if (endTime <= nextStart || rangeConflicts(nextStart, endTime)) {
-      setEndTime(
-        reservationTimes.find(
-          (time) => time > nextStart && !rangeConflicts(nextStart, time)
-        ) ?? ""
-      )
-    }
-  }
+  const scheduleReady = Boolean(
+    selectedFacility && availability && endTime && !conflict
+  )
 
   function requestSubmit(event: FormEvent) {
     event.preventDefault()
@@ -943,6 +854,27 @@ export function ReservationForm({
         description="Pilih fasilitas dan waktu yang sesuai. Slot tersedia setiap 30 menit antara pukul 07.00–20.00 WIB."
         icon={IconCalendarPlus}
       />
+      <FormProgress
+        label="Progres pengajuan reservasi"
+        steps={[
+          {
+            id: "reservation-facility-picker",
+            label: "Fasilitas",
+            done: Boolean(selectedFacility),
+          },
+          {
+            id: "reservation-schedule",
+            label: "Jadwal",
+            done: scheduleReady,
+          },
+          {
+            id: "reservation-purpose",
+            label: "Tujuan",
+            done: purpose.trim().length > 0,
+          },
+          { id: "reservation-submit", label: "Kirim", done: false },
+        ]}
+      />
       <form onSubmit={requestSubmit} className="space-y-6">
         <fieldset className="space-y-5">
           <legend className="font-heading text-xl font-semibold">
@@ -979,7 +911,7 @@ export function ReservationForm({
               Fasilitas tidak ditemukan.
             </p>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
               {visibleFacilities.map((facility) => (
                 <FacilitySelectionCard
                   key={facility.id}
@@ -1005,77 +937,21 @@ export function ReservationForm({
               Interval 30 menit · WIB
             </span>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="reservation-date">Tanggal</Label>
-              <ReservationDatePicker value={date} onChange={setDate} />
-            </div>
-            <div className="space-y-1.5">
-              <Label id="reservation-start-label">Jam mulai</Label>
-              <Select
-                value={startTime}
-                onValueChange={(value) => value && chooseStartTime(value)}
-                disabled={!selectedFacility || !availability}
-              >
-                <SelectTrigger
-                  aria-labelledby="reservation-start-label"
-                  className="h-11 w-full rounded-2xl border border-border bg-background"
-                >
-                  <SelectValue>
-                    {(value: string | null) =>
-                      value ? displayTime(value) : "Pilih jam mulai"
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {reservationTimes.slice(0, -1).map((time, index) => {
-                    const booked = rangeConflicts(
-                      time,
-                      reservationTimes[index + 1]
-                    )
-                    return (
-                      <SelectItem key={time} value={time} disabled={booked}>
-                        {displayTime(time)}
-                        {booked ? " · Terisi" : ""}
-                      </SelectItem>
-                    )
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label id="reservation-end-label">Jam selesai</Label>
-              <Select
-                value={endTime || null}
-                onValueChange={(value) => setEndTime(value ?? "")}
-                disabled={!selectedFacility || !availability || !startTime}
-              >
-                <SelectTrigger
-                  aria-labelledby="reservation-end-label"
-                  className="h-11 w-full rounded-2xl border border-border bg-background"
-                >
-                  <SelectValue>
-                    {(value: string | null) =>
-                      value ? displayTime(value) : "Pilih jam selesai"
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {reservationTimes
-                    .filter((time) => time > startTime)
-                    .map((time) => {
-                      const booked = rangeConflicts(startTime, time)
-                      return (
-                        <SelectItem key={time} value={time} disabled={booked}>
-                          {displayTime(time)}
-                          {booked ? " · Bentrok" : ""}
-                        </SelectItem>
-                      )
-                    })}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="max-w-xs space-y-1.5">
+            <Label htmlFor="reservation-date">Tanggal</Label>
+            <ReservationDatePicker value={date} onChange={setDate} />
           </div>
+          <TimeSlotPicker
+            date={date}
+            busy={availability?.reservations}
+            disabled={!selectedFacility || !availability}
+            start={startTime}
+            end={endTime}
+            onChange={({ start, end }) => {
+              setStartTime(start)
+              setEndTime(end)
+            }}
+          />
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <p
               className={cn(
@@ -1092,14 +968,6 @@ export function ReservationForm({
                       ? "Pilih rentang waktu yang tersedia."
                       : "Rentang waktu tersedia untuk diajukan."}
             </p>
-            {selectedFacility &&
-              availability &&
-              !conflict &&
-              durationMinutes > 0 && (
-                <span className="font-medium">
-                  Durasi {displayDuration(durationMinutes)}
-                </span>
-              )}
           </div>
         </div>
         <div
@@ -1125,13 +993,22 @@ export function ReservationForm({
             {message}
           </p>
         )}
-        <div className="flex flex-col gap-4 rounded-3xl border border-pink-100 bg-pink-50/50 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6 dark:border-pink-300/10 dark:bg-pink-400/5">
-          <div className="flex items-center gap-3">
-            <FormStepBadge number={4} />
-            <p className="text-sm font-medium">
-              Periksa kembali, lalu kirim reservasi.
-            </p>
-          </div>
+        <FormSummaryBar
+          image={
+            selectedFacility
+              ? facilityIllustration(
+                  selectedFacility.name,
+                  selectedFacility.type
+                )
+              : undefined
+          }
+          title={selectedFacility?.name ?? "Belum memilih fasilitas"}
+          detail={
+            scheduleReady
+              ? `${summaryDate.format(toTimestamp(date, startTime))} · ${displayTime(startTime)}–${displayTime(endTime)} WIB · ${displayDuration(durationMinutes)}`
+              : "Periksa kembali, lalu kirim reservasi."
+          }
+        >
           <Button
             id="reservation-submit"
             type="submit"
@@ -1146,7 +1023,7 @@ export function ReservationForm({
           >
             {pending ? "Mengirim…" : "Kirim reservasi"}
           </Button>
-        </div>
+        </FormSummaryBar>
       </form>
       <Dialog
         open={submittedReservation !== null}
@@ -1395,55 +1272,19 @@ export function ReportList() {
             {visibleReports && visibleReports.length > 0 ? (
               <div className="grid items-start gap-4 lg:grid-cols-2">
                 {visibleReports.map((report) => (
-                  <Card key={report.id} className={listCardClassName}>
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <h2 className="font-heading text-base font-semibold break-words">
-                          {report.facilityName}
-                        </h2>
-                        <p className="mt-1 text-sm break-words text-muted-foreground">
-                          {report.category}
-                        </p>
-                      </div>
-                      <Badge variant="secondary" className="shrink-0">
-                        {statusLabel[report.status]}
-                      </Badge>
-                    </div>
-                    <div className="mt-5 min-w-0">
-                      <p className="text-xs font-medium text-muted-foreground">
-                        Deskripsi laporan
-                      </p>
-                      <p className="mt-1 text-sm leading-relaxed break-words whitespace-pre-wrap">
-                        {report.description}
-                      </p>
-                    </div>
-                    {report.photoUrl && (
-                      <div className="mt-4 flex min-h-40 items-center justify-center rounded-xl bg-muted/30 p-2">
-                        {/* Uploaded images are user-provided and served from Convex storage. */}
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={report.photoUrl}
-                          alt="Foto laporan fasilitas"
-                          className="block max-h-72 w-full rounded-lg object-contain"
-                        />
-                      </div>
-                    )}
-                    {report.resolutionNote && (
-                      <div className="mt-4 min-w-0 rounded-xl bg-muted p-3.5">
-                        <p className="text-xs font-medium text-muted-foreground">
-                          Catatan penanganan
-                        </p>
-                        <p className="mt-1 text-sm leading-relaxed break-words whitespace-pre-wrap">
-                          {report.resolutionNote}
-                        </p>
-                      </div>
-                    )}
-                    <div className="mt-auto pt-5">
-                      <p className="text-xs text-muted-foreground">
-                        Dilaporkan {formatDate(report.createdAt)}
-                      </p>
-                    </div>
-                  </Card>
+                  <ReportTicket
+                    key={report.id}
+                    facilityName={report.facilityName}
+                    category={report.category}
+                    description={report.description}
+                    photoUrl={report.photoUrl}
+                    status={report.status}
+                    statusLabel={statusLabel[report.status] ?? report.status}
+                    resolutionNote={report.resolutionNote}
+                    createdAt={report.createdAt}
+                    updatedAt={report.updatedAt}
+                    reportedLabel={`Dilaporkan ${formatDate(report.createdAt)}`}
+                  />
                 ))}
               </div>
             ) : (
@@ -1479,6 +1320,8 @@ export function ReportForm() {
   const selectedFacility = facilities?.find(
     (facility) => facility.id === facilityId
   )
+  const detailsReady =
+    category.trim().length > 0 && description.trim().length > 0
   const searchTerm = facilitySearch.trim().toLowerCase()
   const visibleFacilities = (facilities ?? []).filter(
     (facility) =>
@@ -1563,6 +1406,28 @@ export function ReportForm() {
         description="Ceritakan kendala yang kamu temui. Sertakan foto bila membantu petugas memahami masalah."
         icon={IconFilePlus}
       />
+      <FormProgress
+        label="Progres pembuatan laporan"
+        steps={[
+          {
+            id: "report-facility-field",
+            label: "Fasilitas",
+            done: Boolean(selectedFacility),
+          },
+          {
+            id: "report-category-field",
+            label: "Rincian",
+            done: detailsReady,
+          },
+          {
+            id: "report-photo-field",
+            label: "Foto",
+            done: Boolean(photo),
+            optional: true,
+          },
+          { id: "report-submit", label: "Kirim", done: false },
+        ]}
+      />
       <form ref={formRef} onSubmit={requestSubmit} className="space-y-6">
         <fieldset id="report-facility-field" className="space-y-5">
           <legend className="font-heading text-xl font-semibold">
@@ -1599,7 +1464,7 @@ export function ReportForm() {
               Fasilitas tidak ditemukan.
             </p>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
               {visibleFacilities.map((facility) => (
                 <FacilitySelectionCard
                   key={facility.id}
@@ -1638,7 +1503,10 @@ export function ReportForm() {
               />
             </div>
           </section>
-          <div className="flex min-w-0 flex-col gap-3 rounded-3xl border border-border/80 bg-card p-5 shadow-sm sm:p-6">
+          <div
+            id="report-photo-field"
+            className="flex min-w-0 flex-col gap-3 rounded-3xl border border-border/80 bg-card p-5 shadow-sm sm:p-6"
+          >
             <Label
               htmlFor="photo"
               className="flex items-center gap-3 font-heading font-semibold"
@@ -1706,13 +1574,22 @@ export function ReportForm() {
             {message}
           </p>
         )}
-        <div className="flex flex-col gap-4 rounded-3xl border border-pink-100 bg-pink-50/50 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6 dark:border-pink-300/10 dark:bg-pink-400/5">
-          <div className="flex items-center gap-3">
-            <FormStepBadge number={4} />
-            <p className="text-sm font-medium">
-              Periksa kembali, lalu kirim laporan.
-            </p>
-          </div>
+        <FormSummaryBar
+          image={
+            selectedFacility
+              ? facilityIllustration(
+                  selectedFacility.name,
+                  selectedFacility.type
+                )
+              : undefined
+          }
+          title={selectedFacility?.name ?? "Belum memilih fasilitas"}
+          detail={
+            detailsReady
+              ? `${category.trim()}${photo ? " · 1 foto" : ""}`
+              : "Periksa kembali, lalu kirim laporan."
+          }
+        >
           <Button
             id="report-submit"
             type="submit"
@@ -1721,7 +1598,7 @@ export function ReportForm() {
           >
             {pending ? "Mengirim…" : "Kirim laporan"}
           </Button>
-        </div>
+        </FormSummaryBar>
       </form>
       <Dialog
         open={submittedReport !== null}
