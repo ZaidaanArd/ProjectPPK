@@ -114,13 +114,6 @@ export const publicDocs = [
     category: "Proyek",
   },
   {
-    slug: "sla-legal",
-    file: "SLA-LEGAL.md",
-    title: "Status SLA dan legal",
-    summary: "Belum ada SLA atau kontrak formal untuk proyek akademik ini.",
-    category: "Proyek",
-  },
-  {
     slug: "seo",
     file: "SEO.md",
     title: "Metadata dan indexing",
