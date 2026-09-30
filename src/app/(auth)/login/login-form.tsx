@@ -250,7 +250,17 @@ export function LoginForm({ addAccount = false }: { addAccount?: boolean }) {
                 Daftar
               </Link>
             </p>
-          ) : null}
+          ) : (
+            <p className="mt-5 text-center text-sm text-muted-foreground">
+              Belum punya akun ini?{" "}
+              <Link
+                href="/register?from=add-account"
+                className="font-medium text-foreground transition-opacity hover:opacity-70"
+              >
+                Daftar akun baru
+              </Link>
+            </p>
+          )}
         </div>
       </div>
 
