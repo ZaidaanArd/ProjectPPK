@@ -124,14 +124,14 @@ test("US-03: pengguna mengajukan reservasi dengan tujuan penggunaan", async ({
   await page.goto("/app/reservations/new")
   await page.getByText("Aula Gedung A", { exact: true }).click()
   await beat(page)
-  await page.getByRole("combobox", { name: "Jam mulai" }).click()
   await expect(
-    page.getByRole("option", { name: /09.00.*Terisi/ })
+    page.getByRole("button", { name: /09.00.*Terisi/ })
   ).toBeDisabled()
   await beat(page)
-  await page.getByRole("option", { name: /^11.00/ }).click()
-  await page.getByRole("combobox", { name: "Jam selesai" }).click()
-  await page.getByRole("option", { name: /^12.00/ }).click()
+  await page.getByRole("button", { name: "11.00 · Tersedia" }).click()
+  await beat(page, 400)
+  await page.getByRole("button", { name: "11.30 · Tersedia" }).click()
+  await expect(page.getByText("1 jam", { exact: true })).toBeVisible()
   await page.getByLabel("Tujuan penggunaan").fill("Rapat himpunan mahasiswa")
   await beat(page)
   await page.getByRole("button", { name: "Kirim reservasi" }).click()
@@ -159,7 +159,9 @@ test("US-04: pengguna membatalkan reservasinya sendiri", async ({ page }) => {
   await beat(page)
   await page.getByRole("tab", { name: /Riwayat/ }).click()
   await expect(page.getByText("Praktikum bersama")).toBeVisible()
-  await expect(page.getByText("Dibatalkan", { exact: true })).toBeVisible()
+  await expect(
+    page.getByText("Dibatalkan", { exact: true }).first()
+  ).toBeVisible()
   await beat(page, 1500)
 })
 
@@ -169,7 +171,7 @@ test("US-05: pengguna melihat riwayat dan detail reservasinya", async ({
   await enterDemo(page, "Pengguna")
   await page.goto("/app/reservations")
   await expect(page.getByText("Praktikum bersama")).toBeVisible()
-  await expect(page.getByText("13.00 – 14.00 WIB")).toBeVisible()
+  await expect(page.getByText("13.00–14.00 WIB")).toBeVisible()
   await beat(page)
   await page.getByRole("tab", { name: /Disetujui/ }).click()
   await expect(page.getByText("Seminar kampus")).toBeVisible()
@@ -290,9 +292,8 @@ test("US-09: petugas menyetujui reservasi dan slot yang sama terkunci", async ({
   await enterDemo(page, "Pengguna")
   await page.goto("/app/reservations/new")
   await page.getByText("Lab Komputer 3", { exact: true }).click()
-  await page.getByRole("combobox", { name: "Jam mulai" }).click()
   await expect(
-    page.getByRole("option", { name: /13.00.*Terisi/ })
+    page.getByRole("button", { name: /13.00.*Terisi/ })
   ).toBeDisabled()
   await beat(page, 1500)
 })
@@ -317,7 +318,9 @@ test("US-10: petugas membatalkan reservasi disetujui dengan alasan", async ({
   await expect(page.getByRole("status")).toContainText("Reservasi dibatalkan")
   await beat(page)
   await page.getByRole("tab", { name: /Riwayat/ }).click()
-  await expect(page.getByText("Dibatalkan", { exact: true })).toBeVisible()
+  await expect(
+    page.getByText("Dibatalkan", { exact: true }).first()
+  ).toBeVisible()
   await beat(page, 1500)
 })
 
@@ -347,7 +350,7 @@ test("US-11: petugas memproses laporan dan menutupnya dengan catatan", async ({
     "Laporan ditandai selesai"
   )
   await page.getByRole("tab", { name: /Riwayat/ }).click()
-  await expect(page.getByText("Selesai", { exact: true })).toBeVisible()
+  await expect(page.getByText("Selesai", { exact: true }).first()).toBeVisible()
   await beat(page, 1500)
 })
 

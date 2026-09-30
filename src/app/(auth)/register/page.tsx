@@ -8,8 +8,14 @@ import { StaticRegister } from "./static-register"
 
 export const metadata: Metadata = { title: "Daftar" }
 
-export default async function RegisterPage() {
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string | string[] }>
+}) {
   if (isStaticMode) return <StaticRegister />
-  if (await isAuthenticated()) redirect("/portal")
-  return <RegisterForm />
+  // Signed-in users may register another account from the add-account page.
+  const fromAddAccount = (await searchParams).from === "add-account"
+  if (!fromAddAccount && (await isAuthenticated())) redirect("/portal")
+  return <RegisterForm fromAddAccount={fromAddAccount} />
 }

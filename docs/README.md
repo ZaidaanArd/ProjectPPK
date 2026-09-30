@@ -12,6 +12,5 @@ Mulai dari [panduan pengguna](./USER-GUIDE.md) untuk memakai aplikasi, atau [run
 | [Security & Privacy Notes](./SECURITY-PRIVACY.md)  | Kontrol akses, data yang disimpan, dan batasan yang diketahui    |
 | [Architecture Decision Records](./adr/README.md)   | Alasan keputusan teknis utama                                    |
 | [Engineering Case Study](./CASE-STUDY.md)          | Masalah, rancangan, implementasi, dan hasil yang terukur         |
-| [SLA / Legal Status](./SLA-LEGAL.md)               | Status perjanjian: belum ada SLA atau kontrak formal             |
 
 Dokumen teknis yang sudah ada: [requirements](./REQUIREMENTS.md), [arsitektur](./ARCHITECTURE.md), [data dan API](./DATA-AND-API.md), [SEO](./SEO.md), dan [pembagian tim](./TEAM-WORK.md). [Roadmap](./ROADMAP.md) adalah catatan perencanaan historis; rujuk kode dan ADR untuk arsitektur saat ini.
