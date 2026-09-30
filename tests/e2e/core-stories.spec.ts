@@ -347,3 +347,60 @@ test("Halaman fasilitas publik: chips, filter aktif, urutkan, dan status perawat
     studio.getByRole("button", { name: "Sedang Perbaikan" })
   ).toBeDisabled()
 })
+
+test("US-12: mulai tangani otomatis menandai fasilitas dalam perbaikan", async ({
+  page,
+}) => {
+  await enterDemo(page, "Petugas")
+  await page.goto("/staff/reports")
+  await expect(
+    page.getByRole("checkbox", { name: "Tandai fasilitas dalam perbaikan" })
+  ).toBeChecked()
+  await page.getByRole("button", { name: "Mulai tangani" }).click()
+  await expect(page.getByRole("status")).toContainText(
+    "Laporan mulai ditangani"
+  )
+
+  const lab = page
+    .getByRole("list", { name: "Daftar fasilitas" })
+    .locator("li")
+    .filter({ hasText: "Lab Komputer 3" })
+  await page.goto("/facilities")
+  await expect(lab).toContainText("Dalam Perbaikan")
+
+  // Rejecting a report that was being handled reactivates the facility.
+  await page.goto("/staff/reports?tab=ditangani")
+  await page
+    .getByRole("textbox", { name: "Catatan penanganan" })
+    .fill("Ternyata bukan kerusakan")
+  await page.getByRole("button", { name: "Tolak" }).click()
+  await page.getByRole("button", { name: "Ya, tolak" }).click()
+  await expect(page.getByRole("status")).toContainText("Laporan ditolak")
+  await page.goto("/facilities")
+  await expect(lab).toContainText("Aktif")
+})
+
+test("Bagikan: kartu reservasi dapat diunduh sebagai story gelap", async ({
+  page,
+}) => {
+  await enterDemo(page, "Pengguna")
+  await page.goto("/app/reservations")
+  await page.getByRole("tab", { name: /Disetujui/ }).click()
+  await page.getByRole("button", { name: "Bagikan" }).first().click()
+  const dialog = page.getByRole("dialog")
+  await expect(dialog.getByRole("heading", { name: /^Bagikan / })).toBeVisible()
+  await dialog.getByRole("button", { name: "Story" }).click()
+  await dialog.getByRole("button", { name: "Gelap", exact: true }).click()
+  await expect(
+    dialog.getByRole("button", { name: "Gelap", exact: true })
+  ).toHaveAttribute("aria-pressed", "true")
+  await expect(
+    dialog.getByRole("link", { name: "Kirim lewat WhatsApp" })
+  ).toHaveAttribute("href", /wa\.me/)
+  const downloadPromise = page.waitForEvent("download")
+  await dialog.getByRole("button", { name: "Unduh gambar" }).click()
+  const download = await downloadPromise
+  expect(download.suggestedFilename()).toMatch(
+    /^sthana-reservasi-.+-story\.png$/
+  )
+})

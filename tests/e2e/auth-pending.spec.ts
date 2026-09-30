@@ -51,3 +51,9 @@ test("pendaftaran pending tidak membuat sesi dan status baru terlihat setelah lo
     )
   ).toHaveLength(0)
 })
+
+test("tambah akun menampilkan tautan daftar akun baru", async ({ page }) => {
+  await page.goto("/login/add-account")
+  const link = page.getByRole("link", { name: "Daftar akun baru" })
+  await expect(link).toHaveAttribute("href", "/register?from=add-account")
+})
