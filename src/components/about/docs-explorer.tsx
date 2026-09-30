@@ -34,6 +34,80 @@ import { cn } from "@/lib/utils"
 const videoBase =
   "https://github.com/myudak/Sthana-ProjectPPK/blob/main/docs/videos"
 
+/** Recorded flow and YouTube id per user story; stories without an id link to GitHub. */
+const storyVideos: { id: string; flow: string; youtube?: string }[] = [
+  {
+    id: "US-01",
+    flow: "Pengunjung membuka slot Aula; slot terisi tanpa nama/tujuan pemohon",
+    youtube: "36R9m4vyJj4",
+  },
+  {
+    id: "US-02",
+    flow: "Filter tipe, pencarian lokasi, dan urutan kapasitas terbesar",
+    youtube: "x5sCfOzuBbk",
+  },
+  {
+    id: "US-03",
+    flow: "Memilih slot, mengisi tujuan, lalu reservasi muncul di tab Menunggu",
+    youtube: "-pdT4QHxXMQ",
+  },
+  {
+    id: "US-04",
+    flow: "Membatalkan reservasi sendiri; reservasi pindah ke Riwayat",
+    youtube: "4AdxVtS2TjA",
+  },
+  {
+    id: "US-05",
+    flow: "Tab Menunggu, Disetujui, dan Riwayat beserta detailnya",
+    youtube: "vroDKYY20jg",
+  },
+  {
+    id: "US-06",
+    flow: "Laporan dengan kategori, deskripsi, dan foto; file salah ditolak",
+    youtube: "NrGiBegeXNY",
+  },
+  {
+    id: "US-07",
+    flow: "Petugas mulai menangani laporan; pengguna melihat status Ditangani",
+    youtube: "WcaISbO8-YA",
+  },
+  {
+    id: "US-08",
+    flow: "Dashboard petugas: reservasi menunggu, laporan baru, jadwal hari ini",
+    youtube: "TKbpAK3DeFU",
+  },
+  {
+    id: "US-09",
+    flow: "Petugas menyetujui reservasi; slot tampil Terisi bagi pengguna",
+  },
+  {
+    id: "US-10",
+    flow: "Pembatalan oleh petugas meminta alasan dan konfirmasi",
+  },
+  {
+    id: "US-11",
+    flow: "Laporan dimulai, lalu diselesaikan dengan catatan penanganan",
+  },
+  {
+    id: "US-12",
+    flow: "Fasilitas ditandai Dalam Perbaikan, lalu Aktif kembali",
+  },
+  { id: "US-13", flow: "Admin membuat akun petugas yang langsung aktif" },
+  { id: "US-14", flow: "Admin membuat akun pengguna yang langsung aktif" },
+  {
+    id: "US-15",
+    flow: "Registrasi mandiri, admin menyetujui satu akun dan menolak lainnya",
+  },
+  {
+    id: "US-16",
+    flow: "Admin menambah fasilitas, mengubah kapasitas, lalu menyembunyikannya",
+  },
+  {
+    id: "US-17",
+    flow: "Admin melihat rekap per fasilitas/lokasi dan mengunduh CSV",
+  },
+]
+
 type TabKey = "arsitektur" | "data" | "pengujian" | "keamanan"
 
 const tabs: { key: TabKey; label: string; hint: string }[] = [
@@ -594,6 +668,77 @@ function CountUp({ to, live }: { to: number; live: boolean }) {
   return <>{value}</>
 }
 
+function StoryVideos() {
+  const [selected, setSelected] = useState(storyVideos[0])
+  const [autoplay, setAutoplay] = useState(false)
+
+  return (
+    <div>
+      <p className="text-sm font-semibold">Video tiap user story</p>
+      {selected.youtube ? (
+        <div className="mt-2">
+          <div className="aspect-video overflow-hidden rounded-2xl border border-border/70 bg-[#1c172f]">
+            <iframe
+              key={selected.youtube}
+              src={`https://www.youtube-nocookie.com/embed/${selected.youtube}?rel=0${autoplay ? "&autoplay=1" : ""}`}
+              title={`${selected.id}: ${selected.flow}`}
+              loading="lazy"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+              className="size-full border-0"
+            />
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">{selected.id}</span>{" "}
+            · {selected.flow}
+          </p>
+        </div>
+      ) : null}
+      <ul className="mt-3 grid grid-cols-4 gap-1.5 sm:grid-cols-6 lg:grid-cols-9">
+        {storyVideos.map((story) => {
+          const chip =
+            "flex w-full items-center justify-center gap-1 rounded-xl border px-2 py-2 text-xs font-semibold transition-colors hover:border-pink-400 hover:text-pink-700 dark:hover:text-pink-300"
+          const active = story.id === selected.id
+          return (
+            <li key={story.id}>
+              {story.youtube ? (
+                <button
+                  type="button"
+                  title={story.flow}
+                  aria-pressed={active}
+                  onClick={() => {
+                    setSelected(story)
+                    setAutoplay(true)
+                  }}
+                  className={cn(
+                    chip,
+                    active
+                      ? "border-pink-400 bg-pink-50 text-pink-800 dark:bg-pink-400/15 dark:text-pink-100"
+                      : "border-border/70 bg-background"
+                  )}
+                >
+                  ▶ {story.id}
+                </button>
+              ) : (
+                <a
+                  href={`${videoBase}/${story.id}.webm`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={story.flow}
+                  className={cn(chip, "border-border/70 bg-background")}
+                >
+                  ▶ {story.id}
+                </a>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
 function TestingPanel({
   live,
   reduced,
@@ -665,26 +810,7 @@ function TestingPanel({
         </ol>
       </div>
 
-      <div>
-        <p className="text-sm font-semibold">Video tiap user story</p>
-        <ul className="mt-2 grid grid-cols-4 gap-1.5 sm:grid-cols-6 lg:grid-cols-9">
-          {Array.from({ length: 17 }, (_, index) => {
-            const id = `US-${String(index + 1).padStart(2, "0")}`
-            return (
-              <li key={id}>
-                <a
-                  href={`${videoBase}/${id}.webm`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-1 rounded-xl border border-border/70 bg-background px-2 py-2 text-xs font-semibold transition-colors hover:border-pink-400 hover:text-pink-700 dark:hover:text-pink-300"
-                >
-                  ▶ {id}
-                </a>
-              </li>
-            )
-          })}
-        </ul>
-      </div>
+      <StoryVideos />
 
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
         <DocLink href="/docs/uat">Baca UAT</DocLink>
