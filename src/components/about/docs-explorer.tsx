@@ -31,11 +31,8 @@ import {
 
 import { cn } from "@/lib/utils"
 
-const videoBase =
-  "https://github.com/myudak/Sthana-ProjectPPK/blob/main/docs/videos"
-
-/** Recorded flow and YouTube id per user story; stories without an id link to GitHub. */
-const storyVideos: { id: string; flow: string; youtube?: string }[] = [
+/** Recorded flow and YouTube id per user story. */
+const storyVideos: { id: string; flow: string; youtube: string }[] = [
   {
     id: "US-01",
     flow: "Pengunjung membuka slot Aula; slot terisi tanpa nama/tujuan pemohon",
@@ -79,32 +76,47 @@ const storyVideos: { id: string; flow: string; youtube?: string }[] = [
   {
     id: "US-09",
     flow: "Petugas menyetujui reservasi; slot tampil Terisi bagi pengguna",
+    youtube: "ImRtQvGvJSY",
   },
   {
     id: "US-10",
     flow: "Pembatalan oleh petugas meminta alasan dan konfirmasi",
+    youtube: "ojvBXT9HPlM",
   },
   {
     id: "US-11",
     flow: "Laporan dimulai, lalu diselesaikan dengan catatan penanganan",
+    youtube: "z3gO5Q54f2Q",
   },
   {
     id: "US-12",
     flow: "Fasilitas ditandai Dalam Perbaikan, lalu Aktif kembali",
+    youtube: "vGuTuV4xgvY",
   },
-  { id: "US-13", flow: "Admin membuat akun petugas yang langsung aktif" },
-  { id: "US-14", flow: "Admin membuat akun pengguna yang langsung aktif" },
+  {
+    id: "US-13",
+    flow: "Admin membuat akun petugas yang langsung aktif",
+    youtube: "7yJHs91gHHc",
+  },
+  {
+    id: "US-14",
+    flow: "Admin membuat akun pengguna yang langsung aktif",
+    youtube: "92om7DlVA6w",
+  },
   {
     id: "US-15",
     flow: "Registrasi mandiri, admin menyetujui satu akun dan menolak lainnya",
+    youtube: "rdow1GEe9uU",
   },
   {
     id: "US-16",
     flow: "Admin menambah fasilitas, mengubah kapasitas, lalu menyembunyikannya",
+    youtube: "a771pUIvaFY",
   },
   {
     id: "US-17",
     flow: "Admin melihat rekap per fasilitas/lokasi dan mengunduh CSV",
+    youtube: "LVA5abWgMBo",
   },
 ]
 
@@ -675,62 +687,46 @@ function StoryVideos() {
   return (
     <div>
       <p className="text-sm font-semibold">Video tiap user story</p>
-      {selected.youtube ? (
-        <div className="mt-2">
-          <div className="aspect-video overflow-hidden rounded-2xl border border-border/70 bg-[#1c172f]">
-            <iframe
-              key={selected.youtube}
-              src={`https://www.youtube-nocookie.com/embed/${selected.youtube}?rel=0${autoplay ? "&autoplay=1" : ""}`}
-              title={`${selected.id}: ${selected.flow}`}
-              loading="lazy"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              referrerPolicy="strict-origin-when-cross-origin"
-              allowFullScreen
-              className="size-full border-0"
-            />
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">{selected.id}</span>{" "}
-            · {selected.flow}
-          </p>
+      <div className="mt-2">
+        <div className="aspect-video overflow-hidden rounded-2xl border border-border/70 bg-[#1c172f]">
+          <iframe
+            key={selected.youtube}
+            src={`https://www.youtube-nocookie.com/embed/${selected.youtube}?rel=0${autoplay ? "&autoplay=1" : ""}`}
+            title={`${selected.id}: ${selected.flow}`}
+            loading="lazy"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerPolicy="strict-origin-when-cross-origin"
+            allowFullScreen
+            className="size-full border-0"
+          />
         </div>
-      ) : null}
+        <p className="mt-2 text-xs text-muted-foreground">
+          <span className="font-semibold text-foreground">{selected.id}</span> ·{" "}
+          {selected.flow}
+        </p>
+      </div>
       <ul className="mt-3 grid grid-cols-4 gap-1.5 sm:grid-cols-6 lg:grid-cols-9">
         {storyVideos.map((story) => {
-          const chip =
-            "flex w-full items-center justify-center gap-1 rounded-xl border px-2 py-2 text-xs font-semibold transition-colors hover:border-pink-400 hover:text-pink-700 dark:hover:text-pink-300"
           const active = story.id === selected.id
           return (
             <li key={story.id}>
-              {story.youtube ? (
-                <button
-                  type="button"
-                  title={story.flow}
-                  aria-pressed={active}
-                  onClick={() => {
-                    setSelected(story)
-                    setAutoplay(true)
-                  }}
-                  className={cn(
-                    chip,
-                    active
-                      ? "border-pink-400 bg-pink-50 text-pink-800 dark:bg-pink-400/15 dark:text-pink-100"
-                      : "border-border/70 bg-background"
-                  )}
-                >
-                  ▶ {story.id}
-                </button>
-              ) : (
-                <a
-                  href={`${videoBase}/${story.id}.webm`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={story.flow}
-                  className={cn(chip, "border-border/70 bg-background")}
-                >
-                  ▶ {story.id}
-                </a>
-              )}
+              <button
+                type="button"
+                title={story.flow}
+                aria-pressed={active}
+                onClick={() => {
+                  setSelected(story)
+                  setAutoplay(true)
+                }}
+                className={cn(
+                  "flex w-full items-center justify-center gap-1 rounded-xl border px-2 py-2 text-xs font-semibold transition-colors hover:border-pink-400 hover:text-pink-700 dark:hover:text-pink-300",
+                  active
+                    ? "border-pink-400 bg-pink-50 text-pink-800 dark:bg-pink-400/15 dark:text-pink-100"
+                    : "border-border/70 bg-background"
+                )}
+              >
+                ▶ {story.id}
+              </button>
             </li>
           )
         })}
