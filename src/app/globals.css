@@ -424,3 +424,27 @@
   --face-x: 64.5%;
   --face-y: 5.4%;
 }
+
+/* Scoped to portal home pages; list and form pages keep their own surfaces. */
+[data-dashboard="true"] {
+  background: #f5f4f6;
+}
+
+.dark [data-dashboard="true"] {
+  background: #17131a;
+}
+
+[data-dashboard="true"] main [data-slot="card"] {
+  background-color: #fff;
+}
+
+.dark [data-dashboard="true"] main [data-slot="card"] {
+  background-color: #241e28;
+}
+
+/* Keep dark portal controls close to the surrounding panel tone. */
+.dark [data-portal-surface] {
+  --input: #3b3341;
+  --secondary: #302936;
+  --muted: #302936;
+}

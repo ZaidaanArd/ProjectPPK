@@ -386,7 +386,17 @@ export function PortalShell({
           onSwitchAccount={(token) => void switchAccount(token)}
           onRemoveAccount={(token, email) => setRemoveTarget({ token, email })}
         />
-        <SidebarInset className="min-h-svh overflow-x-clip bg-[radial-gradient(circle_at_top_right,rgba(255,229,242,0.55),transparent_32%),#fbfafb] dark:bg-[radial-gradient(circle_at_top_right,rgba(135,25,84,0.18),transparent_32%),#17131a]">
+        <SidebarInset
+          data-portal-surface={
+            pathname === role.home ||
+            ["/staff/reservations", "/staff/reports", "/admin/users"].includes(
+              pathname
+            ) ||
+            undefined
+          }
+          data-dashboard={pathname === role.home || undefined}
+          className="min-h-svh min-w-0 overflow-x-clip bg-[radial-gradient(circle_at_top_right,rgba(255,229,242,0.55),transparent_32%),#fbfafb] dark:bg-[radial-gradient(circle_at_top_right,rgba(135,25,84,0.18),transparent_32%),#17131a]"
+        >
           <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-pink-950/5 bg-white/80 px-4 backdrop-blur-xl sm:px-6 dark:border-white/10 dark:bg-[#201a23]/85">
             <div className="flex min-w-0 items-center gap-2">
               <SidebarTrigger

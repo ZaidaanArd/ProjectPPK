@@ -31,7 +31,6 @@ import type {
   FacilityType,
   TimeSlot,
 } from "@/lib/facilities-dashboard/types"
-import { cn } from "@/lib/utils"
 
 type SortOrder = "nama" | "kapasitas" | "terbaru"
 
@@ -462,32 +461,6 @@ export function PublicFacilities() {
           </div>
         </section>
         <div className="public-facilities-toolbar">
-          {!loading && (
-            <fieldset
-              aria-label="Filter cepat tipe fasilitas"
-              className="public-facilities-categories m-0 flex min-w-0 gap-2 overflow-x-auto border-0 p-0 pb-1"
-            >
-              {["semua", ...types].map((item) => {
-                const active = type === item
-                return (
-                  <button
-                    key={item}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => setType(item)}
-                    className={cn(
-                      "public-facilities-category shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-500",
-                      active
-                        ? "border-pink-600 bg-pink-600 text-white shadow-sm"
-                        : "border-border bg-card text-muted-foreground hover:bg-muted/70 hover:text-foreground"
-                    )}
-                  >
-                    {item === "semua" ? "Semua tipe" : item}
-                  </button>
-                )
-              })}
-            </fieldset>
-          )}
           <div className="public-facilities-sort flex items-center gap-2">
             <Label id="public-sort-label" className="text-sm">
               Urutkan

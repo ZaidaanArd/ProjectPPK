@@ -1,6 +1,15 @@
 "use client"
 
-import { createContext, useContext, useEffect, useMemo, useRef } from "react"
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
+import { createPortal } from "react-dom"
 import { IconX } from "@tabler/icons-react"
 import { MotionConfig, useReducedMotion } from "framer-motion"
 import { Onborda, OnbordaProvider, useOnborda } from "onborda"
@@ -44,17 +53,20 @@ const toursByPath: Record<string, Step[]> = {
     step(
       "Cari fasilitas",
       "Cari ruang dan cek jadwal yang tersedia.",
-      "#portal-find-facilities"
+      "#portal-find-facilities",
+      "bottom-left"
     ),
     step(
       "Ajukan reservasi",
       "Pilih fasilitas dan waktu penggunaan.",
-      "#portal-reservation-action"
+      "#portal-reservation-action",
+      "bottom-left"
     ),
     step(
       "Buat laporan",
       "Laporkan kendala fasilitas untuk ditangani petugas.",
-      "#portal-report-action"
+      "#portal-report-action",
+      "bottom-left"
     ),
   ],
   "/app/reservations": [
@@ -147,12 +159,69 @@ function TourCard({
   const controls = useContext(TourControlsContext)
   const { closeOnborda } = useOnborda()
   const headingRef = useRef<HTMLHeadingElement>(null)
+  const cardRef = useRef<HTMLDialogElement>(null)
+  const [position, setPosition] = useState({ left: 16, top: 16 })
+
+  useLayoutEffect(() => {
+    const card = cardRef.current
+    const target = document.querySelector(current.selector)
+    if (!card || !target) return
+
+    function updatePosition() {
+      if (!card || !target) return
+      const rect = target.getBoundingClientRect()
+      const size = card.getBoundingClientRect()
+      const viewport = window.visualViewport
+      const leftEdge = (viewport?.offsetLeft ?? 0) + 16
+      const topEdge = (viewport?.offsetTop ?? 0) + 16
+      const rightEdge = leftEdge + (viewport?.width ?? window.innerWidth) - 32
+      const bottomEdge = topEdge + (viewport?.height ?? window.innerHeight) - 32
+      const above = rect.top - size.height - 24
+      const below = rect.bottom + 24
+      const preferAbove = current.side?.startsWith("top")
+      let top = preferAbove ? above : below
+      if (preferAbove && above < topEdge && below + size.height <= bottomEdge)
+        top = below
+      if (!preferAbove && below + size.height > bottomEdge && above >= topEdge)
+        top = above
+      const left = current.side?.endsWith("right")
+        ? rect.right - size.width
+        : current.side?.endsWith("left")
+          ? rect.left
+          : rect.left + (rect.width - size.width) / 2
+      const next = {
+        left: Math.max(leftEdge, Math.min(left, rightEdge - size.width)),
+        top: Math.max(topEdge, Math.min(top, bottomEdge - size.height)),
+      }
+      setPosition((previous) =>
+        previous.left === next.left && previous.top === next.top
+          ? previous
+          : next
+      )
+    }
+
+    updatePosition()
+    const observer = new ResizeObserver(updatePosition)
+    observer.observe(card)
+    observer.observe(target)
+    window.addEventListener("resize", updatePosition)
+    window.addEventListener("scroll", updatePosition, true)
+    window.visualViewport?.addEventListener("resize", updatePosition)
+    window.visualViewport?.addEventListener("scroll", updatePosition)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener("resize", updatePosition)
+      window.removeEventListener("scroll", updatePosition, true)
+      window.visualViewport?.removeEventListener("resize", updatePosition)
+      window.visualViewport?.removeEventListener("scroll", updatePosition)
+    }
+  }, [current.selector, current.side, currentStep])
 
   useEffect(() => {
-    headingRef.current?.focus()
+    headingRef.current?.focus({ preventScroll: true })
   }, [currentStep])
 
-  if (!controls) return null
+  if (!controls || typeof document === "undefined") return null
 
   function close() {
     closeOnborda()
@@ -186,13 +255,15 @@ function TourCard({
     }
   }
 
-  return (
+  return createPortal(
     <dialog
+      ref={cardRef}
+      style={position}
       open
       aria-modal="true"
       aria-labelledby="user-tour-title"
       onKeyDown={handleKeyDown}
-      className="relative m-0 w-[min(20rem,calc(100vw-2rem))] animate-in rounded-2xl border border-pink-200 bg-card p-4 text-card-foreground shadow-2xl duration-100 fade-in-0 zoom-in-95 dark:border-pink-300/20 dark:bg-[#2b202b]"
+      className="fixed z-[1000] m-0 max-h-[calc(100dvh-2rem)] w-[min(20rem,calc(100vw-2rem))] animate-in overflow-y-auto rounded-2xl border border-pink-200 bg-card p-4 text-card-foreground shadow-2xl duration-150 fade-in-0 motion-reduce:animate-none dark:border-pink-300/20 dark:bg-[#2b202b]"
     >
       <div className="flex items-start justify-between gap-3">
         <SthaniFace
@@ -246,7 +317,8 @@ function TourCard({
           {currentStep === totalSteps - 1 ? "Selesai" : "Lanjut"}
         </Button>
       </div>
-    </dialog>
+    </dialog>,
+    document.body
   )
 }
 

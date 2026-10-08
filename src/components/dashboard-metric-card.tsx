@@ -1,78 +1,76 @@
-import type { ElementType } from "react"
+import type { ElementType, ReactNode } from "react"
 import Link from "next/link"
+import { IconArrowUpRight } from "@tabler/icons-react"
 
 import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 
-const tones = {
-  berry: {
-    icon: "bg-[#52082b] text-white shadow-[0_8px_22px_rgba(82,8,43,0.2)]",
-    glow: "from-[#52082b]/10",
-  },
-  pink: {
-    icon: "bg-[#d00064] text-white shadow-[0_8px_22px_rgba(208,0,100,0.2)]",
-    glow: "from-[#d00064]/10",
-  },
-  amber: {
-    icon: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-200",
-    glow: "from-amber-100/70 dark:from-amber-500/10",
-  },
-  emerald: {
-    icon: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-200",
-    glow: "from-emerald-100/70 dark:from-emerald-500/10",
-  },
-} as const
+export function DashboardMetricPanel({
+  children,
+  columns = 3,
+}: {
+  children: ReactNode
+  columns?: 3 | 4
+}) {
+  return (
+    <Card className="gap-0 p-0 shadow-sm" aria-label="Ringkasan dashboard">
+      <div
+        className={cn(
+          "grid [&>*]:min-w-0 [&>*]:border-border/70",
+          columns === 3
+            ? "md:grid-cols-3 [&>*]:border-b [&>*]:last:border-b-0 md:[&>*]:border-r md:[&>*]:border-b-0 md:[&>*]:last:border-r-0"
+            : "md:grid-cols-2 lg:grid-cols-4 [&>*]:border-b [&>*]:last:border-b-0 md:[&>*]:border-r lg:[&>*]:border-r lg:[&>*]:border-b-0 lg:[&>*]:last:border-r-0 md:[&>*:nth-child(2n)]:border-r-0 lg:[&>*:nth-child(2n)]:border-r md:[&>*:nth-last-child(-n+2)]:border-b-0"
+        )}
+      >
+        {children}
+      </div>
+    </Card>
+  )
+}
 
 export function DashboardMetricCard({
   label,
   value,
   description,
   icon: Icon,
-  tone = "pink",
   href,
 }: {
   label: string
   value: number | undefined
   description: string
   icon: ElementType
-  tone?: keyof typeof tones
   href?: string
 }) {
-  const colors = tones[tone]
-
   const card = (
-    <Card className="relative gap-4 overflow-hidden p-5 transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-lg">
-      <div
-        className={cn(
-          "pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b to-transparent opacity-70",
-          colors.glow
-        )}
-      />
-      <div className="relative flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">{label}</p>
+    <div className="relative flex h-full min-w-0 flex-col gap-2 p-5 sm:p-6">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-muted-foreground">
+            {label}
+            {href && (
+              <IconArrowUpRight
+                className="ml-1 inline size-4 text-muted-foreground"
+                aria-hidden="true"
+              />
+            )}
+          </p>
           {value === undefined ? (
-            <Skeleton className="mt-3 h-9 w-16" />
+            <Skeleton className="mt-2 h-9 w-16" />
           ) : (
-            <p className="mt-1 font-heading text-3xl font-bold tracking-tight">
+            <p className="mt-2 font-heading text-3xl font-bold tracking-tight break-all text-[#850440] tabular-nums dark:text-pink-200">
               {value}
             </p>
           )}
         </div>
-        <span
-          className={cn(
-            "flex size-10 shrink-0 items-center justify-center rounded-2xl",
-            colors.icon
-          )}
-        >
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-muted text-[#b00055] dark:text-pink-200">
           <Icon className="size-5" aria-hidden="true" />
         </span>
       </div>
       <p className="relative text-xs leading-relaxed text-muted-foreground">
         {description}
       </p>
-    </Card>
+    </div>
   )
 
   if (!href) return card
@@ -80,7 +78,7 @@ export function DashboardMetricCard({
   return (
     <Link
       href={href}
-      className="block rounded-4xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className="block h-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
     >
       {card}
     </Link>

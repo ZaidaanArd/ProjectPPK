@@ -1,11 +1,13 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { useAppMutation as useMutation } from "@/lib/data-hooks"
 import { toastError } from "@/lib/toast"
 import {
+  IconArrowRight,
+  IconSearch,
   IconChecklist,
   IconClockHour4,
   IconFileAlert,
@@ -15,7 +17,10 @@ import {
 
 import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
-import { DashboardMetricCard } from "@/components/dashboard-metric-card"
+import {
+  DashboardMetricCard,
+  DashboardMetricPanel,
+} from "@/components/dashboard-metric-card"
 import {
   DashboardEmptyHint,
   DashboardSectionHeader,
@@ -47,9 +52,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Tabs, TabsList, TabsPanel, TabsTab } from "@/components/ui/tabs"
+import {
+  Tabs,
+  TabsList,
+  TabsPanel,
+  TabsTab,
+  TabsCount,
+} from "@/components/ui/tabs"
 import { useAuthenticatedQuery } from "@/lib/use-authenticated-query"
 import { cn } from "@/lib/utils"
+import { displayDuration } from "@/lib/reservation-slots"
 
 const labels: Record<string, string> = {
   pending: "Menunggu",
@@ -140,6 +152,80 @@ function reportPriority(status: string) {
   return 2
 }
 
+function waitingTime(createdAt: number, now: number) {
+  const minutes = Math.max(0, Math.floor((now - createdAt) / 60_000))
+  if (minutes === 0) return "Baru masuk"
+  if (minutes < 1440) return `Menunggu ${displayDuration(minutes)}`
+  return `Menunggu ${Math.floor(minutes / 1440)} hari`
+}
+
+function reservationTabForStatus(status: string): ReservationTab {
+  return status === "pending"
+    ? "menunggu"
+    : status === "approved"
+      ? "disetujui"
+      : "riwayat"
+}
+
+function reportTabForStatus(status: string): ReportTab {
+  return status === "pending"
+    ? "baru"
+    : status === "in_progress"
+      ? "ditangani"
+      : "riwayat"
+}
+
+function useQueueItemFocus<Tab extends string>(
+  itemId: string | undefined,
+  items: { id: string; status: string }[] | undefined,
+  activeTab: Tab,
+  setActiveTab: (tab: Tab) => void,
+  tabForStatus: (status: string) => Tab,
+  prefix: string,
+  search: string,
+  setSearch: (value: string) => void
+) {
+  const focusedItem = useRef<string | null>(null)
+  const target = items?.find((item) => item.id === itemId)
+
+  useEffect(() => {
+    if (!itemId || !target || focusedItem.current === itemId) return
+    if (search) {
+      setSearch("")
+      return
+    }
+    const targetTab = tabForStatus(target.status)
+    if (activeTab !== targetTab) {
+      setActiveTab(targetTab)
+      return
+    }
+    const frame = requestAnimationFrame(() => {
+      const card = document.getElementById(`${prefix}-${itemId}`)
+      if (!card) return
+      card.scrollIntoView({
+        block: "center",
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+      })
+      card.focus({ preventScroll: true })
+      focusedItem.current = itemId
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [
+    itemId,
+    target,
+    activeTab,
+    setActiveTab,
+    tabForStatus,
+    prefix,
+    search,
+    setSearch,
+  ])
+
+  return Boolean(itemId && items && !target)
+}
+
 type DashboardQueueReservation = {
   id: Id<"reservations">
   applicantName: string
@@ -162,8 +248,10 @@ type DashboardQueueReport = {
 
 function StaffPendingReservationsCard({
   reservations,
+  now,
 }: {
   reservations: DashboardQueueReservation[] | undefined
+  now: number
 }) {
   const pending = [...(reservations ?? [])]
     .filter((item) => item.status === "pending")
@@ -171,7 +259,7 @@ function StaffPendingReservationsCard({
     .slice(0, 3)
 
   return (
-    <Card className="gap-4 p-5 sm:p-6">
+    <Card className="gap-4 p-5 shadow-sm sm:p-6">
       <DashboardSectionHeader
         title="Reservasi menunggu"
         href="/staff/reservations?tab=menunggu"
@@ -186,32 +274,38 @@ function StaffPendingReservationsCard({
           actionLabel="Buka antrean"
         />
       ) : (
-        <ul className="space-y-3">
+        <ul className="divide-y divide-border/70">
           {pending.map((item) => (
-            <li
-              key={item.id}
-              className="rounded-2xl border border-border/70 bg-muted/20 p-4"
-            >
-              <p className="font-medium break-words">{item.applicantName}</p>
+            <li key={item.id} className="py-4 first:pt-0 last:pb-0">
+              <p className="font-semibold break-words">{item.applicantName}</p>
               <p className="mt-0.5 text-sm break-words text-muted-foreground">
-                {item.facilityName} · {item.purpose}
+                <span className="font-semibold text-foreground">
+                  {item.facilityName}
+                </span>{" "}
+                · {item.purpose}
               </p>
-              <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-foreground tabular-nums">
                 <IconClockHour4 size={14} aria-hidden="true" />
                 {jakartaDate.format(item.startAt)} ·{" "}
                 {jakartaTime.format(item.startAt)}–
                 {jakartaTime.format(item.endAt)} WIB
               </p>
-              <Link
-                href="/staff/reservations?tab=menunggu"
-                className={buttonVariants({
-                  variant: "outline",
-                  size: "sm",
-                  className: "mt-3",
-                })}
-              >
-                Tinjau
-              </Link>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-muted-foreground">
+                  {waitingTime(item.createdAt, now)}
+                </p>
+                <Link
+                  href={`/staff/reservations?tab=menunggu&item=${encodeURIComponent(item.id)}`}
+                  className={buttonVariants({
+                    variant: "outline",
+                    size: "default",
+                    className:
+                      "rounded-xl border-border bg-muted/50 hover:bg-muted hover:shadow-sm dark:bg-white/5 dark:hover:bg-white/10",
+                  })}
+                >
+                  Tinjau <IconArrowRight aria-hidden="true" />
+                </Link>
+              </div>
             </li>
           ))}
         </ul>
@@ -222,8 +316,10 @@ function StaffPendingReservationsCard({
 
 function StaffNewReportsCard({
   reports,
+  now,
 }: {
   reports: DashboardQueueReport[] | undefined
+  now: number
 }) {
   const pending = [...(reports ?? [])]
     .filter((item) => item.status === "pending")
@@ -231,7 +327,7 @@ function StaffNewReportsCard({
     .slice(0, 3)
 
   return (
-    <Card className="gap-4 p-5 sm:p-6">
+    <Card className="gap-4 p-5 shadow-sm sm:p-6">
       <DashboardSectionHeader
         title="Laporan baru"
         href="/staff/reports?tab=baru"
@@ -246,26 +342,29 @@ function StaffNewReportsCard({
           actionLabel="Buka antrean"
         />
       ) : (
-        <ul className="space-y-3">
+        <ul className="divide-y divide-border/70">
           {pending.map((item) => (
-            <li
-              key={item.id}
-              className="rounded-2xl border border-border/70 bg-muted/20 p-4"
-            >
-              <p className="font-medium break-words">{item.facilityName}</p>
+            <li key={item.id} className="py-4 first:pt-0 last:pb-0">
+              <p className="font-semibold break-words">{item.facilityName}</p>
               <p className="mt-0.5 text-sm break-words text-muted-foreground">
                 {item.category} · {item.reporterName}
               </p>
-              <Link
-                href="/staff/reports?tab=baru"
-                className={buttonVariants({
-                  variant: "outline",
-                  size: "sm",
-                  className: "mt-3",
-                })}
-              >
-                Tangani
-              </Link>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-muted-foreground">
+                  {waitingTime(item.createdAt, now)}
+                </p>
+                <Link
+                  href={`/staff/reports?tab=baru&item=${encodeURIComponent(item.id)}`}
+                  className={buttonVariants({
+                    variant: "outline",
+                    size: "default",
+                    className:
+                      "rounded-xl border-border bg-muted/50 hover:bg-muted hover:shadow-sm dark:bg-white/5 dark:hover:bg-white/10",
+                  })}
+                >
+                  Tangani <IconArrowRight aria-hidden="true" />
+                </Link>
+              </div>
             </li>
           ))}
         </ul>
@@ -290,7 +389,7 @@ function StaffTodayScheduleCard({
     .sort((a, b) => a.startAt - b.startAt)
 
   return (
-    <Card className="gap-4 p-5 sm:p-6">
+    <Card className="gap-4 p-5 shadow-sm sm:p-6">
       <DashboardSectionHeader
         title="Jadwal hari ini"
         href="/staff/reservations?tab=disetujui"
@@ -305,22 +404,25 @@ function StaffTodayScheduleCard({
           actionLabel="Lihat semua jadwal"
         />
       ) : (
-        <ul className="space-y-3">
+        <ul className="divide-y divide-border/70">
           {today.map((item) => {
             const ongoing = item.startAt <= now && now < item.endAt
             const finished = item.endAt <= now
             return (
               <li
                 key={item.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/70 bg-muted/20 p-4"
+                className="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-0 last:pb-0"
               >
                 <div className="min-w-0">
-                  <p className="font-medium">
+                  <p className="font-semibold tabular-nums">
                     {jakartaTime.format(item.startAt)}–
                     {jakartaTime.format(item.endAt)} WIB
                   </p>
                   <p className="mt-0.5 text-sm break-words text-muted-foreground">
-                    {item.facilityName} · {item.applicantName}
+                    <span className="font-semibold text-foreground">
+                      {item.facilityName}
+                    </span>{" "}
+                    · {item.applicantName}
                   </p>
                   <p className="mt-0.5 text-xs break-words text-muted-foreground">
                     {item.purpose}
@@ -355,11 +457,17 @@ function StaffTodayScheduleCard({
 export function StaffDashboard() {
   const reservations = useAuthenticatedQuery(api.reservations.listQueue, {})
   const reports = useAuthenticatedQuery(api.reports.listQueue, {})
-  const [now] = useState(() => Date.now())
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <div className="space-y-7">
       <PortalPageHeader
+        layout="actions-right"
         eyebrow="Portal petugas"
         title="Antrean operasional"
         description="Prioritaskan permohonan dan kendala yang perlu ditangani."
@@ -370,7 +478,7 @@ export function StaffDashboard() {
           Sinkron real-time
         </span>
       </PortalPageHeader>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <DashboardMetricPanel columns={3}>
         <DashboardMetricCard
           label="Reservasi menunggu"
           value={
@@ -380,7 +488,6 @@ export function StaffDashboard() {
           }
           description="Permohonan yang membutuhkan keputusan."
           icon={IconClockHour4}
-          tone="amber"
           href="/staff/reservations?tab=menunggu"
         />
         <DashboardMetricCard
@@ -392,7 +499,6 @@ export function StaffDashboard() {
           }
           description="Laporan yang belum diambil petugas."
           icon={IconFileAlert}
-          tone="pink"
           href="/staff/reports?tab=baru"
         />
         <DashboardMetricCard
@@ -404,23 +510,22 @@ export function StaffDashboard() {
           }
           description="Pekerjaan aktif yang perlu dituntaskan."
           icon={IconProgress}
-          tone="emerald"
           href="/staff/reports?tab=ditangani"
         />
-      </div>
-      <div className="grid gap-6 lg:grid-cols-2">
-        <StaffPendingReservationsCard reservations={reservations} />
-        <StaffNewReportsCard reports={reports} />
+      </DashboardMetricPanel>
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+        <StaffPendingReservationsCard reservations={reservations} now={now} />
+        <StaffNewReportsCard reports={reports} now={now} />
       </div>
       <StaffTodayScheduleCard reservations={reservations} now={now} />
-      <Card className="p-5 sm:p-6">
+      <Card className="p-5 shadow-sm sm:p-6">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex items-start gap-3">
             <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-pink-100 text-[#b00055] dark:bg-pink-900/40 dark:text-pink-200">
               <IconChecklist className="size-5" aria-hidden="true" />
             </span>
             <div>
-              <h2 className="font-heading text-base font-bold">
+              <h2 className="font-heading text-lg font-semibold">
                 Lanjutkan antrean kerja
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -447,8 +552,10 @@ export function StaffDashboard() {
 
 export function StaffReservations({
   initialTab = "menunggu",
+  initialItem,
 }: {
   initialTab?: ReservationTab
+  initialItem?: string
 }) {
   const reservations = useAuthenticatedQuery(api.reservations.listQueue, {})
   const decide = useMutation(api.reservations.decide)
@@ -458,11 +565,23 @@ export function StaffReservations({
   const [success, setSuccess] = useState("")
   const [activeTab, setActiveTab] = useState<ReservationTab>(initialTab)
   const [sortOrder, setSortOrder] = useState<QueueSortOrder>("prioritas")
+  const [search, setSearch] = useState("")
+  const searchTerm = search.trim().toLowerCase()
   const [confirmAction, setConfirmAction] = useState<{
     id: Id<"reservations">
     action: "approved" | "rejected" | "cancelled"
   } | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const missingItem = useQueueItemFocus(
+    initialItem,
+    reservations,
+    activeTab,
+    setActiveTab,
+    reservationTabForStatus,
+    "queue-reservation",
+    search,
+    setSearch
+  )
 
   const tabCounts = useMemo(() => {
     const counts: Record<ReservationTab, number> = {
@@ -498,8 +617,12 @@ export function StaffReservations({
 
   const visibleReservations = useMemo(() => {
     if (!reservations) return undefined
-    const filtered = reservations.filter((item) =>
-      reservationMatchesTab(item.status, activeTab)
+    const filtered = reservations.filter(
+      (item) =>
+        reservationMatchesTab(item.status, activeTab) &&
+        `${item.applicantName} ${item.facilityName}`
+          .toLowerCase()
+          .includes(searchTerm)
     )
     filtered.sort((a, b) => {
       if (sortOrder === "terbaru") return b.createdAt - a.createdAt
@@ -510,7 +633,7 @@ export function StaffReservations({
       return b.createdAt - a.createdAt
     })
     return filtered
-  }, [reservations, activeTab, sortOrder])
+  }, [reservations, activeTab, sortOrder, searchTerm])
 
   const confirmReservation = confirmAction
     ? reservations?.find((item) => item.id === confirmAction.id)
@@ -579,6 +702,12 @@ export function StaffReservations({
         description="Saat satu reservasi disetujui, ajuan lain yang bentrok otomatis ditolak."
         icon={IconClockHour4}
       />
+      {missingItem && (
+        <output className="block text-sm text-muted-foreground">
+          Reservasi yang dituju sudah tidak tersedia. Anda tetap dapat meninjau
+          antrean lainnya.
+        </output>
+      )}
       {message && (
         <p role="alert" className="text-sm text-destructive">
           {message}
@@ -602,18 +731,29 @@ export function StaffReservations({
             (tab) => (
               <TabsTab key={tab} value={tab}>
                 {reservationTabLabels[tab]}
-                <Badge
-                  variant="secondary"
-                  className="h-5 min-w-5 justify-center px-1.5 text-xs"
-                >
-                  {reservations ? tabCounts[tab] : "…"}
-                </Badge>
+                <TabsCount>{reservations ? tabCounts[tab] : "…"}</TabsCount>
               </TabsTab>
             )
           )}
         </TabsList>
         <TabsPanel value={activeTab} className="space-y-6">
           <div className="flex flex-wrap items-end gap-3">
+            <div className="w-full min-w-0 lg:flex-1 lg:basis-64">
+              <Label htmlFor="reservation-queue-search">Cari reservasi</Label>
+              <div className="relative mt-1.5">
+                <IconSearch
+                  aria-hidden="true"
+                  className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                />
+                <Input
+                  id="reservation-queue-search"
+                  placeholder="Cari pemohon atau fasilitas"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
             <div className="grid gap-1.5">
               <Label id="reservation-sort-label">Urutkan</Label>
               <Select
@@ -647,7 +787,7 @@ export function StaffReservations({
                 aria-live="polite"
               >
                 Menampilkan {visibleReservations.length} dari{" "}
-                {reservations.length} reservasi
+                {tabCounts[activeTab]} reservasi di tab ini
               </p>
             )}
           </div>
@@ -655,85 +795,106 @@ export function StaffReservations({
             <PortalListSkeleton layout="grid" />
           ) : visibleReservations.length === 0 ? (
             <Card className="p-8 text-center text-muted-foreground">
-              {reservationTabEmptyMessages[activeTab]}
+              {searchTerm && tabCounts[activeTab] > 0 ? (
+                <>
+                  <p>Tidak ada reservasi yang cocok dengan pencarian.</p>
+                  <Button
+                    variant="outline"
+                    className="mx-auto mt-3"
+                    onClick={() => setSearch("")}
+                  >
+                    Hapus pencarian
+                  </Button>
+                </>
+              ) : (
+                reservationTabEmptyMessages[activeTab]
+              )}
             </Card>
           ) : (
             <div className="grid items-start gap-4 lg:grid-cols-2">
               {visibleReservations.map((item) => (
-                <ReservationTicket
+                <section
                   key={item.id}
-                  facilityName={item.facilityName}
-                  startAt={item.startAt}
-                  endAt={item.endAt}
-                  status={item.status}
-                  statusLabel={labels[item.status] ?? item.status}
-                  purpose={item.purpose}
-                  decisionNote={item.decisionNote}
-                  createdAt={item.createdAt}
-                  meta={`${item.applicantName} · ${item.applicantEmail}`}
-                  alert={
-                    item.status === "pending" && overlaps[item.id] ? (
-                      <p className="flex items-start gap-2 rounded-2xl border border-amber-300/60 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900 dark:border-amber-300/20 dark:bg-amber-400/10 dark:text-amber-100">
-                        <IconAlertTriangle
-                          size={16}
-                          className="mt-px shrink-0"
-                          aria-hidden="true"
-                        />
-                        Bentrok dengan {overlaps[item.id]} pengajuan lain pada
-                        jam yang sama — pengajuan itu otomatis ditolak jika ini
-                        disetujui.
-                      </p>
-                    ) : null
-                  }
+                  id={`queue-reservation-${item.id}`}
+                  tabIndex={-1}
+                  aria-label={`Reservasi ${item.facilityName} oleh ${item.applicantName}`}
+                  className="rounded-3xl outline-none focus:ring-2 focus:ring-ring focus:ring-offset-4 focus:ring-offset-background"
                 >
-                  {(item.status === "pending" ||
-                    item.status === "approved") && (
-                    <div className="space-y-3">
-                      <Input
-                        id={`reservation-note-${item.id}`}
-                        aria-label="Catatan keputusan"
-                        placeholder="Alasan wajib untuk pembatalan"
-                        value={notes[item.id] ?? ""}
-                        onChange={(event) =>
-                          setNotes((current) => ({
-                            ...current,
-                            [item.id]: event.target.value,
-                          }))
-                        }
-                      />
-                      <div className="flex flex-wrap gap-2">
-                        {item.status === "pending" && (
-                          <>
-                            <Button
-                              size="sm"
-                              onClick={() =>
-                                requestProcess(item.id, "approved")
-                              }
-                            >
-                              Setujui
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                requestProcess(item.id, "rejected")
-                              }
-                            >
-                              Tolak
-                            </Button>
-                          </>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => requestProcess(item.id, "cancelled")}
-                        >
-                          Batalkan
-                        </Button>
+                  <ReservationTicket
+                    compactDate
+                    facilityName={item.facilityName}
+                    startAt={item.startAt}
+                    endAt={item.endAt}
+                    status={item.status}
+                    statusLabel={labels[item.status] ?? item.status}
+                    purpose={item.purpose}
+                    decisionNote={item.decisionNote}
+                    createdAt={item.createdAt}
+                    meta={`${item.applicantName} · ${item.applicantEmail}`}
+                    alert={
+                      item.status === "pending" && overlaps[item.id] ? (
+                        <p className="flex items-start gap-2 rounded-2xl border border-amber-300/60 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900 dark:border-amber-300/20 dark:bg-amber-400/10 dark:text-amber-100">
+                          <IconAlertTriangle
+                            size={16}
+                            className="mt-px shrink-0"
+                            aria-hidden="true"
+                          />
+                          Bentrok dengan {overlaps[item.id]} pengajuan lain pada
+                          jam yang sama — pengajuan itu otomatis ditolak jika
+                          ini disetujui.
+                        </p>
+                      ) : null
+                    }
+                  >
+                    {(item.status === "pending" ||
+                      item.status === "approved") && (
+                      <div className="space-y-3">
+                        <Input
+                          id={`reservation-note-${item.id}`}
+                          aria-label="Catatan keputusan"
+                          placeholder="Alasan wajib untuk pembatalan"
+                          value={notes[item.id] ?? ""}
+                          onChange={(event) =>
+                            setNotes((current) => ({
+                              ...current,
+                              [item.id]: event.target.value,
+                            }))
+                          }
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          {item.status === "pending" && (
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  requestProcess(item.id, "approved")
+                                }
+                              >
+                                Setujui
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  requestProcess(item.id, "rejected")
+                                }
+                              >
+                                Tolak
+                              </Button>
+                            </>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => requestProcess(item.id, "cancelled")}
+                          >
+                            Batalkan
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </ReservationTicket>
+                    )}
+                  </ReservationTicket>
+                </section>
               ))}
             </div>
           )}
@@ -798,8 +959,10 @@ export function StaffReservations({
 
 export function StaffReports({
   initialTab = "baru",
+  initialItem,
 }: {
   initialTab?: ReportTab
+  initialItem?: string
 }) {
   const reports = useAuthenticatedQuery(api.reports.listQueue, {})
   const updateStatus = useMutation(api.reports.updateStatus)
@@ -809,11 +972,23 @@ export function StaffReports({
   const [success, setSuccess] = useState("")
   const [activeTab, setActiveTab] = useState<ReportTab>(initialTab)
   const [sortOrder, setSortOrder] = useState<QueueSortOrder>("prioritas")
+  const [search, setSearch] = useState("")
+  const searchTerm = search.trim().toLowerCase()
   const [confirmAction, setConfirmAction] = useState<{
     reportId: Id<"reports">
     status: "resolved" | "rejected"
   } | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const missingItem = useQueueItemFocus(
+    initialItem,
+    reports,
+    activeTab,
+    setActiveTab,
+    reportTabForStatus,
+    "queue-report",
+    search,
+    setSearch
+  )
 
   const tabCounts = useMemo(() => {
     const counts: Record<ReportTab, number> = {
@@ -831,8 +1006,12 @@ export function StaffReports({
 
   const visibleReports = useMemo(() => {
     if (!reports) return undefined
-    const filtered = reports.filter((report) =>
-      reportMatchesTab(report.status, activeTab)
+    const filtered = reports.filter(
+      (report) =>
+        reportMatchesTab(report.status, activeTab) &&
+        `${report.reporterName} ${report.facilityName} ${report.category}`
+          .toLowerCase()
+          .includes(searchTerm)
     )
     filtered.sort((a, b) => {
       if (sortOrder === "terbaru") return b.createdAt - a.createdAt
@@ -842,7 +1021,7 @@ export function StaffReports({
       return b.updatedAt - a.updatedAt
     })
     return filtered
-  }, [reports, activeTab, sortOrder])
+  }, [reports, activeTab, sortOrder, searchTerm])
 
   const confirmReport = confirmAction
     ? reports?.find((report) => report.id === confirmAction.reportId)
@@ -930,6 +1109,12 @@ export function StaffReports({
         description="Pantau laporan baru, pekerjaan yang sedang ditangani, dan riwayatnya."
         icon={IconFileAlert}
       />
+      {missingItem && (
+        <output className="block text-sm text-muted-foreground">
+          Laporan yang dituju sudah tidak tersedia. Anda tetap dapat meninjau
+          antrean lainnya.
+        </output>
+      )}
       {message && (
         <p role="alert" className="text-sm text-destructive">
           {message}
@@ -952,17 +1137,28 @@ export function StaffReports({
           {(Object.keys(reportTabLabels) as ReportTab[]).map((tab) => (
             <TabsTab key={tab} value={tab}>
               {reportTabLabels[tab]}
-              <Badge
-                variant="secondary"
-                className="h-5 min-w-5 justify-center px-1.5 text-xs"
-              >
-                {reports ? tabCounts[tab] : "…"}
-              </Badge>
+              <TabsCount>{reports ? tabCounts[tab] : "…"}</TabsCount>
             </TabsTab>
           ))}
         </TabsList>
         <TabsPanel value={activeTab} className="space-y-6">
           <div className="flex flex-wrap items-end gap-3">
+            <div className="w-full min-w-0 lg:flex-1 lg:basis-64">
+              <Label htmlFor="report-queue-search">Cari laporan</Label>
+              <div className="relative mt-1.5">
+                <IconSearch
+                  aria-hidden="true"
+                  className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                />
+                <Input
+                  id="report-queue-search"
+                  placeholder="Cari pelapor, fasilitas, atau kategori"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
             <div className="grid gap-1.5">
               <Label id="report-sort-label">Urutkan</Label>
               <Select
@@ -995,8 +1191,8 @@ export function StaffReports({
                 className="pb-2 text-xs text-muted-foreground"
                 aria-live="polite"
               >
-                Menampilkan {visibleReports.length} dari {reports.length}{" "}
-                laporan
+                Menampilkan {visibleReports.length} dari {tabCounts[activeTab]}{" "}
+                laporan di tab ini
               </p>
             )}
           </div>
@@ -1004,7 +1200,20 @@ export function StaffReports({
             <PortalListSkeleton layout="grid" />
           ) : visibleReports.length === 0 ? (
             <Card className="p-8 text-center text-muted-foreground">
-              {reportTabEmptyMessages[activeTab]}
+              {searchTerm && tabCounts[activeTab] > 0 ? (
+                <>
+                  <p>Tidak ada laporan yang cocok dengan pencarian.</p>
+                  <Button
+                    variant="outline"
+                    className="mx-auto mt-3"
+                    onClick={() => setSearch("")}
+                  >
+                    Hapus pencarian
+                  </Button>
+                </>
+              ) : (
+                reportTabEmptyMessages[activeTab]
+              )}
             </Card>
           ) : (
             <div className="grid items-start gap-4 lg:grid-cols-2">
@@ -1012,99 +1221,106 @@ export function StaffReports({
                 const open =
                   report.status === "pending" || report.status === "in_progress"
                 return (
-                  <ReportTicket
+                  <section
                     key={report.id}
-                    facilityName={report.facilityName}
-                    category={report.category}
-                    description={report.description}
-                    photoUrl={report.photoUrl}
-                    status={report.status}
-                    statusLabel={labels[report.status] ?? report.status}
-                    resolutionNote={
-                      open
-                        ? undefined
-                        : report.resolutionNote || "Tidak ada catatan."
-                    }
-                    createdAt={report.createdAt}
-                    updatedAt={report.updatedAt}
-                    meta={`${report.reporterName} · ${report.reporterEmail}`}
-                    reportedLabel={`Dilaporkan ${formatDate(report.createdAt)} · Diperbarui ${formatDate(report.updatedAt)}`}
+                    id={`queue-report-${report.id}`}
+                    tabIndex={-1}
+                    aria-label={`Laporan ${report.facilityName} oleh ${report.reporterName}`}
+                    className="rounded-3xl outline-none focus:ring-2 focus:ring-ring focus:ring-offset-4 focus:ring-offset-background"
                   >
-                    {open ? (
-                      <div className="space-y-3">
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`report-note-${report.id}`}>
-                            Catatan penanganan
-                          </Label>
-                          <Input
-                            id={`report-note-${report.id}`}
-                            placeholder="Wajib untuk selesai atau ditolak"
-                            value={
-                              notes[report.id] ?? report.resolutionNote ?? ""
-                            }
-                            onChange={(event) =>
-                              setNotes((current) => ({
-                                ...current,
-                                [report.id]: event.target.value,
-                              }))
-                            }
-                          />
-                        </div>
-                        <label
-                          htmlFor={`maintenance-${report.id}`}
-                          className="flex items-center gap-2 text-sm"
-                        >
-                          <Checkbox
-                            id={`maintenance-${report.id}`}
-                            checked={maintenance[report.id] ?? true}
-                            onCheckedChange={(checked) =>
-                              setMaintenance((current) => ({
-                                ...current,
-                                [report.id]: checked === true,
-                              }))
-                            }
-                          />
-                          Tandai fasilitas dalam perbaikan
-                        </label>
-                        <p className="-mt-1 text-xs text-muted-foreground">
-                          Otomatis dicentang saat laporan mulai ditangani —
-                          hapus centang bila fasilitas masih bisa dipakai.
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {report.status === "pending" && (
-                            <Button
-                              size="sm"
-                              onClick={() =>
-                                requestProcess(report.id, "in_progress")
+                    <ReportTicket
+                      facilityName={report.facilityName}
+                      category={report.category}
+                      description={report.description}
+                      photoUrl={report.photoUrl}
+                      status={report.status}
+                      statusLabel={labels[report.status] ?? report.status}
+                      resolutionNote={
+                        open
+                          ? undefined
+                          : report.resolutionNote || "Tidak ada catatan."
+                      }
+                      createdAt={report.createdAt}
+                      updatedAt={report.updatedAt}
+                      meta={`${report.reporterName} · ${report.reporterEmail}`}
+                      reportedLabel={`Dilaporkan ${formatDate(report.createdAt)} · Diperbarui ${formatDate(report.updatedAt)}`}
+                    >
+                      {open ? (
+                        <div className="space-y-3">
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`report-note-${report.id}`}>
+                              Catatan penanganan
+                            </Label>
+                            <Input
+                              id={`report-note-${report.id}`}
+                              placeholder="Wajib untuk selesai atau ditolak"
+                              value={
+                                notes[report.id] ?? report.resolutionNote ?? ""
                               }
-                            >
-                              Mulai tangani
-                            </Button>
-                          )}
-                          {report.status === "in_progress" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                requestProcess(report.id, "resolved")
+                              onChange={(event) =>
+                                setNotes((current) => ({
+                                  ...current,
+                                  [report.id]: event.target.value,
+                                }))
                               }
-                            >
-                              Selesaikan + aktifkan fasilitas
-                            </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() =>
-                              requestProcess(report.id, "rejected")
-                            }
+                            />
+                          </div>
+                          <label
+                            htmlFor={`maintenance-${report.id}`}
+                            className="flex items-center gap-2 text-sm"
                           >
-                            Tolak
-                          </Button>
+                            <Checkbox
+                              id={`maintenance-${report.id}`}
+                              checked={maintenance[report.id] ?? true}
+                              onCheckedChange={(checked) =>
+                                setMaintenance((current) => ({
+                                  ...current,
+                                  [report.id]: checked === true,
+                                }))
+                              }
+                            />
+                            Tandai fasilitas dalam perbaikan
+                          </label>
+                          <p className="-mt-1 text-xs text-muted-foreground">
+                            Otomatis dicentang saat laporan mulai ditangani —
+                            hapus centang bila fasilitas masih bisa dipakai.
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {report.status === "pending" && (
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  requestProcess(report.id, "in_progress")
+                                }
+                              >
+                                Mulai tangani
+                              </Button>
+                            )}
+                            {report.status === "in_progress" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  requestProcess(report.id, "resolved")
+                                }
+                              >
+                                Selesaikan + aktifkan fasilitas
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() =>
+                                requestProcess(report.id, "rejected")
+                              }
+                            >
+                              Tolak
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    ) : null}
-                  </ReportTicket>
+                      ) : null}
+                    </ReportTicket>
+                  </section>
                 )
               })}
             </div>

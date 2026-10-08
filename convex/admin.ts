@@ -251,6 +251,7 @@ export const analytics = query({
   args: {},
   returns: v.object({
     accounts: v.number(),
+    pendingAccounts: v.number(),
     facilities: v.number(),
     reservations: v.number(),
     reports: v.number(),
@@ -295,6 +296,9 @@ export const analytics = query({
 
     return {
       accounts: accounts.length,
+      pendingAccounts: accounts.filter(
+        (account) => account.status === "pending"
+      ).length,
       facilities: facilities.length,
       reservations: reservations.length,
       reports: reports.length,

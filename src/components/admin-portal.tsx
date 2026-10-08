@@ -3,6 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import {
+  useEffect,
   useState,
   type ElementType,
   type FormEvent,
@@ -16,6 +17,7 @@ import { runWithToast, toastError } from "@/lib/toast"
 import {
   IconBuilding,
   IconCalendar,
+  IconChevronDown,
   IconDownload,
   IconFileAlert,
   IconMapPin,
@@ -28,11 +30,20 @@ import {
 
 import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
-import { DashboardMetricCard } from "@/components/dashboard-metric-card"
+import {
+  DashboardMetricCard,
+  DashboardMetricPanel,
+} from "@/components/dashboard-metric-card"
 import { PortalPageHeader } from "@/components/portal-page-header"
 import { PortalListSkeleton } from "@/components/portal-skeletons"
 import { Badge } from "@/components/ui/badge"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu"
 import { Card } from "@/components/ui/card"
 import {
   Dialog,
@@ -52,17 +63,10 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { useAuthenticatedQuery } from "@/lib/use-authenticated-query"
 import { facilityIllustration } from "@/lib/facility-illustrations"
 import { cn } from "@/lib/utils"
+import { displayDuration } from "@/lib/reservation-slots"
 
 const statusLabel: Record<string, string> = {
   pending: "Menunggu",
@@ -77,13 +81,13 @@ const statusLabel: Record<string, string> = {
   inactive: "Disembunyikan",
 }
 
-const statusDotClass: Record<string, string> = {
-  pending: "bg-amber-500",
-  approved: "bg-emerald-500",
-  in_progress: "bg-sky-500",
-  resolved: "bg-emerald-500",
-  rejected: "bg-rose-500",
-  cancelled: "bg-muted-foreground/50",
+const statusTextClass: Record<string, string> = {
+  pending: "text-amber-800 dark:text-amber-300",
+  approved: "text-emerald-800 dark:text-emerald-300",
+  in_progress: "text-sky-800 dark:text-sky-300",
+  resolved: "text-emerald-800 dark:text-emerald-300",
+  rejected: "text-red-800 dark:text-red-300",
+  cancelled: "text-muted-foreground",
 }
 
 const accountRoleLabel: Record<string, string> = {
@@ -103,14 +107,15 @@ function StatusOverviewCard({
   icon: ElementType
   items: { status: string; count: number }[]
 }) {
+  const total = items.reduce((sum, item) => sum + item.count, 0)
   return (
-    <Card className="gap-0 p-5 sm:p-6">
+    <Card className="gap-0 p-5 shadow-sm sm:p-6">
       <div className="flex items-start gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-muted text-foreground">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-muted text-[#b00055] dark:text-pink-200">
           <Icon size={20} aria-hidden="true" />
         </span>
         <div>
-          <h2 className="font-heading font-bold">{title}</h2>
+          <h2 className="font-heading text-lg font-semibold">{title}</h2>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             {description}
           </p>
@@ -120,21 +125,30 @@ function StatusOverviewCard({
         {items.map((item) => (
           <div
             key={item.status}
-            className="flex items-center justify-between gap-3 border-b border-border/70 py-3 text-sm last:border-b-0"
+            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b border-border/70 py-3 text-sm last:border-b-0"
           >
-            <span className="flex items-center gap-2.5">
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "size-2 shrink-0 rounded-full",
-                  statusDotClass[item.status] ?? "bg-muted-foreground/50"
-                )}
-              />
+            <span
+              className={cn(
+                "font-medium",
+                statusTextClass[item.status] ?? "text-foreground"
+              )}
+            >
               {statusLabel[item.status] ?? item.status}
             </span>
             <strong className="font-heading font-semibold tabular-nums">
               {item.count}
             </strong>
+            <div
+              aria-hidden="true"
+              className="col-span-2 h-1.5 overflow-hidden rounded-full bg-muted"
+            >
+              <div
+                className="h-full rounded-full bg-[#b00055] dark:bg-pink-400"
+                style={{
+                  width: `${total > 0 ? (item.count / total) * 100 : 0}%`,
+                }}
+              />
+            </div>
           </div>
         ))}
       </div>
@@ -142,99 +156,111 @@ function StatusOverviewCard({
   )
 }
 
+function AdminExportMenu() {
+  const exports = [
+    { kind: "summary", label: "Rekap fasilitas CSV" },
+    { kind: "reservations", label: "Reservasi CSV" },
+    { kind: "reports", label: "Laporan CSV" },
+  ] as const
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger render={<Button variant="outline" />}>
+        <IconDownload aria-hidden="true" /> Unduh rekap
+        <IconChevronDown aria-hidden="true" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="min-w-56">
+        {exports.map(({ kind, label }) => (
+          <DropdownMenuItem
+            key={kind}
+            render={
+              isStaticMode ? undefined : (
+                <Link
+                  href={`/api/admin/export?kind=${kind}`}
+                  prefetch={false}
+                />
+              )
+            }
+            onClick={isStaticMode ? () => downloadStaticCsv(kind) : undefined}
+          >
+            <IconDownload aria-hidden="true" /> {label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 export function AdminDashboard() {
   const analytics = useAuthenticatedQuery(api.admin.analytics, {})
+  const maximumUsage =
+    analytics?.facilityUsage.reduce(
+      (maximum, facility) => Math.max(maximum, facility.approvedReservations),
+      1
+    ) ?? 1
 
   return (
     <div className="space-y-7">
       <PortalPageHeader
+        layout="actions-right"
         eyebrow="Portal admin"
         title="Ringkasan sistem"
         description="Kondisi akun, fasilitas, reservasi, dan laporan saat ini."
         icon={IconBuilding}
       >
-        {isStaticMode ? (
-          <button
-            type="button"
-            onClick={() => downloadStaticCsv("summary")}
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            <IconDownload aria-hidden="true" /> Rekap fasilitas CSV
-          </button>
-        ) : (
-          <Link
-            href="/api/admin/export?kind=summary"
-            prefetch={false}
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            <IconDownload aria-hidden="true" /> Rekap fasilitas CSV
-          </Link>
-        )}
-        {isStaticMode ? (
-          <button
-            type="button"
-            onClick={() => downloadStaticCsv("reservations")}
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            <IconDownload aria-hidden="true" /> Reservasi CSV
-          </button>
-        ) : (
-          <Link
-            href="/api/admin/export?kind=reservations"
-            prefetch={false}
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            <IconDownload aria-hidden="true" /> Reservasi CSV
-          </Link>
-        )}
-        {isStaticMode ? (
-          <button
-            type="button"
-            onClick={() => downloadStaticCsv("reports")}
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            <IconDownload aria-hidden="true" /> Laporan CSV
-          </button>
-        ) : (
-          <Link
-            href="/api/admin/export?kind=reports"
-            prefetch={false}
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            <IconDownload aria-hidden="true" /> Laporan CSV
-          </Link>
-        )}
+        <AdminExportMenu />
       </PortalPageHeader>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div
+        className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 pb-5 text-sm"
+        aria-live="polite"
+      >
+        <p>
+          {analytics ? (
+            <>
+              <strong className="font-semibold text-[#b00055] dark:text-pink-200">
+                {analytics.pendingAccounts}
+              </strong>{" "}
+              akun menunggu verifikasi
+            </>
+          ) : (
+            "Memuat verifikasi akun…"
+          )}
+        </p>
+        {analytics && analytics.pendingAccounts > 0 && (
+          <Link
+            href="/admin/users?status=pending"
+            className="rounded-md font-semibold text-[#b00055] underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring dark:text-pink-200"
+          >
+            Tinjau akun <span aria-hidden="true">→</span>
+          </Link>
+        )}
+      </div>
+      <DashboardMetricPanel columns={4}>
         <DashboardMetricCard
           label="Akun"
           value={analytics?.accounts}
           description="Seluruh profil yang tercatat."
           icon={IconUsers}
-          tone="berry"
         />
         <DashboardMetricCard
           label="Fasilitas"
           value={analytics?.facilities}
           description="Ruang dan fasilitas terkelola."
           icon={IconBuilding}
-          tone="pink"
         />
         <DashboardMetricCard
           label="Reservasi"
           value={analytics?.reservations}
           description="Total permohonan reservasi."
           icon={IconCalendar}
-          tone="amber"
         />
         <DashboardMetricCard
           label="Laporan"
           value={analytics?.reports}
           description="Total laporan fasilitas."
           icon={IconFileAlert}
-          tone="emerald"
         />
-      </div>
+      </DashboardMetricPanel>
       {!analytics ? (
         <PortalListSkeleton rows={2} layout="grid" />
       ) : (
@@ -253,77 +279,60 @@ export function AdminDashboard() {
               items={analytics.reportsByStatus}
             />
           </div>
-          <Card className="p-5 sm:p-6">
-            <h2 className="font-heading font-bold">Penggunaan fasilitas</h2>
+          <Card className="gap-0 p-5 shadow-sm sm:p-6">
+            <h2 className="font-heading text-lg font-semibold">
+              Penggunaan fasilitas
+            </h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Rekap seluruh periode per fasilitas dan lokasi.
+              Perbandingan reservasi disetujui sepanjang periode pencatatan.
             </p>
-            <div className="mt-4 divide-y divide-border/70 lg:hidden">
-              {analytics.facilityUsage.map((item) => (
-                <div
-                  key={item.facilityId}
-                  className="py-4 first:pt-0 last:pb-0"
-                >
-                  <p className="font-medium">{item.name}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {item.location}
-                  </p>
-                  <dl className="mt-3 grid grid-cols-3 gap-2 text-xs">
-                    <div>
-                      <dt className="text-muted-foreground">Disetujui</dt>
-                      <dd className="mt-1 font-semibold tabular-nums">
-                        {item.approvedReservations}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted-foreground">Menit</dt>
-                      <dd className="mt-1 font-semibold tabular-nums">
-                        {item.reservedMinutes}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted-foreground">Laporan</dt>
-                      <dd className="mt-1 font-semibold tabular-nums">
-                        {item.reports}
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 hidden overflow-x-auto lg:block">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Fasilitas / lokasi</TableHead>
-                    <TableHead className="text-right">Disetujui</TableHead>
-                    <TableHead className="text-right">Menit</TableHead>
-                    <TableHead className="text-right">Laporan</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {analytics.facilityUsage.map((item) => (
-                    <TableRow key={item.facilityId}>
-                      <TableCell>
-                        <span className="block font-medium">{item.name}</span>
-                        <span className="block text-xs text-muted-foreground">
+            {analytics.facilityUsage.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Belum ada fasilitas untuk ditampilkan.
+              </p>
+            ) : (
+              <ul className="mt-5 divide-y divide-border/70">
+                {analytics.facilityUsage.map((item) => {
+                  return (
+                    <li
+                      key={item.facilityId}
+                      className="grid gap-3 py-4 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] sm:gap-6"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-semibold break-words">{item.name}</p>
+                        <p className="mt-0.5 text-xs break-words text-muted-foreground">
                           {item.location}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {item.approvedReservations}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {item.reservedMinutes}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {item.reports}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                        </p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold tabular-nums">
+                          {item.approvedReservations}{" "}
+                          <span className="font-normal text-muted-foreground">
+                            reservasi disetujui
+                          </span>
+                        </p>
+                        <div
+                          aria-hidden="true"
+                          className="mt-2 h-2 overflow-hidden rounded-full bg-muted"
+                        >
+                          <div
+                            className="h-full rounded-full bg-[#b00055] dark:bg-pink-400"
+                            style={{
+                              width: `${(item.approvedReservations / maximumUsage) * 100}%`,
+                            }}
+                          />
+                        </div>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {displayDuration(Math.round(item.reservedMinutes)) ||
+                            "0 menit"}{" "}
+                          penggunaan · {item.reports} laporan
+                        </p>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
           </Card>
         </div>
       )}
@@ -830,7 +839,7 @@ export function AdminFacilities() {
           Tidak ada fasilitas yang cocok dengan pencarian atau filter.
         </Card>
       ) : (
-        <div className="columns-1 gap-4 lg:columns-2">
+        <div className="columns-1 gap-4 sm:columns-2 xl:columns-3">
           {visibleFacilities.map((facility) => {
             const illustration = facilityIllustration(
               facility.name,
@@ -841,12 +850,12 @@ export function AdminFacilities() {
                 key={facility.id}
                 className="mb-4 break-inside-avoid gap-0 overflow-hidden p-0 transition-shadow duration-200 hover:shadow-lg"
               >
-                <div className="relative aspect-[16/9] overflow-hidden bg-muted/30">
+                <div className="relative aspect-[2/1] overflow-hidden bg-muted/30">
                   <Image
                     src={illustration.src}
                     alt={illustration.alt}
                     fill
-                    sizes="(max-width: 1023px) 100vw, 50vw"
+                    sizes="(max-width: 639px) 100vw, (max-width: 1279px) 50vw, 33vw"
                     className="object-cover object-top"
                   />
                   <Badge
@@ -862,7 +871,7 @@ export function AdminFacilities() {
                     {statusLabel[facility.status]}
                   </Badge>
                 </div>
-                <div className="flex flex-1 flex-col p-5 sm:p-6">
+                <div className="flex flex-1 flex-col p-4 sm:p-5">
                   <div className="flex items-start justify-between gap-3">
                     <h2 className="font-heading text-base font-semibold break-words">
                       {facility.name}
@@ -899,7 +908,7 @@ export function AdminFacilities() {
                     />
                     {facility.location}
                   </p>
-                  <p className="mt-4 flex items-center gap-1.5 text-sm font-medium">
+                  <p className="mt-3 flex items-center gap-1.5 text-sm font-medium">
                     <IconUsers
                       size={16}
                       className="shrink-0 text-muted-foreground"
@@ -910,7 +919,7 @@ export function AdminFacilities() {
                   <p className="mt-2 text-sm leading-relaxed break-words text-muted-foreground">
                     {facility.description}
                   </p>
-                  <div className="mt-5 flex flex-wrap gap-2 border-t border-border/70 pt-4">
+                  <div className="mt-4 flex flex-wrap gap-2 border-t border-border/70 pt-3">
                     <Button
                       size="sm"
                       variant="outline"
@@ -987,12 +996,22 @@ function Field({
   )
 }
 
-export function AdminUsers() {
+export function AdminUsers({
+  initialStatus = "all",
+}: {
+  initialStatus?: string
+}) {
   const accounts = useAuthenticatedQuery(api.admin.listAccounts, {})
   const review = useMutation(api.admin.reviewAccount)
   const setStatus = useMutation(api.admin.setAccountStatus)
   const createAccount = useMutation(api.admin.createAccount)
   const [reasons, setReasons] = useState<Record<string, string>>({})
+  const [reasonAction, setReasonAction] = useState<{
+    id: NonNullable<typeof accounts>[number]["id"]
+    kind: "reject" | "disable"
+  } | null>(null)
+  const [reasonError, setReasonError] = useState("")
+  const [actionPending, setActionPending] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
@@ -1001,7 +1020,7 @@ export function AdminUsers() {
   const [message, setMessage] = useState("")
   const [creating, setCreating] = useState(false)
   const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState(initialStatus)
   const searchTerm = search.trim().toLowerCase()
   const visibleAccounts = (accounts ?? []).filter(
     (account) =>
@@ -1011,10 +1030,61 @@ export function AdminUsers() {
         .includes(searchTerm)
   )
 
+  useEffect(() => {
+    if (reasonAction) {
+      document.getElementById(`account-reason-${reasonAction.id}`)?.focus()
+    }
+  }, [reasonAction])
+
   function closeCreateDialog() {
     if (creating) return
     setCreateOpen(false)
     setMessage("")
+  }
+
+  function openReasonAction(
+    id: NonNullable<typeof accounts>[number]["id"],
+    kind: "reject" | "disable"
+  ) {
+    setReasonError("")
+    setReasonAction({ id, kind })
+  }
+
+  function cancelReasonAction() {
+    const id = reasonAction?.id
+    setReasonAction(null)
+    setReasonError("")
+    document.getElementById(`account-action-${id}`)?.focus()
+  }
+
+  async function submitReasonAction(event: FormEvent) {
+    event.preventDefault()
+    if (!reasonAction || actionPending) return
+    const { id, kind } = reasonAction
+    const reason = reasons[id]?.trim()
+    if (!reason) {
+      setReasonError("Alasan wajib diisi.")
+      return
+    }
+    setReasonError("")
+    setActionPending(true)
+    try {
+      if (kind === "reject") {
+        await review({ profileId: id, decision: "rejected", reason })
+      } else {
+        await setStatus({ profileId: id, status: "disabled", reason })
+      }
+      const accountName = accounts?.find((account) => account.id === id)?.name
+      toast.success(
+        `Akun ${accountName} ${kind === "reject" ? "ditolak" : "dinonaktifkan"}`
+      )
+      setReasonAction(null)
+      document.getElementById(`account-${id}`)?.focus()
+    } catch (error) {
+      setReasonError(toastError("Tindakan akun gagal", error))
+    } finally {
+      setActionPending(false)
+    }
   }
 
   async function submitAccount(event: FormEvent) {
@@ -1054,19 +1124,23 @@ export function AdminUsers() {
       </PortalPageHeader>
 
       <div className="flex flex-wrap items-end gap-3">
-        <div className="relative w-full flex-none sm:max-w-sm sm:min-w-64 sm:flex-1">
-          <IconSearch
-            size={18}
-            aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
-          />
-          <Input
-            aria-label="Cari akun"
-            placeholder="Cari nama atau email"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className="pl-10"
-          />
+        <div className="w-full min-w-0 lg:flex-1 lg:basis-64">
+          <Label htmlFor="account-search">Cari akun</Label>
+          <div className="relative mt-1.5">
+            <IconSearch
+              size={18}
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
+            />
+            <Input
+              id="account-search"
+              aria-label="Cari akun"
+              placeholder="Cari nama atau email"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="pl-10"
+            />
+          </div>
         </div>
         <div className="grid gap-1.5">
           <Label id="account-status-filter-label">Status</Label>
@@ -1227,25 +1301,24 @@ export function AdminUsers() {
           {visibleAccounts.map((account) => (
             <Card
               key={account.id}
+              id={`account-${account.id}`}
+              tabIndex={-1}
               className="gap-0 p-5 transition-shadow duration-200 hover:shadow-lg sm:p-6"
             >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground">
-                    {account.name.trim().slice(0, 1).toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <h2 className="font-semibold break-words">
-                      {account.name}
-                    </h2>
-                    <p className="text-sm break-all text-muted-foreground">
-                      {account.email}
-                    </p>
-                  </div>
+              <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground">
+                  {account.name.trim().slice(0, 1).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <h2 className="font-semibold break-words">{account.name}</h2>
+                  <p className="text-sm break-all text-muted-foreground">
+                    {account.email}
+                  </p>
                 </div>
                 <Badge
                   variant="secondary"
                   className={cn(
+                    "col-start-2 w-fit sm:col-start-3 sm:row-start-1",
                     account.status === "active" &&
                       "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
                     account.status === "pending" &&
@@ -1270,29 +1343,12 @@ export function AdminUsers() {
                 account.status === "active" ||
                 account.status === "disabled") && (
                 <div className="mt-5 space-y-3 border-t pt-4">
-                  {(account.status === "pending" ||
-                    account.status === "active") && (
-                    <Input
-                      aria-label="Alasan tindakan"
-                      placeholder={
-                        account.status === "pending"
-                          ? "Alasan jika ditolak"
-                          : "Alasan jika dinonaktifkan"
-                      }
-                      value={reasons[account.id] ?? ""}
-                      onChange={(e) =>
-                        setReasons((current) => ({
-                          ...current,
-                          [account.id]: e.target.value,
-                        }))
-                      }
-                    />
-                  )}
                   <div className="flex flex-wrap gap-2">
                     {account.status === "pending" && (
                       <>
                         <Button
                           size="sm"
+                          disabled={actionPending}
                           onClick={() =>
                             void runWithToast(
                               () =>
@@ -1310,22 +1366,11 @@ export function AdminUsers() {
                           Setujui
                         </Button>
                         <Button
+                          id={`account-action-${account.id}`}
                           size="sm"
                           variant="destructive"
-                          onClick={() =>
-                            void runWithToast(
-                              () =>
-                                review({
-                                  profileId: account.id,
-                                  decision: "rejected",
-                                  reason: reasons[account.id],
-                                }),
-                              {
-                                success: `Akun ${account.name} ditolak`,
-                                error: "Penolakan akun gagal",
-                              }
-                            )
-                          }
+                          disabled={actionPending}
+                          onClick={() => openReasonAction(account.id, "reject")}
                         >
                           Tolak
                         </Button>
@@ -1333,22 +1378,11 @@ export function AdminUsers() {
                     )}
                     {account.status === "active" && (
                       <Button
+                        id={`account-action-${account.id}`}
                         size="sm"
                         variant="destructive"
-                        onClick={() =>
-                          void runWithToast(
-                            () =>
-                              setStatus({
-                                profileId: account.id,
-                                status: "disabled",
-                                reason: reasons[account.id],
-                              }),
-                            {
-                              success: `Akun ${account.name} dinonaktifkan`,
-                              error: "Akun gagal dinonaktifkan",
-                            }
-                          )
-                        }
+                        disabled={actionPending}
+                        onClick={() => openReasonAction(account.id, "disable")}
                       >
                         Nonaktifkan
                       </Button>
@@ -1357,6 +1391,7 @@ export function AdminUsers() {
                       <Button
                         size="sm"
                         variant="outline"
+                        disabled={actionPending}
                         onClick={() =>
                           void runWithToast(
                             () =>
@@ -1375,6 +1410,68 @@ export function AdminUsers() {
                       </Button>
                     )}
                   </div>
+                  {reasonAction?.id === account.id && (
+                    <form
+                      onSubmit={submitReasonAction}
+                      className="space-y-3 rounded-2xl border border-border/70 bg-muted/30 p-4"
+                    >
+                      <div className="space-y-2">
+                        <Label htmlFor={`account-reason-${account.id}`}>
+                          {reasonAction.kind === "reject"
+                            ? "Alasan penolakan"
+                            : "Alasan penonaktifan"}
+                        </Label>
+                        <Input
+                          id={`account-reason-${account.id}`}
+                          placeholder="Tuliskan alasan tindakan"
+                          value={reasons[account.id] ?? ""}
+                          onChange={(event) =>
+                            setReasons((current) => ({
+                              ...current,
+                              [account.id]: event.target.value,
+                            }))
+                          }
+                          disabled={actionPending}
+                          aria-invalid={Boolean(reasonError)}
+                          aria-describedby={
+                            reasonError
+                              ? `account-error-${account.id}`
+                              : undefined
+                          }
+                        />
+                        {reasonError && (
+                          <p
+                            id={`account-error-${account.id}`}
+                            role="alert"
+                            className="text-sm text-destructive"
+                          >
+                            {reasonError}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="submit"
+                          variant="destructive"
+                          disabled={actionPending}
+                        >
+                          {actionPending
+                            ? "Menyimpan…"
+                            : reasonAction.kind === "reject"
+                              ? "Konfirmasi penolakan"
+                              : "Konfirmasi nonaktifkan"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={cancelReasonAction}
+                          disabled={actionPending}
+                        >
+                          Batal
+                        </Button>
+                      </div>
+                    </form>
+                  )}
                 </div>
               )}
             </Card>

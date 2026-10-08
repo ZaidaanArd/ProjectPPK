@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, useRef, useState, type FormEvent } from "react"
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react"
 import { toast } from "sonner"
 import {
   useAppMutation as useMutation,
@@ -35,7 +35,10 @@ import {
 import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
 import { BackLink } from "@/components/back-link"
-import { DashboardMetricCard } from "@/components/dashboard-metric-card"
+import {
+  DashboardMetricCard,
+  DashboardMetricPanel,
+} from "@/components/dashboard-metric-card"
 import {
   DashboardEmptyHint,
   DashboardSectionHeader,
@@ -79,7 +82,13 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Tabs, TabsList, TabsPanel, TabsTab } from "@/components/ui/tabs"
+import {
+  Tabs,
+  TabsList,
+  TabsPanel,
+  TabsTab,
+  TabsCount,
+} from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { useAuthenticatedQuery } from "@/lib/use-authenticated-query"
@@ -221,6 +230,68 @@ type DashboardReport = {
   updatedAt?: number
 }
 
+/** Pink tebal yang sama dengan state aktif sidebar (nav-main.tsx). */
+function dateBlockPinkClass(width: string) {
+  return cn(
+    width,
+    "!bg-[#d00064] !text-white shadow-[0_6px_14px_rgba(208,0,100,0.14)]"
+  )
+}
+
+const WIB_OFFSET_MS = 7 * 60 * 60 * 1000
+const DAY_MS = 24 * 60 * 60 * 1000
+
+function wibDayIndex(value: number) {
+  return Math.floor((value + WIB_OFFSET_MS) / DAY_MS)
+}
+
+/** Jadwal dianggap milik sebuah hari bila rentangnya bersinggungan dengan hari itu. */
+function scheduleOverlapsDay(
+  item: { startAt: number; endAt: number },
+  dayIndex: number
+) {
+  return (
+    wibDayIndex(item.startAt) <= dayIndex &&
+    wibDayIndex(item.endAt - 1) >= dayIndex
+  )
+}
+
+/** Label waktu mulai berbasis tanggal kalender WIB (bukan pembulatan jam). */
+function upcomingTimeLabel(startAt: number, now: number) {
+  if (startAt <= now) return "Berlangsung"
+  const dayDiff = wibDayIndex(startAt) - wibDayIndex(now)
+  if (dayDiff <= 0) {
+    const minutes = Math.max(1, Math.ceil((startAt - now) / 60_000))
+    if (minutes < 60) return `${minutes} menit lagi`
+    return `${Math.floor(minutes / 60)} jam lagi`
+  }
+  if (dayDiff === 1) return "Besok"
+  if (dayDiff === 2) return "Lusa"
+  return `${dayDiff} hari lagi`
+}
+
+function UpcomingStatusBadge({
+  startAt,
+  now,
+}: {
+  startAt: number
+  now: number
+}) {
+  const ongoing = startAt <= now
+  return (
+    <Badge
+      variant="secondary"
+      className={cn(
+        ongoing
+          ? "bg-sky-100 text-sky-800 dark:bg-sky-400/15 dark:text-sky-300"
+          : "bg-muted text-muted-foreground"
+      )}
+    >
+      {upcomingTimeLabel(startAt, now)}
+    </Badge>
+  )
+}
+
 function DashboardUpcomingCard({
   reservations,
   now,
@@ -234,7 +305,7 @@ function DashboardUpcomingCard({
     .slice(0, 3)
 
   return (
-    <Card className="gap-4 p-5 sm:p-6">
+    <Card className="gap-4 p-5 shadow-sm sm:p-6 lg:h-full">
       <DashboardSectionHeader
         title="Jadwal terdekat"
         href="/app/reservations"
@@ -243,58 +314,62 @@ function DashboardUpcomingCard({
       {!reservations ? (
         <DashboardSkeletonRows />
       ) : upcoming.length === 0 ? (
-        <DashboardEmptyHint
-          text="Belum ada jadwal terdekat."
-          actionHref="/app/reservations/new"
-          actionLabel="Ajukan reservasi"
-        />
+        <div className="grid flex-1 content-center">
+          <DashboardEmptyHint
+            text="Belum ada jadwal terdekat."
+            actionHref="/app/reservations/new"
+            actionLabel="Ajukan reservasi"
+          />
+        </div>
       ) : (
-        <ul className="space-y-3">
-          {upcoming.map((item) => (
-            <li
-              key={item.id}
-              className="flex items-stretch gap-3 rounded-2xl border border-border/70 bg-muted/20 p-3 transition-colors hover:bg-muted/40"
-            >
-              <DateBlock
-                at={item.startAt}
-                status={item.status}
-                className="w-16"
-              />
-              <div className="min-w-0 flex-1 py-1">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <p className="min-w-0 font-medium break-words">
-                    {item.facilityName}
+        <>
+          <ul className="flex flex-1 flex-col gap-3">
+            {upcoming.map((item) => (
+              <li
+                key={item.id}
+                className="flex items-center gap-4 rounded-2xl border border-border/70 p-3"
+              >
+                <DateBlock
+                  at={item.startAt}
+                  status={item.status}
+                  className={dateBlockPinkClass("w-14")}
+                />
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="min-w-0 font-semibold break-words">
+                      {item.facilityName}
+                    </p>
+                    <UpcomingStatusBadge startAt={item.startAt} now={now} />
+                  </div>
+                  <p className="flex items-center gap-1.5 text-sm font-medium tabular-nums">
+                    <IconCalendarCheck size={16} aria-hidden="true" />
+                    {jakartaReservationTime.format(item.startAt)}–
+                    {jakartaReservationTime.format(item.endAt)} WIB
                   </p>
-                  {jakartaReservationDate.format(item.startAt) ===
-                    jakartaReservationDate.format(now) && (
-                    <Badge
-                      variant="secondary"
-                      className="bg-pink-100 text-pink-800 dark:bg-pink-400/15 dark:text-pink-300"
-                    >
-                      Hari ini
-                    </Badge>
-                  )}
+                  <p className="flex items-start gap-1.5 text-xs break-words text-muted-foreground">
+                    <IconMapPin size={14} aria-hidden="true" />
+                    {item.facilityLocation}
+                  </p>
                 </div>
-                <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <IconCalendarCheck size={16} aria-hidden="true" />
-                  {jakartaReservationDate.format(item.startAt)} ·{" "}
-                  {jakartaReservationTime.format(item.startAt)}–
-                  {jakartaReservationTime.format(item.endAt)} WIB
-                </p>
-                <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <IconMapPin size={14} aria-hidden="true" />
-                  {item.facilityLocation}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+          <Link
+            href="/app/reservations/new"
+            className={buttonVariants({
+              variant: "outline",
+              size: "sm",
+              className: "mt-auto self-start",
+            })}
+          >
+            <IconCalendarPlus aria-hidden="true" />
+            Buat reservasi baru
+          </Link>
+        </>
       )}
     </Card>
   )
 }
-
-const reportProgressSteps = ["Menunggu", "Ditangani", "Selesai"] as const
 
 function DashboardActiveReportsCard({
   reports,
@@ -309,7 +384,7 @@ function DashboardActiveReportsCard({
     .slice(0, 3)
 
   return (
-    <Card className="gap-4 p-5 sm:p-6">
+    <Card className="gap-4 p-5 shadow-sm sm:p-6 lg:h-full">
       <DashboardSectionHeader
         title="Pelacak laporan aktif"
         href="/app/reports"
@@ -318,48 +393,56 @@ function DashboardActiveReportsCard({
       {!reports ? (
         <DashboardSkeletonRows />
       ) : active.length === 0 ? (
-        <DashboardEmptyHint
-          text="Tidak ada laporan yang sedang diproses."
-          actionHref="/app/reports/new"
-          actionLabel="Buat laporan"
-        />
+        <div className="grid flex-1 content-center">
+          <DashboardEmptyHint
+            text="Tidak ada laporan yang sedang diproses."
+            actionHref="/app/reports/new"
+            actionLabel="Buat laporan"
+          />
+        </div>
       ) : (
-        <ul className="space-y-3">
-          {active.map((item) => {
-            const step = item.status === "in_progress" ? 1 : 0
-            return (
-              <li
-                key={item.id}
-                className="rounded-2xl border border-border/70 bg-muted/20 p-4"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-medium break-words">
-                      {item.facilityName}
-                    </p>
-                    <p className="mt-0.5 text-sm text-muted-foreground">
-                      {item.category}
-                    </p>
+        <>
+          <ul className="divide-y divide-border/70">
+            {active.map((item) => {
+              return (
+                <li key={item.id} className="py-4 first:pt-0 last:pb-0">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-semibold break-words">
+                        {item.facilityName}
+                      </p>
+                      <p className="mt-0.5 text-sm text-muted-foreground">
+                        {item.category}
+                      </p>
+                    </div>
+                    <Badge
+                      variant="secondary"
+                      className={statusBadgeClass(item.status)}
+                    >
+                      {statusLabel[item.status]}
+                    </Badge>
                   </div>
-                  <Badge
-                    variant="secondary"
-                    className={statusBadgeClass(item.status)}
-                  >
-                    {statusLabel[item.status]}
-                  </Badge>
-                </div>
-                <ProgressStepper
-                  className="mt-4"
-                  label={`Progres laporan ${item.facilityName}`}
-                  steps={reportSteps(item)}
-                />
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Tahap: {reportProgressSteps[step]}
-                </p>
-              </li>
-            )
-          })}
-        </ul>
+                  <ProgressStepper
+                    className="mt-4"
+                    label={`Progres laporan ${item.facilityName}`}
+                    steps={reportSteps(item)}
+                  />
+                </li>
+              )
+            })}
+          </ul>
+          <Link
+            href="/app/reports/new"
+            className={buttonVariants({
+              variant: "outline",
+              size: "sm",
+              className: "mt-auto self-start",
+            })}
+          >
+            <IconFilePlus aria-hidden="true" />
+            Buat laporan baru
+          </Link>
+        </>
       )}
     </Card>
   )
@@ -404,57 +487,88 @@ function DashboardActivityCard({
     .sort((a, b) => b.at - a.at)
     .slice(0, 5)
 
+  const today = wibDayIndex(now)
+  const groups: { label: string; items: DashboardActivityItem[] }[] = []
+  for (const item of activity) {
+    const diff = today - wibDayIndex(item.at)
+    const label =
+      diff <= 0
+        ? "Hari ini"
+        : diff === 1
+          ? "Kemarin"
+          : jakartaReservationDate.format(item.at)
+    const last = groups[groups.length - 1]
+    if (last && last.label === label) last.items.push(item)
+    else groups.push({ label, items: [item] })
+  }
+
   const loading = !reservations || !reports
 
   return (
-    <Card className="gap-4 p-5 sm:p-6">
+    <Card className="gap-4 p-5 shadow-sm sm:p-6">
       <DashboardSectionHeader title="Aktivitas terbaru" />
       {loading ? (
         <DashboardSkeletonRows rows={3} />
       ) : activity.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-          Belum ada aktivitas.
-        </p>
+        <DashboardEmptyHint text="Belum ada aktivitas." />
       ) : (
-        <ul className="space-y-4">
-          {activity.map((item) => (
-            <li key={item.id} className="flex items-start gap-3">
-              <span
-                className={cn(
-                  "flex size-9 shrink-0 items-center justify-center rounded-xl",
-                  item.kind === "reservation"
-                    ? "bg-pink-100 text-pink-700 dark:bg-pink-400/15 dark:text-pink-300"
-                    : "bg-amber-100 text-amber-700 dark:bg-amber-400/15 dark:text-amber-200"
-                )}
-              >
-                {item.kind === "reservation" ? (
-                  <IconCalendarCheck size={18} aria-hidden="true" />
-                ) : (
-                  <IconFileAlert size={18} aria-hidden="true" />
-                )}
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <p className="min-w-0 font-medium break-words">
-                    {item.title}
-                  </p>
-                  <Badge
-                    variant="secondary"
-                    className={statusBadgeClass(item.status)}
-                  >
-                    {statusLabel[item.status]}
-                  </Badge>
-                </div>
-                <p className="mt-0.5 truncate text-sm text-muted-foreground">
-                  {item.detail}
-                </p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {formatRelativeTime(item.at, now)}
-                </p>
-              </div>
-            </li>
+        <div className="space-y-5">
+          {groups.map((group) => (
+            <section key={group.label} aria-label={group.label}>
+              <h3 className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                {group.label}
+              </h3>
+              <ul className="divide-y divide-border/70">
+                {group.items.map((item) => (
+                  <li key={item.id}>
+                    <Link
+                      href={
+                        item.kind === "reservation"
+                          ? "/app/reservations"
+                          : "/app/reports"
+                      }
+                      className="-mx-2 flex items-start gap-3 rounded-xl px-2 py-4 transition-colors outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <span
+                        className={cn(
+                          "flex size-9 shrink-0 items-center justify-center rounded-xl",
+                          item.kind === "reservation"
+                            ? "bg-pink-100 text-pink-700 dark:bg-pink-400/15 dark:text-pink-300"
+                            : "bg-amber-100 text-amber-700 dark:bg-amber-400/15 dark:text-amber-200"
+                        )}
+                      >
+                        {item.kind === "reservation" ? (
+                          <IconCalendarCheck size={18} aria-hidden="true" />
+                        ) : (
+                          <IconFileAlert size={18} aria-hidden="true" />
+                        )}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <p className="min-w-0 font-semibold break-words">
+                            {item.title}
+                          </p>
+                          <Badge
+                            variant="secondary"
+                            className={statusBadgeClass(item.status)}
+                          >
+                            {statusLabel[item.status]}
+                          </Badge>
+                        </div>
+                        <p className="mt-0.5 text-sm break-words text-muted-foreground">
+                          {item.detail}
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {formatRelativeTime(item.at, now)}
+                        </p>
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
           ))}
-        </ul>
+        </div>
       )}
     </Card>
   )
@@ -463,40 +577,99 @@ function DashboardActivityCard({
 export function UserDashboard() {
   const reservations = useAuthenticatedQuery(api.reservations.listMine, {})
   const reports = useAuthenticatedQuery(api.reports.listMine, {})
-  const [now] = useState(() => Date.now())
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const refresh = () => setNow(Date.now())
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refresh()
+    }
+    const timer = window.setInterval(refresh, 60_000)
+    window.addEventListener("focus", refresh)
+    document.addEventListener("visibilitychange", onVisible)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener("focus", refresh)
+      document.removeEventListener("visibilitychange", onVisible)
+    }
+  }, [])
   const upcoming = (reservations ?? []).filter(
     (item) => item.status === "approved" && item.endAt > now
   )
+  const todayIndex = wibDayIndex(now)
+  const scheduleToday = upcoming.filter((item) =>
+    scheduleOverlapsDay(item, todayIndex)
+  ).length
+  const summaryParts = reservations
+    ? [scheduleToday > 0 && `${scheduleToday} jadwal hari ini`].filter(Boolean)
+    : []
 
   return (
     <div className="space-y-7">
-      <div
-        id="portal-home-summary"
-        className="flex flex-wrap items-end justify-between gap-4"
-      >
-        <div>
-          <p className="mb-2 text-xs font-semibold tracking-[0.16em] text-[#b00055] uppercase dark:text-pink-300">
-            Portal pengguna
-          </p>
-          <h1 className="font-heading text-3xl font-bold tracking-tight">
-            Aktivitas kampus Anda
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Pantau reservasi dan laporan fasilitas dari satu tempat.
-          </p>
+      <header className="grid gap-5 border-b border-border/70 pb-6 lg:grid-cols-2 lg:items-center">
+        <div className="min-w-0 space-y-4">
+          <div id="portal-home-summary">
+            <p className="mb-2 text-xs font-semibold tracking-[0.16em] text-pink-700 uppercase dark:text-pink-300">
+              Portal pengguna
+            </p>
+            <h1 className="font-heading text-2xl font-bold sm:text-3xl">
+              Aktivitas kampus Anda
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+              Pantau reservasi dan laporan fasilitas dari satu tempat.
+            </p>
+            {summaryParts.length > 0 && (
+              <p
+                data-testid="portal-home-status"
+                className="mt-3 inline-flex flex-wrap items-center gap-x-2 rounded-full bg-pink-100 px-3 py-1 text-sm font-semibold text-[#b00055] dark:bg-pink-400/10 dark:text-pink-200"
+              >
+                {summaryParts.join(" · ")}
+              </p>
+            )}
+          </div>
+          <span className="inline-flex items-center gap-2 rounded-full border bg-white px-3 py-1.5 text-xs text-muted-foreground shadow-sm dark:bg-card">
+            <span className="size-2 animate-pulse rounded-full bg-emerald-500" />
+            Data diperbarui otomatis
+          </span>
         </div>
-        <span className="inline-flex items-center gap-2 rounded-full border bg-white px-3 py-1.5 text-xs text-muted-foreground shadow-sm dark:bg-card">
-          <span className="size-2 rounded-full bg-emerald-500" />
-          Data diperbarui otomatis
-        </span>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-3 lg:justify-end">
+          <Link
+            id="portal-reservation-action"
+            href="/app/reservations/new"
+            className={buttonVariants()}
+          >
+            <IconCalendarPlus aria-hidden="true" /> Ajukan reservasi
+          </Link>
+          <Link
+            id="portal-report-action"
+            href="/app/reports/new"
+            className={buttonVariants({
+              variant: "outline",
+              className:
+                "border-transparent bg-background hover:bg-foreground hover:text-background dark:hover:bg-white/15 dark:hover:text-white",
+            })}
+          >
+            <IconFilePlus aria-hidden="true" /> Buat laporan
+          </Link>
+          <Link
+            id="portal-find-facilities"
+            href="/facilities"
+            className={buttonVariants({
+              variant: "ghost",
+              className:
+                "hover:bg-transparent hover:text-primary dark:hover:bg-transparent",
+            })}
+          >
+            <IconSearch aria-hidden="true" /> Cari fasilitas
+          </Link>
+        </div>
+      </header>
+      <DashboardMetricPanel columns={3}>
         <DashboardMetricCard
-          label="Reservasi mendatang"
+          label="Reservasi aktif"
           value={reservations ? upcoming.length : undefined}
-          description="Jadwal yang sudah disetujui dan belum selesai."
+          description="Reservasi disetujui yang belum selesai."
           icon={IconCalendarCheck}
-          tone="berry"
+          href="/app/reservations"
         />
         <DashboardMetricCard
           label="Menunggu persetujuan"
@@ -507,7 +680,7 @@ export function UserDashboard() {
           }
           description="Pengajuan yang sedang diperiksa petugas."
           icon={IconClockHour4}
-          tone="amber"
+          href="/app/reservations"
         />
         <DashboardMetricCard
           label="Laporan aktif"
@@ -520,10 +693,10 @@ export function UserDashboard() {
           }
           description="Kendala yang belum dinyatakan selesai."
           icon={IconTool}
-          tone="pink"
+          href="/app/reports"
         />
-      </div>
-      <div className="grid gap-6 lg:grid-cols-2">
+      </DashboardMetricPanel>
+      <div className="grid items-stretch gap-6 lg:grid-cols-2">
         <DashboardUpcomingCard reservations={reservations} now={now} />
         <DashboardActiveReportsCard reports={reports} />
       </div>
@@ -532,50 +705,6 @@ export function UserDashboard() {
         reports={reports}
         now={now}
       />
-      <Card className="border-0 bg-gradient-to-br from-[#52082b] via-[#8e0045] to-[#d00064] p-6 text-white shadow-[0_18px_50px_rgba(82,8,43,0.2)] ring-0 sm:p-7">
-        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
-          <div>
-            <h2 className="font-heading text-xl font-bold">Mulai dari sini</h2>
-            <p className="mt-1 text-sm text-pink-100/80">
-              Ajukan kebutuhan ruang atau beri tahu petugas jika ada kendala.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              id="portal-find-facilities"
-              href="/facilities"
-              className={buttonVariants({
-                variant: "outline",
-                className:
-                  "border-white/25 bg-white/10 text-white hover:bg-white/20 hover:text-white",
-              })}
-            >
-              <IconSearch aria-hidden="true" /> Cari fasilitas
-            </Link>
-            <Link
-              id="portal-reservation-action"
-              href="/app/reservations/new"
-              className={buttonVariants({
-                className:
-                  "!bg-white !text-[#8e0045] hover:!bg-pink-50 hover:!text-[#8e0045]",
-              })}
-            >
-              <IconCalendarPlus aria-hidden="true" /> Ajukan reservasi
-            </Link>
-            <Link
-              id="portal-report-action"
-              href="/app/reports/new"
-              className={buttonVariants({
-                variant: "outline",
-                className:
-                  "border-white/25 bg-white/10 text-white hover:bg-white/20 hover:text-white",
-              })}
-            >
-              <IconFilePlus aria-hidden="true" /> Buat laporan
-            </Link>
-          </div>
-        </div>
-      </Card>
     </div>
   )
 }
@@ -685,12 +814,7 @@ export function ReservationList() {
               (tab) => (
                 <TabsTab key={tab} value={tab}>
                   {reservationTabLabels[tab]}
-                  <Badge
-                    variant="secondary"
-                    className="h-5 min-w-5 justify-center px-1.5 text-xs"
-                  >
-                    {tabCounts[tab]}
-                  </Badge>
+                  <TabsCount>{tabCounts[tab]}</TabsCount>
                 </TabsTab>
               )
             )}
@@ -1296,12 +1420,7 @@ export function ReportList() {
             {(Object.keys(reportTabLabels) as ReportTab[]).map((tab) => (
               <TabsTab key={tab} value={tab}>
                 {reportTabLabels[tab]}
-                <Badge
-                  variant="secondary"
-                  className="h-5 min-w-5 justify-center px-1.5 text-xs"
-                >
-                  {tabCounts[tab]}
-                </Badge>
+                <TabsCount>{tabCounts[tab]}</TabsCount>
               </TabsTab>
             ))}
           </TabsList>

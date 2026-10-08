@@ -24,31 +24,26 @@ import { cn } from "@/lib/utils"
 
 const tone = {
   amber: {
-    stripe: "bg-amber-400",
     date: "bg-amber-50 text-amber-900 dark:bg-amber-400/10 dark:text-amber-200",
     pill: "bg-amber-100 text-amber-800 dark:bg-amber-400/15 dark:text-amber-200",
     dot: "bg-amber-500",
   },
   emerald: {
-    stripe: "bg-emerald-500",
     date: "bg-emerald-50 text-emerald-900 dark:bg-emerald-400/10 dark:text-emerald-200",
     pill: "bg-emerald-100 text-emerald-800 dark:bg-emerald-400/15 dark:text-emerald-200",
     dot: "bg-emerald-500",
   },
   sky: {
-    stripe: "bg-sky-500",
     date: "bg-sky-50 text-sky-900 dark:bg-sky-400/10 dark:text-sky-200",
     pill: "bg-sky-100 text-sky-800 dark:bg-sky-400/15 dark:text-sky-200",
     dot: "bg-sky-500",
   },
   red: {
-    stripe: "bg-red-500",
     date: "bg-red-50 text-red-900 dark:bg-red-400/10 dark:text-red-200",
     pill: "bg-red-100 text-red-800 dark:bg-red-400/15 dark:text-red-200",
     dot: "bg-red-500",
   },
   zinc: {
-    stripe: "bg-zinc-400",
     date: "bg-muted text-muted-foreground",
     pill: "bg-muted text-muted-foreground",
     dot: "bg-zinc-400",
@@ -142,22 +137,9 @@ export function DateBlock({
   )
 }
 
-function TicketShell({
-  status,
-  children,
-}: {
-  status: string
-  children: ReactNode
-}) {
+function TicketShell({ children }: { children: ReactNode }) {
   return (
     <article className="group relative flex h-full overflow-hidden rounded-3xl border border-border/80 bg-card shadow-sm transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-pink-950/5">
-      <span
-        aria-hidden="true"
-        className={cn(
-          "absolute inset-y-0 left-0 w-1.5",
-          tone[statusTone[status] ?? "zinc"].stripe
-        )}
-      />
       {children}
     </article>
   )
@@ -186,6 +168,7 @@ function Perforation() {
 }
 
 export function ReservationTicket({
+  compactDate = false,
   facilityName,
   location,
   startAt,
@@ -200,6 +183,7 @@ export function ReservationTicket({
   alert,
   children,
 }: {
+  compactDate?: boolean
   facilityName: string
   location?: string
   startAt: number
@@ -217,14 +201,20 @@ export function ReservationTicket({
   const image = facilityIllustration(facilityName, "")
   const minutes = Math.round((endAt - startAt) / 60000)
   return (
-    <TicketShell status={status}>
+    <TicketShell>
       <DateBlock
         at={startAt}
         status={status}
-        className="my-5 ml-5 hidden w-20 sm:flex"
+        className={cn(
+          "my-5 ml-5 hidden w-20 sm:flex",
+          compactDate &&
+            "w-16 self-start border border-border/70 !bg-muted !text-foreground"
+        )}
       />
-      <div className="flex min-w-0 flex-1 flex-col gap-4 p-5 pl-6 sm:p-6 sm:pl-5">
-        <div className="flex items-start gap-3">
+      <div className="flex min-w-0 flex-1 flex-col gap-4 p-5 sm:p-6">
+        <div
+          className={cn("flex items-start gap-3", compactDate && "flex-wrap")}
+        >
           <span className="relative size-11 shrink-0 overflow-hidden rounded-2xl bg-muted">
             <Image
               src={image.src}
@@ -234,7 +224,7 @@ export function ReservationTicket({
               className="object-cover transition-transform duration-500 group-hover:scale-110"
             />
           </span>
-          <div className="min-w-0 flex-1">
+          <div className={cn("min-w-0 flex-1", compactDate && "basis-24")}>
             <h2 className="font-heading text-base font-semibold break-words">
               {facilityName}
             </h2>
@@ -358,8 +348,8 @@ export function ReportTicket({
   const [expanded, setExpanded] = useState(false)
   const long = description.length > 140
   return (
-    <TicketShell status={status}>
-      <div className="flex min-w-0 flex-1 flex-col gap-4 p-5 pl-6 sm:p-6 sm:pl-7">
+    <TicketShell>
+      <div className="flex min-w-0 flex-1 flex-col gap-4 p-5 sm:p-6">
         <div className="flex items-start gap-3">
           <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-pink-50 text-pink-600 transition-transform duration-300 group-hover:-rotate-6 dark:bg-pink-400/10 dark:text-pink-300">
             {categoryIcon(category)}

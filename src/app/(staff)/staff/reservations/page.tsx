@@ -16,8 +16,13 @@ function parseTab(
 export default async function ReservationQueuePage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string | string[] }>
+  searchParams: Promise<{ tab?: string | string[]; item?: string | string[] }>
 }) {
-  const { tab } = await searchParams
-  return <StaffReservations initialTab={parseTab(tab)} />
+  const { tab, item } = await searchParams
+  return (
+    <StaffReservations
+      initialTab={parseTab(tab)}
+      initialItem={Array.isArray(item) ? item[0] : item}
+    />
+  )
 }

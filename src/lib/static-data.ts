@@ -548,6 +548,9 @@ export function staticQuery(name: string, args: unknown): unknown {
     case "admin:analytics":
       return {
         accounts: state.accounts.length,
+        pendingAccounts: state.accounts.filter(
+          (account) => account.status === "pending"
+        ).length,
         facilities: state.facilities.length,
         reservations: state.reservations.length,
         reports: state.reports.length,

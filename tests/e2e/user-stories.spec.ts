@@ -93,23 +93,30 @@ test("US-02: mencari fasilitas menurut tipe, lokasi, dan kapasitas", async ({
   page,
 }) => {
   await page.goto("/facilities")
-  await expect(page.getByText("6 fasilitas", { exact: true })).toBeVisible()
+  await expect(
+    page.getByText("6 fasilitas ditemukan", { exact: true })
+  ).toBeVisible()
   await beat(page)
 
-  await page.getByRole("button", { name: "Laboratorium", exact: true }).click()
-  await expect(page.getByText("2 fasilitas", { exact: true })).toBeVisible()
+  await page.getByRole("combobox", { name: "Tipe" }).locator("svg").click()
+  await page.getByRole("option", { name: "Laboratorium", exact: true }).click()
+  await expect(
+    page.getByText("2 fasilitas ditemukan", { exact: true })
+  ).toBeVisible()
   await beat(page)
   await page
     .getByRole("button", { name: "Hapus filter Tipe: Laboratorium" })
     .click()
 
   await page.getByRole("textbox", { name: "Cari fasilitas" }).fill("Rektorat")
-  await expect(page.getByText("1 fasilitas", { exact: true })).toBeVisible()
+  await expect(
+    page.getByText("1 fasilitas ditemukan", { exact: true })
+  ).toBeVisible()
   await expect(page.getByText("Ruang Rapat Senat")).toBeVisible()
   await beat(page)
   await page.getByRole("textbox", { name: "Cari fasilitas" }).fill("")
 
-  await page.getByRole("combobox", { name: "Urutkan" }).click()
+  await page.getByRole("combobox", { name: "Urutkan" }).locator("svg").click()
   await page.getByRole("option", { name: "Kapasitas terbesar" }).click()
   await expect(
     page.getByRole("list", { name: "Daftar fasilitas" }).locator("li").first()
@@ -470,10 +477,11 @@ test("US-15: admin memverifikasi atau menolak registrasi mandiri", async ({
   const calon = page
     .locator('[data-slot="card"]')
     .filter({ has: page.getByRole("heading", { name: "Calon Pengguna" }) })
+  await calon.getByRole("button", { name: "Tolak", exact: true }).click()
   await calon
-    .getByRole("textbox", { name: "Alasan tindakan" })
+    .getByRole("textbox", { name: "Alasan penolakan" })
     .fill("Email bukan milik civitas kampus")
-  await calon.getByRole("button", { name: "Tolak" }).click()
+  await calon.getByRole("button", { name: "Konfirmasi penolakan" }).click()
   await expect(page.getByText("Akun Calon Pengguna ditolak")).toBeVisible()
   await expect(calon).toContainText("Ditolak")
   await beat(page, 1500)

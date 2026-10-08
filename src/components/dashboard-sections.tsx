@@ -13,12 +13,12 @@ export function DashboardSectionHeader({
   linkLabel?: string
 }) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <h2 className="font-heading text-base font-semibold">{title}</h2>
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+      <h2 className="font-heading text-lg font-semibold">{title}</h2>
       {href && linkLabel && (
         <Link
           href={href}
-          className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          className="rounded-md text-sm font-medium text-muted-foreground underline-offset-4 transition-colors outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           {linkLabel}
         </Link>
@@ -49,22 +49,24 @@ export function DashboardEmptyHint({
   actionLabel,
 }: {
   text: string
-  actionHref: string
-  actionLabel: string
+  actionHref?: string
+  actionLabel?: string
 }) {
   return (
     <div className="rounded-2xl border border-dashed border-border px-4 py-6 text-center">
       <p className="text-sm text-muted-foreground">{text}</p>
-      <Link
-        href={actionHref}
-        className={buttonVariants({
-          variant: "outline",
-          size: "sm",
-          className: "mt-3",
-        })}
-      >
-        {actionLabel}
-      </Link>
+      {actionHref && actionLabel && (
+        <Link
+          href={actionHref}
+          className={buttonVariants({
+            variant: "outline",
+            size: "sm",
+            className: "mt-3",
+          })}
+        >
+          {actionLabel}
+        </Link>
+      )}
     </div>
   )
 }
@@ -78,6 +80,9 @@ export function statusBadgeClass(status: string) {
   }
   if (status === "pending") {
     return "bg-amber-100 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300"
+  }
+  if (status === "rejected") {
+    return "bg-red-100 text-red-800 dark:bg-red-400/15 dark:text-red-300"
   }
   return ""
 }
