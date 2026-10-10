@@ -20,6 +20,10 @@ import {
 import { assertNoMaintenanceOverlap } from "./lib/maintenance"
 import { reservationStatusValidator } from "./lib/validators"
 import { assertFacilityCanApprove } from "./lib/workflows"
+import {
+  effectiveReservationStatus,
+  EXPIRATION_NOTE,
+} from "./lib/reservationState"
 
 const reservationListItemValidator = v.object({
   id: v.id("reservations"),
@@ -100,7 +104,7 @@ export const listMine = query({
           purpose: reservation.purpose,
           startAt: reservation.startAt,
           endAt: reservation.endAt,
-          status: reservation.status,
+          status: effectiveReservationStatus(reservation, Date.now()),
           decisionNote: reservation.decisionNote,
           createdAt: reservation.createdAt,
           updatedAt: reservation.updatedAt,
@@ -148,7 +152,7 @@ export const listQueue = query({
           purpose: reservation.purpose,
           startAt: reservation.startAt,
           endAt: reservation.endAt,
-          status: reservation.status,
+          status: effectiveReservationStatus(reservation, Date.now()),
           decisionNote: reservation.decisionNote,
           createdAt: reservation.createdAt,
         }
@@ -203,6 +207,9 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
     })
+    await ctx.scheduler.runAt(args.startAt, internal.reservations.expire, {
+      reservationId: id,
+    })
 
     await recordAuditEvent(ctx, {
       entityType: "reservation",
@@ -214,6 +221,55 @@ export const create = mutation({
     })
 
     return id
+  },
+})
+
+// Safe to retry. Approval/cancellation racing this job is handled by Convex OCC.
+export const expire = internalMutation({
+  args: { reservationId: v.id("reservations") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const item = await ctx.db.get("reservations", args.reservationId)
+    if (!item || item.status !== "pending" || item.startAt > Date.now())
+      return null
+    await ctx.db.patch("reservations", item._id, {
+      status: "expired",
+      decisionNote: EXPIRATION_NOTE,
+      updatedAt: Date.now(),
+    })
+    await recordAuditEvent(ctx, {
+      entityType: "reservation",
+      entityId: item._id,
+      action: "reservation.expired",
+      fromStatus: "pending",
+      toStatus: "expired",
+      actorRole: "system",
+      note: EXPIRATION_NOTE,
+    })
+    return null
+  },
+})
+
+// Legacy rows are previewed only; no bulk production cleanup is automatic.
+export const previewExpiredPending = internalQuery({
+  args: { cursor: v.optional(v.string()) },
+  returns: v.object({
+    scanned: v.number(),
+    affectedIds: v.array(v.id("reservations")),
+    nextCursor: v.union(v.string(), v.null()),
+  }),
+  handler: async (ctx, args) => {
+    const page = await ctx.db
+      .query("reservations")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .paginate({ cursor: args.cursor ?? null, numItems: 100 })
+    return {
+      scanned: page.page.length,
+      affectedIds: page.page
+        .filter((item) => item.startAt <= Date.now())
+        .map((item) => item._id),
+      nextCursor: page.isDone ? null : page.continueCursor,
+    }
   },
 })
 
