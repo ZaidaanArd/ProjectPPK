@@ -63,6 +63,25 @@ async function approvedConflict(
   )
 }
 
+async function cancelPendingChanges(
+  ctx: MutationCtx,
+  reservationId: Id<"reservations">,
+  now: number
+) {
+  const changes = await ctx.db
+    .query("reservationChanges")
+    .withIndex("by_reservation_status", (q) =>
+      q.eq("reservationId", reservationId).eq("status", "pending")
+    )
+    .collect()
+  for (const change of changes)
+    await ctx.db.patch("reservationChanges", change._id, {
+      status: "cancelled",
+      decisionNote: "Reservasi asal dibatalkan.",
+      updatedAt: now,
+    })
+}
+
 async function autoReject(
   ctx: MutationCtx,
   reservationId: Id<"reservations">,
@@ -329,6 +348,7 @@ export const cancelMine = mutation({
       actorId: profile._id,
       actorRole: profile.role,
     })
+    await cancelPendingChanges(ctx, reservation._id, now)
 
     return null
   },
@@ -644,6 +664,33 @@ export const requestScheduleChange = mutation({
   },
 })
 
+export const cancelScheduleChange = mutation({
+  args: { changeId: v.id("reservationChanges") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await requireRole(ctx, ["user"])
+    const change = await ctx.db.get("reservationChanges", args.changeId)
+    if (!change || change.userId !== user._id)
+      throw new ConvexError("Perubahan jadwal tidak ditemukan")
+    if (change.status === "cancelled") return null
+    if (change.status !== "pending" || changeDeadline(change) <= Date.now())
+      throw new ConvexError("Perubahan jadwal sudah diproses atau kedaluwarsa")
+    await ctx.db.patch("reservationChanges", change._id, {
+      status: "cancelled",
+      updatedAt: Date.now(),
+    })
+    await recordAuditEvent(ctx, {
+      entityType: "reservation",
+      entityId: change.reservationId,
+      action: "reservation.change_cancelled",
+      actorId: user._id,
+      actorRole: user.role,
+      note: change._id,
+    })
+    return null
+  },
+})
+
 export const decideScheduleChange = mutation({
   args: {
     changeId: v.id("reservationChanges"),
@@ -790,6 +837,7 @@ export const cancelByStaff = mutation({
       actorRole: actor.role,
       note: args.reason.trim(),
     })
+    await cancelPendingChanges(ctx, reservation._id, now)
 
     return null
   },
