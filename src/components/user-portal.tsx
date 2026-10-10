@@ -64,6 +64,11 @@ import { SthaniFace } from "@/components/sthani-face"
 import { TimeSlotPicker } from "@/components/time-slot-picker"
 import { useScheduleClock } from "@/hooks/use-schedule-clock"
 import {
+  ScheduleChangeDialog,
+  type ChangeReservation,
+} from "@/components/schedule-change-dialog"
+import { reservationDisplayStatus } from "../../convex/lib/reservationState"
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -100,6 +105,8 @@ const statusLabel: Record<string, string> = {
   approved: "Disetujui",
   rejected: "Ditolak",
   cancelled: "Dibatalkan",
+  expired: "Kedaluwarsa",
+  completed: "Selesai",
   in_progress: "Ditangani",
   resolved: "Selesai",
 }
@@ -121,7 +128,7 @@ const reservationTabEmptyMessages: Record<ReservationTab, string> = {
 function reservationMatchesTab(status: string, tab: ReservationTab) {
   if (tab === "menunggu") return status === "pending"
   if (tab === "disetujui") return status === "approved"
-  return status === "rejected" || status === "cancelled"
+  return ["rejected", "cancelled", "expired", "completed"].includes(status)
 }
 
 type ReportTab = "menunggu" | "ditangani" | "riwayat"
@@ -713,7 +720,22 @@ export function UserDashboard() {
 
 export function ReservationList() {
   const [shareSubject, setShareSubject] = useState<ShareSubject | null>(null)
-  const reservations = useAuthenticatedQuery(api.reservations.listMine, {})
+  const rows = useAuthenticatedQuery(api.reservations.listMine, {})
+  const changes = useAuthenticatedQuery(
+    api.reservations.listScheduleChanges,
+    {}
+  )
+  const now = useScheduleClock()
+  const reservations = useMemo(
+    () =>
+      rows?.map((item) => ({
+        ...item,
+        status:
+          now === null ? item.status : reservationDisplayStatus(item, now),
+      })),
+    [rows, now]
+  )
+  const [changing, setChanging] = useState<ChangeReservation | null>(null)
   const cancel = useMutation(api.reservations.cancelMine)
   const [message, setMessage] = useState("")
   const [activeTab, setActiveTab] = useState<ReservationTab>("menunggu")
@@ -756,6 +778,13 @@ export function ReservationList() {
         subject={shareSubject}
         onClose={() => setShareSubject(null)}
       />
+      {changing && (
+        <ScheduleChangeDialog
+          key={changing.id}
+          reservation={changing}
+          onClose={() => setChanging(null)}
+        />
+      )}
       <header className="relative border-b border-border/70 pb-6 sm:pb-7">
         <IconCalendarPlus
           size={88}
@@ -861,7 +890,28 @@ export function ReservationList() {
                         <IconShare aria-hidden="true" />
                         Bagikan
                       </Button>
-                      {["pending", "approved"].includes(item.status) ? (
+                      {item.status === "approved" &&
+                        now !== null &&
+                        item.startAt > now && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={
+                              !changes ||
+                              changes.some(
+                                (change) =>
+                                  change.reservationId === item.id &&
+                                  change.status === "pending"
+                              )
+                            }
+                            onClick={() => setChanging(item)}
+                          >
+                            Ubah jadwal
+                          </Button>
+                        )}
+                      {["pending", "approved"].includes(item.status) &&
+                      now !== null &&
+                      item.startAt - now >= 3600000 ? (
                         <Button
                           variant="outline"
                           size="sm"
