@@ -62,6 +62,7 @@ import { ShareDialog } from "@/components/share/share-dialog"
 import type { ShareSubject } from "@/components/share/share-card"
 import { SthaniFace } from "@/components/sthani-face"
 import { TimeSlotPicker } from "@/components/time-slot-picker"
+import { useScheduleClock } from "@/hooks/use-schedule-clock"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -898,6 +899,7 @@ export function ReservationForm({
 } = {}) {
   const facilities = useQuery(api.facilities.listPublic)
   const createReservation = useMutation(api.reservations.create)
+  const now = useScheduleClock()
   const [facilityId, setFacilityId] = useState(initialFacilityId ?? "")
   const [facilitySearch, setFacilitySearch] = useState("")
   const [date, setDate] = useState(initialDate ?? tomorrow)
@@ -947,12 +949,14 @@ export function ReservationForm({
     [availability]
   )
   const conflict = busy ? rangeIsBusy(date, startTime, endTime, busy) : false
+  const elapsed =
+    now === null || !startTime || toTimestamp(date, startTime) <= now
   const durationMinutes =
     startTime && endTime
       ? (toTimestamp(date, endTime) - toTimestamp(date, startTime)) / 60000
       : 0
   const scheduleReady = Boolean(
-    selectedFacility && availability && endTime && !conflict
+    selectedFacility && availability && endTime && !conflict && !elapsed
   )
 
   function requestSubmit(event: FormEvent) {
@@ -961,7 +965,7 @@ export function ReservationForm({
       setMessage("Pilih fasilitas terlebih dahulu.")
       return
     }
-    if (!availability || !endTime || conflict) {
+    if (!availability || !endTime || conflict || elapsed) {
       setMessage("Pilih rentang waktu yang tersedia terlebih dahulu.")
       return
     }
@@ -970,7 +974,11 @@ export function ReservationForm({
   }
 
   async function executeSubmit() {
-    if (!selectedFacility) return
+    if (!selectedFacility || pending) return
+    if (toTimestamp(date, startTime) <= Date.now()) {
+      setMessage("Jam mulai sudah lewat. Pilih jadwal baru.")
+      return
+    }
     setPending(true)
     setMessage("")
     try {
@@ -1107,6 +1115,7 @@ export function ReservationForm({
           <TimeSlotPicker
             date={date}
             busy={busy}
+            pendingRanges={availability?.pending}
             disabled={!selectedFacility || !availability}
             start={startTime}
             end={endTime}
@@ -1141,9 +1150,11 @@ export function ReservationForm({
                   ? "Memuat ketersediaan jadwal…"
                   : conflict
                     ? "Rentang waktu ini sudah dipakai. Pilih jam lain."
-                    : !endTime
-                      ? "Pilih rentang waktu yang tersedia."
-                      : "Rentang waktu tersedia untuk diajukan."}
+                    : elapsed
+                      ? "Jam mulai sudah lewat. Pilih jam lain."
+                      : !endTime
+                        ? "Pilih rentang waktu yang tersedia."
+                        : "Rentang waktu tersedia untuk diajukan."}
             </p>
           </div>
         </div>
@@ -1195,6 +1206,7 @@ export function ReservationForm({
               !selectedFacility ||
               !availability ||
               !endTime ||
+              elapsed ||
               conflict
             }
           >
