@@ -1,6 +1,6 @@
 "use client"
 
-import { IconAlertTriangle, IconOctagonX, IconTool } from "@tabler/icons-react"
+import { IconAlertTriangle, IconLock, IconTool } from "@tabler/icons-react"
 
 import { cn } from "@/lib/utils"
 
@@ -52,7 +52,7 @@ export function ClosureBanner({
         className
       )}
     >
-      <IconOctagonX aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+      <IconLock aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
       <div className="min-w-0">
         <p className="font-semibold">Fasilitas ditutup darurat</p>
         <p className="line-clamp-3 text-[13px]">{reason}</p>
