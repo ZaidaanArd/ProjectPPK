@@ -2,6 +2,19 @@ import { expect, type Page } from "@playwright/test"
 
 export type DemoRole = "Petugas" | "Admin" | "Pengguna"
 
+export async function startUsableReport(page: Page) {
+  await page.getByRole("button", { name: "Mulai tangani", exact: true }).click()
+  const dialog = page.getByRole("alertdialog")
+  await dialog.getByRole("radio", { name: /^Masih bisa digunakan/ }).check()
+  await dialog
+    .getByLabel("Keterangan untuk pengguna")
+    .fill("Perangkat diperbaiki; ruang masih aman digunakan.")
+  await dialog
+    .getByRole("button", { name: "Mulai tangani", exact: true })
+    .click()
+  await expect(dialog).toBeHidden()
+}
+
 /** Opens the static demo portal as the given role with onboarding skipped. */
 export async function enterDemo(page: Page, role: DemoRole) {
   await page.goto("/login")

@@ -1,7 +1,12 @@
 import path from "node:path"
 import { expect, test, type Page } from "@playwright/test"
 
-import { enterDemo, scheduleRepair, tomorrowInJakarta } from "./helpers"
+import {
+  enterDemo,
+  scheduleRepair,
+  tomorrowInJakarta,
+  startUsableReport,
+} from "./helpers"
 
 // One walkthrough per user story (docs/REQUIREMENTS.md). With
 // PLAYWRIGHT_SAVE_VIDEOS=1 each run is recorded to docs/videos/US-XX.webm.
@@ -239,7 +244,7 @@ test("US-06: pengguna melaporkan kerusakan dengan kategori, deskripsi, dan foto"
 test("US-07: pengguna melihat status laporan miliknya", async ({ page }) => {
   await enterDemo(page, "Petugas")
   await page.goto("/staff/reports")
-  await page.getByRole("button", { name: "Mulai tangani" }).click()
+  await startUsableReport(page)
   await expect(page.getByRole("status")).toContainText(
     "Laporan mulai ditangani"
   )
@@ -336,7 +341,7 @@ test("US-11: petugas memproses laporan dan menutupnya dengan catatan", async ({
 }) => {
   await enterDemo(page, "Petugas")
   await page.goto("/staff/reports")
-  await page.getByRole("button", { name: "Mulai tangani" }).click()
+  await startUsableReport(page)
   await expect(page.getByRole("status")).toContainText(
     "Laporan mulai ditangani"
   )
@@ -366,7 +371,7 @@ test("US-12: petugas menjadwalkan perbaikan di slot kosong lalu menyelesaikannya
 }) => {
   await enterDemo(page, "Petugas")
   await page.goto("/staff/reports")
-  await page.getByRole("button", { name: "Mulai tangani" }).click()
+  await startUsableReport(page)
   await expect(page.getByRole("status")).toContainText(
     "Laporan mulai ditangani"
   )

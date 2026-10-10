@@ -6,6 +6,7 @@ import {
   expectScrollUnlocked,
   scheduleRepair,
   tomorrowInJakarta,
+  startUsableReport,
 } from "./helpers"
 
 test.skip(
@@ -75,7 +76,7 @@ test("US-11/12: mulai tanpa catatan, jadwalkan perbaikan, lalu selesai", async (
 }) => {
   await enterDemo(page, "Petugas")
   await page.goto("/staff/reports")
-  await page.getByRole("button", { name: "Mulai tangani" }).click()
+  await startUsableReport(page)
   await expect(page.getByRole("status")).toContainText(
     "Laporan mulai ditangani"
   )
@@ -150,15 +151,16 @@ test("US-17: rekap per fasilitas/lokasi tersedia dan CSV dapat diunduh", async (
     page.getByRole("heading", { name: "Penggunaan fasilitas" })
   ).toBeVisible()
   await expect(
-    page.getByRole("row").filter({ hasText: "Lab Komputer 3" })
+    page.getByRole("listitem").filter({ hasText: "Lab Komputer 3" })
   ).toContainText("Gedung Informatika")
+  await page.getByRole("button", { name: "Unduh rekap" }).click()
   const downloadPromise = page.waitForEvent("download")
-  await page.getByRole("button", { name: "Rekap fasilitas CSV" }).click()
+  await page.getByRole("menuitem", { name: "Rekap fasilitas CSV" }).click()
   const download = await downloadPromise
   expect(download.suggestedFilename()).toBe("sthana-demo-summary.csv")
 })
 
-test("US-16: hapus fasilitas dari mode ubah memerlukan konfirmasi", async ({
+test("US-16: arsip fasilitas dari mode ubah memerlukan konfirmasi", async ({
   page,
 }) => {
   await enterDemo(page, "Admin")
@@ -167,29 +169,29 @@ test("US-16: hapus fasilitas dari mode ubah memerlukan konfirmasi", async ({
 
   await page.getByRole("button", { name: "Ubah Ruang Rapat Senat" }).click()
   await expect(page.getByText("Mode ubah")).toBeVisible()
-  await page.getByRole("button", { name: "Hapus ruangan" }).click()
-  await expect(page.getByText("Hapus ruangan ini?")).toBeVisible()
+  await page.getByRole("button", { name: "Arsipkan ruangan" }).click()
+  await expect(page.getByText("Arsipkan ruangan ini?")).toBeVisible()
 
   const confirm = page
     .locator("dialog")
-    .filter({ hasText: "Hapus ruangan ini?" })
+    .filter({ hasText: "Arsipkan ruangan ini?" })
   await confirm.getByRole("button", { name: "Batal" }).click()
-  await expect(page.getByText("Hapus ruangan ini?")).toBeHidden()
+  await expect(page.getByText("Arsipkan ruangan ini?")).toBeHidden()
   await expect(page.getByText("Ruang Rapat Senat").first()).toBeVisible()
 
-  await page.getByRole("button", { name: "Hapus ruangan" }).click()
-  await confirm.getByRole("button", { name: "Ya, hapus" }).click()
+  await page.getByRole("button", { name: "Arsipkan ruangan" }).click()
+  await confirm.getByRole("button", { name: "Ya, arsipkan" }).click()
   await expect(page.getByRole("status")).toContainText(
-    "Fasilitas Ruang Rapat Senat berhasil dihapus"
+    "Fasilitas Ruang Rapat Senat berhasil diarsipkan"
   )
   await expect(
     page.getByRole("button", { name: "Ubah Ruang Rapat Senat" })
-  ).toBeHidden()
+  ).toBeVisible()
   await expectScrollUnlocked(page)
 
   await page.getByRole("button", { name: "Ubah Lab Komputer 3" }).click()
-  await page.getByRole("button", { name: "Hapus ruangan" }).click()
-  await confirm.getByRole("button", { name: "Ya, hapus" }).click()
+  await page.getByRole("button", { name: "Arsipkan ruangan" }).click()
+  await confirm.getByRole("button", { name: "Ya, arsipkan" }).click()
   await expect(
     confirm.getByText("masih memiliki reservasi aktif")
   ).toBeVisible()
