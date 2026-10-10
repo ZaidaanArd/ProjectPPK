@@ -179,6 +179,8 @@ export function MermaidLightbox({
   const button =
     "flex size-9 items-center justify-center rounded-full text-white/85 transition-colors hover:bg-white/15 hover:text-white focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:outline-none"
 
+  if (typeof document === "undefined") return null
+
   return createPortal(
     <dialog
       ref={dialog}
