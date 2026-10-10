@@ -10,6 +10,8 @@ import {
 } from "@tabler/icons-react"
 
 import { cn } from "@/lib/utils"
+import { useScheduleClock } from "@/hooks/use-schedule-clock"
+import { jakartaDate } from "../../convex/lib/reservationState"
 
 const weekdays = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"]
 const shortDate = new Intl.DateTimeFormat("id-ID", {
@@ -40,17 +42,6 @@ function dateString(year: number, month: number, day: number) {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
 }
 
-function todayInJakarta() {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Jakarta",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date())
-  const part = (type: string) => parts.find((item) => item.type === type)!.value
-  return `${part("year")}-${part("month")}-${part("day")}`
-}
-
 export function ReservationDatePicker({
   value,
   onChange,
@@ -70,7 +61,8 @@ export function ReservationDatePicker({
 }) {
   const [open, setOpen] = useState(false)
   const [visibleMonth, setVisibleMonth] = useState(() => value.slice(0, 7))
-  const today = todayInJakarta()
+  const now = useScheduleClock()
+  const today = now === null ? value : jakartaDate(now)
   const minimumDate = minDate ?? today
   const tomorrowDate = new Date(dateFromString(today).getTime() + 86400000)
   const tomorrow = dateString(
