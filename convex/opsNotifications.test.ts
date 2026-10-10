@@ -57,7 +57,7 @@ async function setup() {
 
 beforeEach(() => {
   vi.useFakeTimers()
-  vi.setSystemTime(startAt - 86400000)
+  vi.setSystemTime(startAt - 3 * 86400000)
 })
 afterEach(() => vi.useRealTimers())
 
@@ -71,14 +71,28 @@ describe("ops notifications", () => {
       endAt: startAt + 3600000,
       reason: "Servis AC",
     })
-    await t.mutation(internal.maintenance.remind, { windowId, endAt: startAt + 3600000 })
-    await t.mutation(internal.maintenance.remind, { windowId, endAt: startAt + 3600000 })
-    const notes = await t.run(async (ctx) => ctx.db.query("notifications").collect())
-    expect(notes.filter((n) => n.type === "maintenance.reminder")).toHaveLength(1)
+    await t.mutation(internal.maintenance.remind, {
+      windowId,
+      endAt: startAt + 3600000,
+    })
+    await t.mutation(internal.maintenance.remind, {
+      windowId,
+      endAt: startAt + 3600000,
+    })
+    const notes = await t.run(async (ctx) =>
+      ctx.db.query("notifications").collect()
+    )
+    expect(notes.filter((n) => n.type === "maintenance.reminder")).toHaveLength(
+      1
+    )
     const user = t.withIdentity({ subject: "user-auth" })
-    await expect(user.query(api.notifications.listMine, {})).resolves.toEqual([])
+    await expect(user.query(api.notifications.listMine, {})).resolves.toEqual(
+      []
+    )
     await expect(
-      user.mutation(api.notifications.markRead, { notificationId: notes[0]._id })
+      user.mutation(api.notifications.markRead, {
+        notificationId: notes[0]._id,
+      })
     ).rejects.toThrow("tidak ditemukan")
   })
 
@@ -99,8 +113,13 @@ describe("ops notifications", () => {
       startAt,
       endAt: startAt + 3600000,
     })
-    await officer.mutation(api.facilityIssues.update, { issueId, description: "Bocor parah" })
-    const notes = await t.run(async (ctx) => ctx.db.query("notifications").collect())
+    await officer.mutation(api.facilityIssues.update, {
+      issueId,
+      description: "Bocor parah",
+    })
+    const notes = await t.run(async (ctx) =>
+      ctx.db.query("notifications").collect()
+    )
     expect(notes.filter((n) => n.type === "disruption.created")).toHaveLength(1)
     expect(notes.filter((n) => n.type === "disruption.updated")).toHaveLength(1)
   })

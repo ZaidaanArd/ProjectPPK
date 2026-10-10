@@ -57,7 +57,7 @@ async function setup() {
 
 beforeEach(() => {
   vi.useFakeTimers()
-  vi.setSystemTime(startAt - 86400000)
+  vi.setSystemTime(startAt - 3 * 86400000)
 })
 afterEach(() => vi.useRealTimers())
 
@@ -72,7 +72,10 @@ describe("emergency closures", () => {
       startAt,
       endAt: startAt + 3600000,
     })
-    await officer.mutation(api.reservations.decide, { reservationId: future, decision: "approved" })
+    await officer.mutation(api.reservations.decide, {
+      reservationId: future,
+      decision: "approved",
+    })
     const closureId = await officer.mutation(api.emergencyClosures.close, {
       facilityId: facility,
       reason: "Kabel berbahaya",
@@ -91,8 +94,13 @@ describe("emergency closures", () => {
       })
     ).rejects.toThrow("tidak dapat dipesan")
     // Reopen does not resurrect.
-    await officer.mutation(api.emergencyClosures.reopen, { closureId, confirmSafe: true })
-    expect((await t.run(async (ctx) => ctx.db.get("reservations", future)))?.status).toBe("cancelled")
+    await officer.mutation(api.emergencyClosures.reopen, {
+      closureId,
+      confirmSafe: true,
+    })
+    expect(
+      (await t.run(async (ctx) => ctx.db.get("reservations", future)))?.status
+    ).toBe("cancelled")
   })
 
   it("long-repair mode notifies without cancelling and allows user choice", async () => {
@@ -105,18 +113,25 @@ describe("emergency closures", () => {
       startAt,
       endAt: startAt + 3600000,
     })
-    await officer.mutation(api.reservations.decide, { reservationId: future, decision: "approved" })
+    await officer.mutation(api.reservations.decide, {
+      reservationId: future,
+      decision: "approved",
+    })
     const closureId = await officer.mutation(api.emergencyClosures.close, {
       facilityId: facility,
       reason: "Renovasi besar",
       mode: "long_repair",
     })
-    expect((await t.run(async (ctx) => ctx.db.get("reservations", future)))?.status).toBe("approved")
+    expect(
+      (await t.run(async (ctx) => ctx.db.get("reservations", future)))?.status
+    ).toBe("approved")
     await user.mutation(api.emergencyClosures.cancelMineForClosure, {
       reservationId: future,
       closureId,
     })
-    expect((await t.run(async (ctx) => ctx.db.get("reservations", future)))?.status).toBe("cancelled")
+    expect(
+      (await t.run(async (ctx) => ctx.db.get("reservations", future)))?.status
+    ).toBe("cancelled")
   })
 
   it("previews impact read-only without changing data", async () => {
@@ -129,8 +144,12 @@ describe("emergency closures", () => {
       startAt,
       endAt: startAt + 3600000,
     })
-    const preview = await officer.query(api.emergencyClosures.previewImpact, { facilityId: facility })
+    const preview = await officer.query(api.emergencyClosures.previewImpact, {
+      facilityId: facility,
+    })
     expect(preview.pending).toHaveLength(1)
-    expect(await t.run(async (ctx) => ctx.db.query("emergencyClosures").collect())).toHaveLength(0)
+    expect(
+      await t.run(async (ctx) => ctx.db.query("emergencyClosures").collect())
+    ).toHaveLength(0)
   })
 })

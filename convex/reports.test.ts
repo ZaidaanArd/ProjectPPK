@@ -67,6 +67,8 @@ describe("report handling", () => {
     await officer.mutation(api.reports.updateStatus, {
       reportId,
       status: "in_progress",
+      handlingImpact: "usable",
+      publicNotice: "AC sedang diperbaiki",
       note: "",
       facilityMaintenance: true,
     })

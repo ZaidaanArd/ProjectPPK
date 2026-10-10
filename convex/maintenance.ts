@@ -13,6 +13,7 @@ import {
   type TimeRange,
 } from "./lib/maintenance"
 import { maintenanceStatusValidator } from "./lib/validators"
+import { effectiveReservationStatus } from "./lib/reservationState"
 
 type Ctx = QueryCtx | MutationCtx
 
@@ -30,7 +31,11 @@ async function reservationsIn(
       q.eq("facilityId", facilityId).eq("status", status).lt("startAt", endAt)
     )
     .collect()
-  return rows.filter((row) => row.endAt > startAt)
+  return rows.filter(
+    (row) =>
+      row.endAt > startAt &&
+      effectiveReservationStatus(row, Date.now()) !== "expired"
+  )
 }
 
 /** Scheduled maintenance windows on a facility that overlap [startAt, endAt). */
@@ -384,7 +389,8 @@ export const close = mutation({
  * Runs at a window's endAt. Does nothing if the window was closed or extended
  * since this run was scheduled (the extension schedules its own run).
  */
-export const expire = internalMutation({  args: { windowId: v.id("maintenanceWindows"), endAt: v.number() },
+export const expire = internalMutation({
+  args: { windowId: v.id("maintenanceWindows"), endAt: v.number() },
   returns: v.null(),
   handler: async (ctx, args) => {
     const window = await ctx.db.get("maintenanceWindows", args.windowId)

@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values"
+import { paginationOptsValidator } from "convex/server"
 
 import { mutation, query } from "./_generated/server"
 import { requireActiveProfile } from "./lib/authz"
@@ -44,6 +45,40 @@ export const listMine = query({
       readAt: row.readAt,
       createdAt: row.createdAt,
     }))
+  },
+})
+
+export const listPage = query({
+  args: { paginationOpts: paginationOptsValidator },
+  returns: v.object({
+    page: v.array(notificationListItemValidator),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const profile = await requireActiveProfile(ctx)
+    const result = await ctx.db
+      .query("notifications")
+      .withIndex("by_user_created", (q) => q.eq("userId", profile._id))
+      .order("desc")
+      .paginate(args.paginationOpts)
+    return {
+      isDone: result.isDone,
+      continueCursor: result.continueCursor,
+      page: result.page.map((row) => ({
+        id: row._id,
+        type: row.type,
+        title: row.title,
+        body: row.body,
+        reservationId: row.reservationId,
+        facilityId: row.facilityId,
+        issueId: row.issueId,
+        changeId: row.changeId,
+        closureId: row.closureId,
+        readAt: row.readAt,
+        createdAt: row.createdAt,
+      })),
+    }
   },
 })
 

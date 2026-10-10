@@ -58,7 +58,7 @@ async function setup() {
 
 beforeEach(() => {
   vi.useFakeTimers()
-  vi.setSystemTime(startAt - 86400000)
+  vi.setSystemTime(startAt - 3 * 86400000)
 })
 afterEach(() => vi.useRealTimers())
 
@@ -88,11 +88,18 @@ describe("facility issues do not lock slots", () => {
       endAt: startAt + 3600000,
     })
     // Still bookable: disruption never locks.
-    await officer.mutation(api.reservations.decide, { reservationId: resA, decision: "approved" })
-    const open = await t.query(api.facilityIssues.listOpen, { facilityId: facility })
+    await officer.mutation(api.reservations.decide, {
+      reservationId: resA,
+      decision: "approved",
+    })
+    const open = await t.query(api.facilityIssues.listOpen, {
+      facilityId: facility,
+    })
     expect(open).toHaveLength(1)
     expect(open[0]).toMatchObject({ id: issueId, category: "AC mati" })
-    const notes = await t.run(async (ctx) => ctx.db.query("notifications").collect())
+    const notes = await t.run(async (ctx) =>
+      ctx.db.query("notifications").collect()
+    )
     const created = notes.filter((n) => n.type === "disruption.created")
     // Only the overlapping holder is notified.
     expect(created).toHaveLength(1)
@@ -116,7 +123,10 @@ describe("facility issues do not lock slots", () => {
       endAt: startAt + 10800000,
     })
     await expect(
-      user.mutation(api.reservations.cancelMineForDisruption, { reservationId: resId, issueId })
+      user.mutation(api.reservations.cancelMineForDisruption, {
+        reservationId: resId,
+        issueId,
+      })
     ).rejects.toThrow("tidak berdampak")
   })
 
@@ -138,7 +148,10 @@ describe("facility issues do not lock slots", () => {
       endAt: startAt + 3600000,
     })
     vi.setSystemTime(startAt - 30 * 60 * 1000)
-    await user.mutation(api.reservations.cancelMineForDisruption, { reservationId: resId, issueId })
+    await user.mutation(api.reservations.cancelMineForDisruption, {
+      reservationId: resId,
+      issueId,
+    })
     const row = await t.run(async (ctx) => ctx.db.get("reservations", resId))
     expect(row?.status).toBe("cancelled")
   })

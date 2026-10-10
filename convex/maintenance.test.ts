@@ -165,7 +165,8 @@ describe("maintenance scheduling", () => {
     expect(
       await officer.mutation(api.maintenance.close, { windowId: early })
     ).toBe("completed")
-    await reserve("11:30", "12:00")
+    // The slot is free, but a new last-minute booking is still invalid.
+    await expect(reserve("11:30", "12:00")).rejects.toThrow("48 jam")
 
     vi.setSystemTime(at("14:00"))
     await t.finishAllScheduledFunctions(vi.runAllTimers)

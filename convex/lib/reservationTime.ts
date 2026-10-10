@@ -1,4 +1,13 @@
 import { ConvexError } from "convex/values"
+import {
+  meetsReservationLeadTime,
+  RESERVATION_LEAD_MESSAGE,
+} from "./reservationPolicy"
+
+export function validateReservationLeadTime(startAt: number, now: number) {
+  if (!meetsReservationLeadTime(startAt, now))
+    throw new ConvexError(RESERVATION_LEAD_MESSAGE)
+}
 
 export const JAKARTA_UTC_OFFSET_MS = 7 * 60 * 60 * 1000
 export const SLOT_MS = 30 * 60 * 1000

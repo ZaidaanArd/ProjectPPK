@@ -100,8 +100,9 @@ describe("facility removal", () => {
 
     expect(
       await t.run((ctx) => ctx.db.get("facilities", facilityId))
-    ).toBeNull()
-    expect(await admin.query(api.facilities.listManaged, {})).toHaveLength(0)
+    ).toMatchObject({ status: "inactive" })
+    expect(await admin.query(api.facilities.listManaged, {})).toHaveLength(1)
+    expect(await admin.query(api.facilities.listPublic, {})).toHaveLength(0)
     const audits = await t.run((ctx) =>
       ctx.db
         .query("auditEvents")
@@ -110,7 +111,7 @@ describe("facility removal", () => {
         )
         .collect()
     )
-    expect(audits.map((event) => event.action)).toContain("facility.deleted")
+    expect(audits.map((event) => event.action)).toContain("facility.archived")
   })
 
   it("blocks removal while an active reservation exists", async () => {
@@ -152,6 +153,6 @@ describe("facility removal", () => {
 
     expect(
       await t.run((ctx) => ctx.db.get("facilities", facilityId))
-    ).toBeNull()
+    ).toMatchObject({ status: "inactive" })
   })
 })

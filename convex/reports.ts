@@ -2,11 +2,14 @@ import { ConvexError, v } from "convex/values"
 
 import { mutation, query } from "./_generated/server"
 import { closeWindow } from "./maintenance"
+import { closeFacility, notifyReopening } from "./emergencyClosures"
+import { createIssue, resolveReportIssues } from "./facilityIssues"
 import { recordAuditEvent } from "./lib/audit"
 import { requireRole } from "./lib/authz"
 import {
   maintenanceStatusValidator,
   reportStatusValidator,
+  handlingImpactValidator,
 } from "./lib/validators"
 import { assertReportTransition } from "./lib/workflows"
 
@@ -20,6 +23,7 @@ const reportListItemValidator = v.object({
   description: v.string(),
   photoUrl: v.union(v.null(), v.string()),
   status: reportStatusValidator,
+  handlingImpact: v.optional(handlingImpactValidator),
   resolutionNote: v.optional(v.string()),
   createdAt: v.number(),
   updatedAt: v.number(),
@@ -125,6 +129,7 @@ export const listMine = query({
           description: report.description,
           photoUrl,
           status: report.status,
+          handlingImpact: report.handlingImpact,
           resolutionNote: report.resolutionNote,
           createdAt: report.createdAt,
           updatedAt: report.updatedAt,
@@ -147,6 +152,7 @@ export const listQueue = query({
       description: v.string(),
       photoUrl: v.union(v.null(), v.string()),
       status: reportStatusValidator,
+      handlingImpact: v.optional(handlingImpactValidator),
       resolutionNote: v.optional(v.string()),
       // Repairs scheduled from this report, newest first.
       maintenance: v.array(
@@ -189,6 +195,7 @@ export const listQueue = query({
           description: report.description,
           photoUrl,
           status: report.status,
+          handlingImpact: report.handlingImpact,
           resolutionNote: report.resolutionNote,
           maintenance: windows.map((window) => ({
             id: window._id,
@@ -213,6 +220,9 @@ export const updateStatus = mutation({
       v.literal("rejected")
     ),
     note: v.string(),
+    handlingImpact: v.optional(handlingImpactValidator),
+    publicNotice: v.optional(v.string()),
+    confirmSafe: v.optional(v.boolean()),
     // Legacy: older clients toggled a whole-facility maintenance status here.
     // Only `false` is still honoured, to reopen a facility left in that state.
     facilityMaintenance: v.optional(v.boolean()),
@@ -226,6 +236,13 @@ export const updateStatus = mutation({
       throw new ConvexError("Laporan tidak ditemukan")
     }
 
+    if (
+      report.status === args.status &&
+      (args.status !== "in_progress" ||
+        report.handlingImpact === args.handlingImpact)
+    )
+      return null
+
     const note = args.note.trim()
     if (args.status !== "in_progress" && !note) {
       throw new ConvexError(
@@ -236,8 +253,59 @@ export const updateStatus = mutation({
     assertReportTransition(report.status, args.status)
 
     const now = Date.now()
+    if (args.status === "in_progress") {
+      if (!args.handlingImpact)
+        throw new ConvexError("Pilih dampak penanganan terlebih dahulu")
+      const publicNotice = args.publicNotice?.trim()
+      if (!publicNotice)
+        throw new ConvexError(
+          "Keterangan publik wajib diisi tanpa data pribadi"
+        )
+      if (publicNotice.length > 500)
+        throw new ConvexError("Keterangan publik maksimal 500 karakter")
+      if (args.handlingImpact === "usable") {
+        await createIssue(
+          ctx,
+          {
+            facilityId: report.facilityId,
+            reportId: report._id,
+            category: report.category,
+            description: publicNotice,
+            startAt: now,
+          },
+          actor
+        )
+      } else {
+        const existing = await ctx.db
+          .query("emergencyClosures")
+          .withIndex("by_facility_status", (q) =>
+            q.eq("facilityId", report.facilityId).eq("status", "closed")
+          )
+          .first()
+        if (!existing)
+          await closeFacility(
+            ctx,
+            {
+              facilityId: report.facilityId,
+              reportId: report._id,
+              reason: publicNotice,
+              mode: "safety",
+            },
+            actor,
+            "handling"
+          )
+      }
+    } else if (report.handlingImpact === "closed" && !args.confirmSafe) {
+      throw new ConvexError(
+        "Pastikan penanganan selesai dan fasilitas aman sebelum menutup laporan"
+      )
+    }
     await ctx.db.patch("reports", report._id, {
       status: args.status,
+      handlingImpact:
+        args.status === "in_progress"
+          ? args.handlingImpact
+          : report.handlingImpact,
       resolutionNote: note || report.resolutionNote,
       handledBy: actor._id,
       handledAt: now,
@@ -247,6 +315,45 @@ export const updateStatus = mutation({
     // Closing a report ends its repairs: started ones complete now, future
     // ones are cancelled, so their slots open again.
     if (args.status === "resolved" || args.status === "rejected") {
+      await resolveReportIssues(ctx, report._id, actor)
+      const remaining = await ctx.db
+        .query("reports")
+        .withIndex("by_facility_and_status", (q) =>
+          q.eq("facilityId", report.facilityId).eq("status", "in_progress")
+        )
+        .collect()
+      if (
+        report.handlingImpact === "closed" &&
+        args.confirmSafe &&
+        !remaining.some((r) => r.handlingImpact === "closed")
+      ) {
+        const closures = await ctx.db
+          .query("emergencyClosures")
+          .withIndex("by_facility_status", (q) =>
+            q.eq("facilityId", report.facilityId).eq("status", "closed")
+          )
+          .collect()
+        for (const closure of closures) {
+          if (closure.source !== "handling") continue
+          await ctx.db.patch("emergencyClosures", closure._id, {
+            status: "reopened",
+            reopenedBy: actor._id,
+            reopenedAt: now,
+            updatedAt: now,
+          })
+          await notifyReopening(ctx, closure._id, closure.facilityId)
+          await recordAuditEvent(ctx, {
+            entityType: "closure",
+            entityId: closure._id,
+            action: "closure.reopened",
+            actorId: actor._id,
+            actorRole: actor.role,
+            fromStatus: "closed",
+            toStatus: "reopened",
+            note: "Penanganan selesai dan fasilitas dinyatakan aman",
+          })
+        }
+      }
       const windows = await ctx.db
         .query("maintenanceWindows")
         .withIndex("by_report", (q) => q.eq("reportId", report._id))

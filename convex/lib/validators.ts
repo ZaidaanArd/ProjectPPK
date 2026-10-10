@@ -66,6 +66,7 @@ export const notificationTypeValidator = v.union(
   v.literal("disruption.updated"),
   v.literal("disruption.resolved"),
   v.literal("emergency.closed"),
+  v.literal("emergency.reopened"),
   v.literal("maintenance.reminder")
 )
 

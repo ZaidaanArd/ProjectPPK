@@ -32,6 +32,8 @@ export async function facilityHandling(
   ctx: QueryCtx | MutationCtx,
   facility: Doc<"facilities">
 ) {
+  if (facility.status === "inactive")
+    return { status: facility.status, handlingNotice: undefined }
   const closure = await activeClosure(ctx, facility._id)
   if (closure) {
     return {
@@ -49,13 +51,14 @@ export async function facilityHandling(
     .collect()
   const base = reportHandlingState(facility.status, reports)
   if (base.status !== "active") return base
-  const issues = await openIssues(ctx, facility._id)
+  const now = Date.now()
+  const issues = (await openIssues(ctx, facility._id)).filter(
+    (issue) => issue.startAt <= now && (issue.endAt ?? Infinity) > now
+  )
   if (issues.length === 0) return base
   const first = issues[0]
   const more = issues.length > 1 ? ` (+${issues.length - 1} lainnya)` : ""
-  const endText = first.endAt
-    ? undefined
-    : " sampai pemberitahuan lebih lanjut"
+  const endText = first.endAt ? undefined : " sampai pemberitahuan lebih lanjut"
   return {
     status: base.status,
     handlingNotice:

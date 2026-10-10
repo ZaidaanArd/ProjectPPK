@@ -70,7 +70,7 @@ async function setup() {
 
 beforeEach(() => {
   vi.useFakeTimers()
-  vi.setSystemTime(startAt - 86400000)
+  vi.setSystemTime(startAt - 3 * 86400000)
 })
 afterEach(() => vi.useRealTimers())
 

@@ -47,7 +47,7 @@ export function validateMaintenanceWindow(
   }
   if (endAt - startAt > MAINTENANCE_MAX_MS) {
     throw new ConvexError(
-      "Satu jadwal perbaikan maksimal 7 hari. Untuk penutupan lebih lama, admin dapat menonaktifkan fasilitas."
+      "Satu jadwal perbaikan maksimal 7 hari. Untuk penutupan lebih lama, gunakan Penutupan fasilitas."
     )
   }
 }

@@ -10,6 +10,7 @@ import {
 } from "./_generated/server"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
 import { maintenanceIn } from "./maintenance"
+import { notifyReservationIssues } from "./facilityIssues"
 import { recordAuditEvent } from "./lib/audit"
 import { requireActiveProfile, requireRole } from "./lib/authz"
 import { facilityHandling } from "./lib/facilityHandling"
@@ -18,6 +19,7 @@ import {
   AUTO_REJECTION_NOTE,
   overlaps,
   validateReservationWindow,
+  validateReservationLeadTime,
 } from "./lib/reservationTime"
 import { assertNoMaintenanceOverlap } from "./lib/maintenance"
 import { reservationStatusValidator } from "./lib/validators"
@@ -276,10 +278,6 @@ export const create = mutation({
 
     validateReservationWindow(args.startAt, args.endAt)
 
-    if (args.startAt <= Date.now()) {
-      throw new ConvexError("Waktu reservasi harus berada di masa mendatang")
-    }
-
     const mine = await ctx.db
       .query("reservations")
       .withIndex("by_user", (q) => q.eq("userId", profile._id))
@@ -293,6 +291,8 @@ export const create = mutation({
     )
     // An exact retry returns the existing request instead of creating another row.
     if (duplicate) return duplicate._id
+
+    validateReservationLeadTime(args.startAt, Date.now())
 
     if (await approvedConflict(ctx, facility._id, args.startAt, args.endAt)) {
       throw new ConvexError("Slot sudah digunakan oleh reservasi lain")
@@ -327,6 +327,7 @@ export const create = mutation({
       actorRole: profile.role,
     })
 
+    await notifyReservationIssues(ctx, id)
     return id
   },
 })
@@ -399,7 +400,11 @@ export const cancelMine = mutation({
       throw new ConvexError("Reservasi tidak ditemukan")
     }
 
-    if (reservation.status !== "pending" && reservation.status !== "approved") {
+    if (
+      !["pending", "approved"].includes(
+        effectiveReservationStatus(reservation, Date.now())
+      )
+    ) {
       throw new ConvexError("Reservasi ini tidak dapat dibatalkan")
     }
 
@@ -444,21 +449,34 @@ export const cancelMineForDisruption = mutation({
     if (!reservation || reservation.userId !== profile._id) {
       throw new ConvexError("Reservasi tidak ditemukan")
     }
-    if (reservation.status !== "pending" && reservation.status !== "approved") {
+    if (
+      !["pending", "approved"].includes(
+        effectiveReservationStatus(reservation, Date.now())
+      )
+    ) {
       throw new ConvexError("Reservasi ini tidak dapat dibatalkan")
     }
     if (reservation.endAt <= Date.now()) {
       throw new ConvexError("Reservasi ini tidak dapat dibatalkan")
     }
     const issue = await ctx.db.get("facilityIssues", args.issueId)
-    if (!issue || issue.status !== "open" || issue.facilityId !== reservation.facilityId) {
+    if (
+      !issue ||
+      issue.status !== "open" ||
+      issue.facilityId !== reservation.facilityId
+    ) {
       throw new ConvexError("Gangguan tidak berlaku untuk reservasi ini")
     }
     const issueEnd = issue.endAt ?? Number.MAX_SAFE_INTEGER
-    if (!overlaps(reservation.startAt, reservation.endAt, issue.startAt, issueEnd)) {
+    if (
+      !overlaps(reservation.startAt, reservation.endAt, issue.startAt, issueEnd)
+    ) {
       throw new ConvexError("Gangguan tidak berdampak pada jadwal ini")
     }
-    if (reservation.status === "approved" && reservation.startAt <= Date.now()) {
+    if (
+      reservation.status === "approved" &&
+      reservation.startAt <= Date.now()
+    ) {
       throw new ConvexError("Kegiatan sudah berlangsung. Hubungi petugas.")
     }
     const now = Date.now()
@@ -506,6 +524,11 @@ export const decide = mutation({
 
     if (args.decision === "approved") {
       const facility = await ctx.db.get("facilities", reservation.facilityId)
+      const applicant = await ctx.db.get("profiles", reservation.userId)
+      if (!applicant || applicant.status !== "active")
+        throw new ConvexError(
+          "Akun pemohon tidak aktif. Tinjau pengajuan sebelum memutuskan."
+        )
 
       if (!facility) {
         throw new ConvexError("Fasilitas reservasi tidak ditemukan")
@@ -559,6 +582,7 @@ export const decide = mutation({
     const facilityName = facility?.name ?? "Fasilitas"
     const range = jakartaRange(reservation.startAt, reservation.endAt)
     if (args.decision === "approved") {
+      await notifyReservationIssues(ctx, reservation._id)
       await notify(ctx, {
         userId: reservation.userId,
         type: "reservation.approved",
@@ -596,6 +620,7 @@ export const decide = mutation({
       for (const item of pending) {
         if (
           item._id !== reservation._id &&
+          effectiveReservationStatus(item, now) === "pending" &&
           overlaps(
             item.startAt,
             item.endAt,
@@ -881,6 +906,11 @@ export const decideScheduleChange = mutation({
     if (args.decision === "approved") {
       const facility = await ctx.db.get("facilities", change.facilityId)
       if (!facility) throw new ConvexError("Fasilitas tidak ditemukan")
+      const applicant = await ctx.db.get("profiles", original.userId)
+      if (!applicant || applicant.status !== "active")
+        throw new ConvexError(
+          "Akun pemohon tidak aktif. Perubahan tidak dapat disetujui."
+        )
       assertFacilityCanApprove((await facilityHandling(ctx, facility)).status)
       validateReservationWindow(change.startAt, change.endAt)
       assertNoMaintenanceOverlap(
@@ -927,7 +957,10 @@ export const decideScheduleChange = mutation({
         )
         .collect()
       for (const item of pending)
-        if (overlaps(item.startAt, item.endAt, change.startAt, change.endAt))
+        if (
+          effectiveReservationStatus(item, now) === "pending" &&
+          overlaps(item.startAt, item.endAt, change.startAt, change.endAt)
+        )
           await autoReject(ctx, item._id, now)
     }
     await ctx.db.patch("reservationChanges", change._id, {
@@ -956,6 +989,7 @@ export const decideScheduleChange = mutation({
         changeId: change._id,
         dedupKey: `reservationChange:${change._id}:approved`,
       })
+      await notifyReservationIssues(ctx, original._id)
     } else {
       await notify(ctx, {
         userId: change.userId,

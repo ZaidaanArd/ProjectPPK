@@ -155,6 +155,8 @@ export default defineSchema({
   // Safety closures. Decided manually: no auto-open from estimates, finished
   // reports or maintenance. Reopening never resurrects cancelled bookings.
   emergencyClosures: defineTable({
+    mode: v.optional(v.union(v.literal("safety"), v.literal("long_repair"))),
+    source: v.optional(v.union(v.literal("manual"), v.literal("handling"))),
     facilityId: v.id("facilities"),
     reportId: v.optional(v.id("reports")),
     reason: v.string(),
@@ -187,6 +189,7 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_user_created", ["userId", "createdAt"])
+    .index("by_closure", ["closureId"])
     .index("by_dedup_key", ["dedupKey"]),
 
   auditEvents: defineTable({

@@ -1,11 +1,14 @@
 import { ConvexError, v } from "convex/values"
 
 import { mutation, query } from "./_generated/server"
-import type { QueryCtx } from "./_generated/server"
+import type { QueryCtx, MutationCtx } from "./_generated/server"
 import type { Id } from "./_generated/dataModel"
 import { recordAuditEvent } from "./lib/audit"
 import { requireRole } from "./lib/authz"
-import { changeDeadline } from "./lib/reservationState"
+import {
+  changeDeadline,
+  effectiveReservationStatus,
+} from "./lib/reservationState"
 import { facilityHandling } from "./lib/facilityHandling"
 import {
   facilityStatusValidator,
@@ -13,6 +16,29 @@ import {
 } from "./lib/validators"
 
 const timeRangeValidator = v.object({ startAt: v.number(), endAt: v.number() })
+
+async function hasLiveReservations(
+  ctx: MutationCtx,
+  facilityId: Id<"facilities">
+) {
+  for (const status of ["pending", "approved"] as const) {
+    const rows = await ctx.db
+      .query("reservations")
+      .withIndex("by_facility_status_start", (q) =>
+        q.eq("facilityId", facilityId).eq("status", status)
+      )
+      .collect()
+    if (
+      rows.some(
+        (r) =>
+          r.endAt > Date.now() &&
+          effectiveReservationStatus(r, Date.now()) !== "expired"
+      )
+    )
+      return true
+  }
+  return false
+}
 
 const publicFacilityValidator = v.object({
   id: v.id("facilities"),
@@ -326,6 +352,14 @@ export const setStatus = mutation({
       )
     }
 
+    if (
+      args.status === "inactive" &&
+      (await hasLiveReservations(ctx, facility._id))
+    )
+      throw new ConvexError(
+        "Masih ada reservasi aktif. Gunakan Penutupan fasilitas agar dampak dan notifikasi ditangani."
+      )
+
     await ctx.db.patch("facilities", facility._id, {
       status: args.status,
       updatedAt: Date.now(),
@@ -390,8 +424,9 @@ export const remove = mutation({
     ])
 
     if (
-      pendingReservation ||
-      approvedReservation ||
+      (pendingReservation && pendingReservation.startAt > Date.now()) ||
+      (approvedReservation && approvedReservation.endAt > Date.now()) ||
+      (await hasLiveReservations(ctx, facility._id)) ||
       pendingReport ||
       activeReport
     ) {
@@ -400,12 +435,16 @@ export const remove = mutation({
       )
     }
 
-    await ctx.db.delete("facilities", facility._id)
+    await ctx.db.patch("facilities", facility._id, {
+      status: "inactive",
+      updatedAt: Date.now(),
+    })
 
     await recordAuditEvent(ctx, {
       entityType: "facility",
       entityId: facility._id,
-      action: "facility.deleted",
+      action: "facility.archived",
+      toStatus: "inactive",
       fromStatus: facility.status,
       actorId: actor._id,
       actorRole: actor.role,
