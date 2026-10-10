@@ -28,6 +28,12 @@ Better Auth menyimpan user/session terpisah dari profil domain. Profil terkait r
 
 Pembagian route, komponen, fungsi Convex, test, dan konfigurasi dijelaskan pada [struktur file program](./ARCHITECTURE.md#struktur-file-program). Route group frontend memisahkan layout peran; validasi dan otorisasi final tetap berada di backend Convex. Folder hasil instalasi/build tidak termasuk sumber aplikasi.
 
+### Tim proyek
+
+![Tim proyek di halaman Tentang production](/docs-assets/team-production.png)
+
+Pembagian peran tim dan profil sosial ditampilkan di halaman Tentang. Screenshot berasal dari production; daftar tugas lengkap tetap dipertahankan pada laporan kelompok.
+
 ## 4. Implementasi antarmuka
 
 Screenshot UI berikut diambil dari [production](https://sthana.myudak.com) pada 11 Oktober 2026. Gambar arsitektur, ERD, dan alur penanganan merupakan diagram berdasarkan kode.
