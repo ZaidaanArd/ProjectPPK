@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
 import { IconBell } from "@tabler/icons-react"
 import type { FunctionReturnType } from "convex/server"
@@ -47,6 +48,25 @@ function formatRelativeTime(value: number, now: number) {
       )
   }
   return absoluteFormatter.format(value)
+}
+
+function referenceHref(item: NotificationItem): string | null {
+  if (item.reservationId) return "/app/reservations"
+  if (item.changeId) return "/app/reservations"
+  if (item.closureId && item.facilityId) return "/app/reservations"
+  if (item.issueId && item.facilityId) return "/facilities"
+  if (item.facilityId) return "/facilities"
+  if (item.type === "maintenance.reminder") return "/staff/maintenance"
+  return null
+}
+
+function referenceLabel(item: NotificationItem): string | null {
+  if (item.reservationId || item.changeId) return "Lihat reservasi"
+  if (item.closureId) return "Lihat reservasi terdampak"
+  if (item.issueId) return "Lihat fasilitas"
+  if (item.facilityId) return "Lihat fasilitas"
+  if (item.type === "maintenance.reminder") return "Buka jadwal perbaikan"
+  return null
 }
 
 export function NotificationBell({ disabled }: { disabled?: boolean }) {
@@ -127,6 +147,8 @@ export function NotificationBell({ disabled }: { disabled?: boolean }) {
         ) : (
           notifications.map((item) => {
             const unreadItem = item.readAt === undefined
+            const href = referenceHref(item)
+            const label = referenceLabel(item)
             return (
               <DropdownMenuItem
                 key={item.id}
@@ -159,6 +181,18 @@ export function NotificationBell({ disabled }: { disabled?: boolean }) {
                   <span className="line-clamp-2 text-xs text-muted-foreground">
                     {item.body}
                   </span>
+                  {href && label && (
+                    <Link
+                      href={href}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        void handleRead(item)
+                      }}
+                      className="text-xs font-medium text-pink-700 underline-offset-2 hover:underline dark:text-pink-300"
+                    >
+                      {label}
+                    </Link>
+                  )}
                   <span className="text-[11px] text-muted-foreground/80">
                     {formatRelativeTime(item.createdAt, openedAt || item.createdAt)}
                   </span>
