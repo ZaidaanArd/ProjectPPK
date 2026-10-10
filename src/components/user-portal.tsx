@@ -1027,7 +1027,7 @@ export function ReservationForm({
 
   async function executeSubmit() {
     if (!selectedFacility || pending) return
-    if (toTimestamp(date, startTime) <= Date.now()) {
+    if (now === null || toTimestamp(date, startTime) <= now) {
       setMessage("Jam mulai sudah lewat. Pilih jadwal baru.")
       return
     }
