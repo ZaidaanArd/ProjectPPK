@@ -34,13 +34,35 @@ export function rangeIsBusy(
   return busy.some((item) => item.startAt < endAt && startAt < item.endAt)
 }
 
-export type Slot = { start: string; end: string; taken: boolean }
+export type Slot = {
+  start: string
+  end: string
+  taken: boolean
+  past?: boolean
+  pending?: boolean
+}
 
 /** The 26 half-hour slots of a day, marked taken when they overlap `busy`. */
-export function daySlots(date: string, busy: readonly BusyRange[]): Slot[] {
+export function daySlots(
+  date: string,
+  busy: readonly BusyRange[],
+  options?: { now?: number; pending?: readonly BusyRange[] }
+): Slot[] {
   return reservationTimes.slice(0, -1).map((start, index) => {
     const end = reservationTimes[index + 1] ?? start
-    return { start, end, taken: rangeIsBusy(date, start, end, busy) }
+    return {
+      start,
+      end,
+      taken: rangeIsBusy(date, start, end, busy),
+      ...(options
+        ? {
+            past:
+              options.now !== undefined &&
+              toTimestamp(date, start) <= options.now,
+            pending: rangeIsBusy(date, start, end, options.pending ?? []),
+          }
+        : {}),
+    }
   })
 }
 
@@ -55,7 +77,7 @@ export function selectSlot(
   index: number
 ): { start: string; end: string; blocked: boolean } {
   const slot = slots[index]
-  if (!slot || slot.taken) return { ...current, blocked: true }
+  if (!slot || slot.taken || slot.past) return { ...current, blocked: true }
   const startIndex = slots.findIndex((item) => item.start === current.start)
   const endIndex = slots.findIndex((item) => item.end === current.end)
   const hasRange = startIndex >= 0 && endIndex >= startIndex
@@ -64,7 +86,7 @@ export function selectSlot(
     return { start: slot.start, end: slot.end, blocked: false }
   }
   const between = slots.slice(startIndex, index + 1)
-  if (between.some((item) => item.taken)) {
+  if (between.some((item) => item.taken || item.past)) {
     return { ...current, blocked: true }
   }
   return { start: current.start, end: slot.end, blocked: false }
