@@ -35,6 +35,7 @@ import {
   DashboardMetricPanel,
 } from "@/components/dashboard-metric-card"
 import { PortalPageHeader } from "@/components/portal-page-header"
+import { MaintenanceReminderSection } from "@/components/staff-ops-panels"
 import { PortalListSkeleton } from "@/components/portal-skeletons"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -212,6 +213,7 @@ export function AdminDashboard() {
       >
         <AdminExportMenu />
       </PortalPageHeader>
+      <MaintenanceReminderSection now={Date.now()} />
       <div
         className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 pb-5 text-sm"
         aria-live="polite"
