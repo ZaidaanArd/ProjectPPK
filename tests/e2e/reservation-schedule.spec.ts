@@ -182,3 +182,36 @@ test("schedule change keeps original until staff approval and survives refresh",
     fullPage: true,
   })
 })
+
+test("public calendar exposes pending hints without locking them, in mobile dark mode", async ({
+  page,
+}) => {
+  await page.clock.setFixedTime(new Date(at("15:30")))
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.emulateMedia({ colorScheme: "dark" })
+  await page.goto("/facilities")
+  await page
+    .getByRole("listitem")
+    .filter({ hasText: "Aula QA" })
+    .getByRole("button", { name: "Cek Jadwal Slot" })
+    .click()
+  const dialog = page.getByRole("dialog", { name: "Slot Waktu — Aula QA" })
+  await dialog.getByRole("button", { name: /October 1st, 2027/ }).click()
+  await expect(
+    dialog.getByRole("button", { name: "15.30", exact: true })
+  ).toBeDisabled()
+  await expect(
+    dialog.getByRole("button", { name: "16.00", exact: true })
+  ).toBeEnabled()
+  await expect(
+    dialog.getByRole("button", { name: "17.00", exact: true })
+  ).toBeEnabled()
+  await expect(
+    dialog.getByRole("button", { name: "17.00", exact: true })
+  ).toHaveAttribute("title", /Ada pengajuan/)
+  await expect(dialog).not.toContainText("Agenda lain")
+  await page.screenshot({
+    path: test.info().outputPath("public-mobile-dark.png"),
+    fullPage: true,
+  })
+})
