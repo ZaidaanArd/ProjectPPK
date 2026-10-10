@@ -1,5 +1,10 @@
 import { ReservationList } from "@/components/user-portal"
 
-export default function ReservationsPage() {
-  return <ReservationList />
+export default async function ReservationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ item?: string }>
+}) {
+  const { item } = await searchParams
+  return <ReservationList initialItem={item} />
 }
