@@ -956,6 +956,88 @@ export function staticQuery(name: string, args: unknown): unknown {
           notification.userId === account().id &&
           notification.readAt === undefined
       ).length
+    case "facilityIssues:listOpen": {
+      const id = value(args, "facilityId")
+      return (state.facilityIssues ?? [])
+        .filter((i) => i.facilityId === id && i.status === "open")
+        .map((i) => ({
+          id: i.id,
+          facilityId: i.facilityId,
+          facilityName: facilityName(i.facilityId),
+          category: i.category,
+          description: i.description,
+          startAt: i.startAt,
+          endAt: i.endAt,
+          revision: i.revision,
+          createdAt: i.createdAt,
+          updatedAt: i.updatedAt,
+        }))
+    }
+    case "facilityIssues:listManaged":
+      return (state.facilityIssues ?? [])
+        .map((i) => ({
+          id: i.id,
+          facilityId: i.facilityId,
+          facilityName: facilityName(i.facilityId),
+          category: i.category,
+          description: i.description,
+          startAt: i.startAt,
+          endAt: i.endAt,
+          status: i.status,
+          revision: i.revision,
+          createdByName:
+            state.accounts.find((a) => a.id === i.createdBy)?.name ?? "Petugas",
+          createdAt: i.createdAt,
+          updatedAt: i.updatedAt,
+        }))
+        .reverse()
+    case "facilityIssues:previewImpact": {
+      const id = value(args, "facilityId")
+      const s = Number(field(args, "startAt"))
+      const e = field(args, "endAt") ? Number(field(args, "endAt")) : Number.MAX_SAFE_INTEGER
+      const inRange = (r: Reservation) =>
+        r.facilityId === id && r.endAt > now && r.endAt > s && overlaps(r.startAt, r.endAt, s, e)
+      return {
+        approved: state.reservations.filter((r) => r.status === "approved" && inRange(r)).length,
+        pending: state.reservations.filter((r) => r.status === "pending" && inRange(r)).length,
+      }
+    }
+    case "emergencyClosures:listActiveForFacility": {
+      const id = value(args, "facilityId")
+      return (state.emergencyClosures ?? [])
+        .filter((c) => c.facilityId === id && c.status === "closed")
+        .map((c) => ({ id: c.id, facilityId: c.facilityId, reason: c.reason, estimatedEndAt: c.estimatedEndAt, closedAt: c.closedAt }))
+    }
+    case "emergencyClosures:listManaged":
+      return (state.emergencyClosures ?? [])
+        .map((c) => ({
+          id: c.id,
+          facilityId: c.facilityId,
+          facilityName: facilityName(c.facilityId),
+          reason: c.reason,
+          estimatedEndAt: c.estimatedEndAt,
+          status: c.status,
+          closedByName: state.accounts.find((a) => a.id === c.closedBy)?.name ?? "Petugas",
+          closedAt: c.closedAt,
+          reopenedAt: c.reopenedAt,
+          createdAt: c.createdAt,
+        }))
+        .reverse()
+    case "emergencyClosures:previewImpact": {
+      const id = value(args, "facilityId")
+      const pending: { id: string; startAt: number; endAt: number }[] = []
+      const approvedFuture: { id: string; startAt: number; endAt: number }[] = []
+      const ongoing: { id: string; startAt: number; endAt: number }[] = []
+      for (const r of state.reservations) {
+        if (r.facilityId !== id || r.endAt <= now) continue
+        if (!["pending", "approved"].includes(r.status)) continue
+        const item = { id: r.id, startAt: r.startAt, endAt: r.endAt }
+        if (r.startAt <= now) ongoing.push(item)
+        else if (r.status === "pending") pending.push(item)
+        else approvedFuture.push(item)
+      }
+      return { pending, approvedFuture, ongoing }
+    }
     case "admin:listAccounts":
       return state.accounts
         .filter(
@@ -1014,7 +1096,9 @@ function change<T>(
     | "reports"
     | "accounts"
     | "reservationChanges"
-    | "notifications",
+    | "notifications"
+    | "facilityIssues"
+    | "emergencyClosures",
   update: (items: T[]) => T[]
 ) {
   replace({ ...state, [key]: update((state[key] ?? []) as T[]) })
