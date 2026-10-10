@@ -16,8 +16,7 @@ export function DisruptionBanner({
   className?: string
 }) {
   return (
-    <div
-      role="status"
+    <output
       className={cn(
         "flex gap-2.5 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100",
         className
@@ -31,7 +30,7 @@ export function DisruptionBanner({
           Fasilitas masih dapat digunakan{endText ?? " sampai pemberitahuan lebih lanjut"}.
         </p>
       </div>
-    </div>
+    </output>
   )
 }
 
@@ -72,8 +71,7 @@ export function MaintenanceReminderBanner({
   className?: string
 }) {
   return (
-    <div
-      role="status"
+    <output
       className={cn(
         "flex gap-2.5 rounded-xl border border-sky-300 bg-sky-50 p-3 text-sm text-sky-900 dark:border-sky-700 dark:bg-sky-950/40 dark:text-sky-100",
         className
@@ -86,6 +84,6 @@ export function MaintenanceReminderBanner({
           {facilityName} berakhir {endAtLabel}. Selesaikan atau perpanjang.
         </p>
       </div>
-    </div>
+    </output>
   )
 }
