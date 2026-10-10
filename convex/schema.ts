@@ -66,6 +66,27 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_start", ["startAt"]),
 
+  reservationChanges: defineTable({
+    reservationId: v.id("reservations"),
+    userId: v.id("profiles"),
+    facilityId: v.id("facilities"),
+    originalStartAt: v.number(),
+    originalEndAt: v.number(),
+    startAt: v.number(),
+    endAt: v.number(),
+    reason: v.string(),
+    status: reservationStatusValidator,
+    decisionNote: v.optional(v.string()),
+    decidedBy: v.optional(v.id("profiles")),
+    decidedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_reservation_status", ["reservationId", "status"])
+    .index("by_user", ["userId"])
+    .index("by_status", ["status"])
+    .index("by_facility_status_start", ["facilityId", "status", "startAt"]),
+
   reports: defineTable({
     reporterId: v.id("profiles"),
     facilityId: v.id("facilities"),
