@@ -7,6 +7,7 @@ import rehypeSlug from "rehype-slug"
 import remarkGfm from "remark-gfm"
 
 import { MermaidDiagram } from "@/components/mermaid-diagram"
+import { ScrollspyToc } from "@/components/scrollspy-toc"
 import {
   findPublicDoc,
   publicDocSourceHref,
@@ -110,6 +111,7 @@ export default async function DocsArticlePage({ params }: PageProps) {
             {markdown}
           </Markdown>
         </article>
+        <ScrollspyToc selector=".docs-prose h2, .docs-prose h3" />
         <Link href="/docs" className="docs-back-link">
           <IconArrowLeft size={17} aria-hidden="true" />
           Semua dokumentasi

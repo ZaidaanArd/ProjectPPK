@@ -1061,11 +1061,7 @@ function FlowsPanel({ flows, active }: { flows: FlowDoc[]; active: boolean }) {
           </div>
         </div>
         {active && (
-          <MermaidDiagram
-            key={flow.id}
-            chart={flow.chart}
-            label={`Diagram: ${flow.title}`}
-          />
+          <MermaidDiagram key={flow.id} chart={flow.chart} label={flow.title} />
         )}
         {flow.points.length > 0 && (
           <ul className="grid gap-2 sm:grid-cols-2">

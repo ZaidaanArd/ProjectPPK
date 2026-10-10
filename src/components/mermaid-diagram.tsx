@@ -1,7 +1,9 @@
 "use client"
 
-import { useEffect, useId, useState, useSyncExternalStore } from "react"
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react"
+import { IconMaximize } from "@tabler/icons-react"
 
+import { MermaidLightbox } from "@/components/mermaid-lightbox"
 import { cn } from "@/lib/utils"
 
 function subscribeTheme(onChange: () => void) {
@@ -77,6 +79,15 @@ export function MermaidDiagram({
 }) {
   const dark = useDarkMode()
   const id = useId().replace(/[^a-zA-Z0-9]/g, "")
+  const figure = useRef<HTMLElement>(null)
+  // Title for the full-screen view: the label, else the nearest heading above.
+  const [expanded, setExpanded] = useState<string | null>(null)
+  function expand() {
+    let node = figure.current?.previousElementSibling
+    while (node && !node.matches("h1, h2, h3, h4"))
+      node = node.previousElementSibling
+    setExpanded(label ?? node?.textContent?.trim() ?? "Diagram")
+  }
   const [result, setResult] = useState<{
     key: string
     svg?: string
@@ -117,16 +128,36 @@ export function MermaidDiagram({
 
   return (
     <figure
+      ref={figure}
       className={cn("mermaid-diagram", className)}
       aria-label={label}
       data-state={current?.svg ? "ready" : current?.error ? "error" : "loading"}
     >
       {current?.svg ? (
-        <div
-          className="mermaid-diagram-svg"
-          // Mermaid output, rendered with securityLevel "strict".
-          dangerouslySetInnerHTML={{ __html: current.svg }}
-        />
+        <>
+          <button
+            type="button"
+            className="mermaid-diagram-expand"
+            onClick={expand}
+            aria-label={`Perbesar diagram${label ? `: ${label}` : ""}`}
+          >
+            <IconMaximize size={15} aria-hidden="true" />
+            <span>Perbesar</span>
+          </button>
+          <div
+            className="mermaid-diagram-svg"
+            onDoubleClick={expand}
+            // Mermaid output, rendered with securityLevel "strict".
+            dangerouslySetInnerHTML={{ __html: current.svg }}
+          />
+          {expanded !== null && (
+            <MermaidLightbox
+              svg={current.svg}
+              title={expanded}
+              onClose={() => setExpanded(null)}
+            />
+          )}
+        </>
       ) : (
         <pre className="mermaid-diagram-source">
           <code>{chart.trim()}</code>

@@ -17,6 +17,7 @@ import {
 import { LandingMotion } from "@/components/public/landing-motion"
 import { DocsExplorer } from "@/components/about/docs-explorer"
 import { DialogMascot } from "@/components/dialog-mascot"
+import { ScrollspyToc } from "@/components/scrollspy-toc"
 import { ImagesBadge } from "@/components/ui/images-badge"
 import { SthaniFace, type SthaniExpression } from "@/components/sthani-face"
 import { parseFlowDocs } from "@/lib/flow-docs"
@@ -183,6 +184,7 @@ export default async function AboutPage() {
   return (
     <LandingMotion>
       <main id="main-content" className="sthana-about">
+        <ScrollspyToc selector="#main-content h2" />
         {pageUrl ? (
           <script
             type="application/ld+json"
