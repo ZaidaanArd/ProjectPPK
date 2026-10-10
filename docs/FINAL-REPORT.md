@@ -24,6 +24,10 @@ Browser memakai Next.js App Router dan komponen React. `/api/auth` mem-proxy Bet
 
 Better Auth menyimpan user/session terpisah dari profil domain. Profil terkait reservasi, laporan, audit, dan notifikasi. Fasilitas terkait booking, laporan, maintenanceWindows, facilityIssues, dan emergencyClosures. ReservationChanges menyimpan jadwal asal dan usulan; notifikasi mempunyai dedupKey serta referensi domain. [ERD sumber](./DATA-AND-API.md) mengikuti schema aktual, bukan asumsi database SQL.
 
+### Struktur file program
+
+Pembagian route, komponen, fungsi Convex, test, dan konfigurasi dijelaskan pada [struktur file program](./ARCHITECTURE.md#struktur-file-program). Route group frontend memisahkan layout peran; validasi dan otorisasi final tetap berada di backend Convex. Folder hasil instalasi/build tidak termasuk sumber aplikasi.
+
 ## 4. Implementasi antarmuka
 
 Screenshot UI berikut diambil dari [production](https://sthana.myudak.com) pada 11 Oktober 2026. Gambar arsitektur, ERD, dan alur penanganan merupakan diagram berdasarkan kode.

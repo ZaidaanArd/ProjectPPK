@@ -45,6 +45,49 @@ sequenceDiagram
 
 Server layouts memakai token dari cookie untuk guard `/app`, `/staff`, dan `/admin`. Function tetap memeriksa role; route guard bukan satu-satunya pengamanan.
 
+## Struktur file program
+
+Struktur berikut mengikuti repository Sthana Kampus. Route group dalam tanda kurung mengatur layout dan peran, bukan segmen URL. Daftar diringkas pada folder/file utama; bukan seluruh file.
+
+```text
+project-ppk/
+|-- src/                       # Frontend Next.js dan helper client/server
+|   |-- app/                   # Route, layout, halaman dan metadata
+|   |   |-- (public)/          # Beranda, fasilitas, Tentang dan docs
+|   |   |-- (auth)/            # Login, tambah akun dan pendaftaran
+|   |   |-- (user)/            # Portal pengguna: reservasi/laporan
+|   |   |-- (staff)/           # Antrean dan penanganan petugas
+|   |   |-- (admin)/           # Akun, fasilitas dan rekap admin
+|   |   |-- account/           # Status akun yang belum aktif
+|   |   |-- portal/            # Pengarah portal sesuai peran
+|   |   `-- api/               # Auth proxy, CSV admin dan health
+|   |-- components/            # UI dan fitur portal yang digunakan ulang
+|   |   `-- ui/                # Primitif tombol, dialog, sidebar, dll.
+|   |-- hooks/                 # Hook interaksi antarmuka
+|   `-- lib/                   # Auth, data hooks, slot, CSV, docs, demo
+|-- convex/                    # Backend realtime, database dan storage
+|   |-- schema.ts              # Tabel, relasi dan index domain
+|   |-- auth.ts / http.ts      # Better Auth dan endpoint HTTP
+|   |-- reservations.ts        # Booking, perubahan jadwal, approval
+|   |-- reports.ts             # Laporan dan transisi penanganan
+|   |-- facilities.ts          # Katalog, ketersediaan dan arsip
+|   |-- maintenance.ts         # Pekerjaan dengan rentang jadwal
+|   |-- emergencyClosures.ts   # Penutupan langsung dan pembukaan
+|   |-- facilityIssues.ts      # Gangguan yang masih aman dipakai
+|   |-- notifications.ts       # Riwayat notifikasi milik pengguna
+|   |-- lib/                   # Otorisasi dan aturan bersama
+|   `-- _generated/            # Binding/type hasil Convex codegen
+|-- docs/                      # Panduan, UAT, ADR, runbook dan laporan
+|-- public/                    # Aset publik; docs-assets/ untuk bukti
+|-- tests/                     # Unit test; e2e/ dan onlineTest/ browser
+|-- .github/workflows/         # CI untuk pemeriksaan kualitas
+|-- .env.example               # Template env, tanpa secret asli
+|-- package.json               # Dependency dan perintah pnpm
+`-- pnpm-lock.yaml             # Versi dependency terkunci
+```
+
+Validasi dan otorisasi final berada di convex/, bukan hanya form frontend. Folder _generated/ dibuat Convex dan tidak diedit manual. Unit test backend juga berada di convex/*.test.ts. node_modules/, .next/, test-results/, serta file environment lokal merupakan hasil instalasi/build atau konfigurasi pribadi, bukan sumber aplikasi.
+
 ## Route ownership
 
 | Area                | URL                                             | Owner     |
