@@ -17,11 +17,15 @@ import {
   assertReportTransition,
 } from "../../convex/lib/workflows"
 import { csvDocument } from "./csv"
+import {
+  effectiveReservationStatus,
+  EXPIRATION_NOTE,
+  type ReservationStatus,
+} from "../../convex/lib/reservationState"
 
 type Role = "user" | "officer" | "admin"
 type AccountStatus = "pending" | "active" | "rejected" | "disabled"
 type FacilityStatus = "active" | "maintenance" | "inactive"
-type ReservationStatus = "pending" | "approved" | "rejected" | "cancelled"
 type ReportStatus = "pending" | "in_progress" | "resolved" | "rejected"
 
 type Account = {
@@ -613,6 +617,16 @@ export function staticQuery(name: string, args: unknown): unknown {
               r.endAt > start
           )
           .map(({ startAt, endAt, status }) => ({ startAt, endAt, status })),
+        pending: state.reservations
+          .filter(
+            (r) =>
+              r.facilityId === id &&
+              r.status === "pending" &&
+              r.startAt > Date.now() &&
+              r.startAt < end &&
+              r.endAt > start
+          )
+          .map(({ startAt, endAt }) => ({ startAt, endAt })),
         maintenance: scheduledWindows(id, start, end).map(
           ({ startAt, endAt }) => ({ startAt, endAt })
         ),
@@ -625,6 +639,7 @@ export function staticQuery(name: string, args: unknown): unknown {
         .filter((r) => r.userId === account().id)
         .map((r) => ({
           ...r,
+          status: effectiveReservationStatus(r, Date.now()),
           facilityName: facilityName(r.facilityId),
           facilityLocation:
             state.facilities.find((f) => f.id === r.facilityId)?.location ??
@@ -635,6 +650,7 @@ export function staticQuery(name: string, args: unknown): unknown {
       return state.reservations
         .map((r) => ({
           ...r,
+          status: effectiveReservationStatus(r, Date.now()),
           applicantName:
             state.accounts.find((a) => a.id === r.userId)?.name ??
             "Pengguna dihapus",
@@ -781,7 +797,18 @@ export async function staticMutation(
       const startAt = Number(field(args, "startAt")),
         endAt = Number(field(args, "endAt"))
       validateReservationWindow(startAt, endAt)
+      if (startAt <= now)
+        throw new Error("Waktu reservasi harus berada di masa mendatang")
       requireText(value(args, "purpose"))
+      const duplicate = state.reservations.find(
+        (r) =>
+          r.userId === account().id &&
+          r.facilityId === facilityId &&
+          r.startAt === startAt &&
+          r.endAt === endAt &&
+          ["pending", "approved"].includes(r.status)
+      )
+      if (duplicate) return duplicate.id
       if (
         state.reservations.some(
           (item) =>
@@ -821,6 +848,10 @@ export async function staticMutation(
         !["pending", "approved"].includes(item.status)
       )
         throw new Error("Reservasi tidak dapat dibatalkan")
+      if (item.startAt - now < 3600000)
+        throw new Error(
+          "Reservasi hanya dapat dibatalkan minimal 1 jam sebelumnya"
+        )
       change<Reservation>("reservations", (items) =>
         items.map((r) =>
           r.id === id ? { ...r, status: "cancelled", updatedAt: now } : r
@@ -834,6 +865,7 @@ export async function staticMutation(
         item = required(state.reservations, id),
         decision = value(args, "decision") as "approved" | "rejected"
       if (item.status !== "pending") throw new Error("Reservasi sudah diproses")
+      if (item.startAt <= now) throw new Error(EXPIRATION_NOTE)
       if (decision === "approved") {
         assertFacilityCanApprove(
           required(state.facilities, item.facilityId).status
