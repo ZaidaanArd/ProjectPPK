@@ -585,9 +585,17 @@ function DashboardActivityCard({
 }
 
 export function UserDashboard() {
-  const reservations = useAuthenticatedQuery(api.reservations.listMine, {})
+  const rows = useAuthenticatedQuery(api.reservations.listMine, {})
   const reports = useAuthenticatedQuery(api.reports.listMine, {})
   const [now, setNow] = useState(() => Date.now())
+  const reservations = useMemo(
+    () =>
+      rows?.map((item) => ({
+        ...item,
+        status: reservationDisplayStatus(item, now),
+      })),
+    [rows, now]
+  )
   useEffect(() => {
     const refresh = () => setNow(Date.now())
     const onVisible = () => {

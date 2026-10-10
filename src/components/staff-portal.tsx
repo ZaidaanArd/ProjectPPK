@@ -464,9 +464,17 @@ function StaffTodayScheduleCard({
 }
 
 export function StaffDashboard() {
-  const reservations = useAuthenticatedQuery(api.reservations.listQueue, {})
+  const rows = useAuthenticatedQuery(api.reservations.listQueue, {})
   const reports = useAuthenticatedQuery(api.reports.listQueue, {})
   const [now, setNow] = useState(() => Date.now())
+  const reservations = useMemo(
+    () =>
+      rows?.map((item) => ({
+        ...item,
+        status: reservationDisplayStatus(item, now),
+      })),
+    [rows, now]
+  )
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 60_000)

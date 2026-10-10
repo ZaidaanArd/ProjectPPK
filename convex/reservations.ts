@@ -865,7 +865,13 @@ export const cancelByStaff = mutation({
     const actor = await requireRole(ctx, ["officer", "admin"])
     const reservation = await ctx.db.get("reservations", args.reservationId)
 
-    if (!reservation || !["pending", "approved"].includes(reservation.status)) {
+    if (
+      !reservation ||
+      !["pending", "approved"].includes(
+        effectiveReservationStatus(reservation, Date.now())
+      ) ||
+      reservation.endAt <= Date.now()
+    ) {
       throw new ConvexError("Reservasi tidak dapat dibatalkan")
     }
 
