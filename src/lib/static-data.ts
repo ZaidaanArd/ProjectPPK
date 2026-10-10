@@ -111,6 +111,21 @@ type MaintenanceWindow = {
   createdAt: number
   updatedAt: number
 }
+type Notification = {
+  id: string
+  userId: string
+  type: string
+  title: string
+  body: string
+  reservationId?: string
+  facilityId?: string
+  issueId?: string
+  changeId?: string
+  closureId?: string
+  readAt?: number
+  dedupKey: string
+  createdAt: number
+}
 export type StaticData = {
   version: 1
   accounts: Account[]
@@ -120,6 +135,7 @@ export type StaticData = {
   reports: Report[]
   // Missing in browser data saved before repairs were scheduled.
   maintenance?: MaintenanceWindow[]
+  notifications?: Notification[]
 }
 
 const storageKey = "sthana:static-data:v1"
@@ -671,6 +687,32 @@ function facilityHandling(id: string) {
     state.reports.filter((report) => report.facilityId === id)
   )
 }
+function jakartaRange(startAt: number, endAt: number) {
+  const format = new Intl.DateTimeFormat("id-ID", {
+    timeZone: "Asia/Jakarta",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+  return `${format.format(startAt)}–${format.format(endAt)}`
+}
+/** Mirrors the server notify() helper: idempotent per dedupKey. */
+function notifyDemo(
+  now: number,
+  event: Omit<Notification, "id" | "createdAt" | "readAt">
+) {
+  if ((state.notifications ?? []).some((n) => n.dedupKey === event.dedupKey))
+    return
+  change<Notification>("notifications", (items) => [
+    {
+      ...event,
+      id: `demo-notification-${crypto.randomUUID()}`,
+      createdAt: now,
+    },
+    ...items,
+  ])
+}
 
 export function staticQuery(name: string, args: unknown): unknown {
   switch (name) {
@@ -838,6 +880,29 @@ export function staticQuery(name: string, args: unknown): unknown {
         })),
       }
     }
+    case "notifications:listMine":
+      return (state.notifications ?? [])
+        .filter((notification) => notification.userId === account().id)
+        .slice(0, 50)
+        .map((notification) => ({
+          id: notification.id,
+          type: notification.type,
+          title: notification.title,
+          body: notification.body,
+          reservationId: notification.reservationId,
+          facilityId: notification.facilityId,
+          issueId: notification.issueId,
+          changeId: notification.changeId,
+          closureId: notification.closureId,
+          readAt: notification.readAt,
+          createdAt: notification.createdAt,
+        }))
+    case "notifications:unreadCount":
+      return (state.notifications ?? []).filter(
+        (notification) =>
+          notification.userId === account().id &&
+          notification.readAt === undefined
+      ).length
     case "admin:listAccounts":
       return state.accounts
         .filter(
@@ -895,7 +960,8 @@ function change<T>(
     | "reservations"
     | "reports"
     | "accounts"
-    | "reservationChanges",
+    | "reservationChanges"
+    | "notifications",
   update: (items: T[]) => T[]
 ) {
   replace({ ...state, [key]: update((state[key] ?? []) as T[]) })
@@ -1135,6 +1201,47 @@ export async function staticMutation(
             : r
         ),
       })
+      if (decision === "approved") {
+        notifyDemo(now, {
+          userId: item.userId,
+          type: "reservation.change_decided",
+          title: "Perubahan jadwal disetujui",
+          body: `Jadwal reservasi sekarang ${jakartaRange(item.startAt, item.endAt)}. Jadwal lama tidak lagi terkunci.`,
+          dedupKey: `reservationChange:${item.id}:approved`,
+          reservationId: original.id,
+          facilityId: item.facilityId,
+          changeId: item.id,
+        })
+        for (const r of state.reservations) {
+          if (
+            r.id !== original.id &&
+            r.status === "rejected" &&
+            r.decisionNote === AUTO_REJECTION_NOTE &&
+            r.facilityId === item.facilityId &&
+            overlaps(r.startAt, r.endAt, item.startAt, item.endAt)
+          )
+            notifyDemo(now, {
+              userId: r.userId,
+              type: "reservation.rejected",
+              title: "Pengajuan ditolak otomatis",
+              body: `${AUTO_REJECTION_NOTE} Pengajuan tetap dapat diajukan ulang untuk jadwal lain.`,
+              dedupKey: `reservation:${r.id}:auto_rejected`,
+              reservationId: r.id,
+              facilityId: r.facilityId,
+            })
+        }
+      } else {
+        notifyDemo(now, {
+          userId: item.userId,
+          type: "reservation.change_decided",
+          title: "Perubahan jadwal ditolak",
+          body: `Jadwal lama tetap berlaku pada ${jakartaRange(original.startAt, original.endAt)}. Alasan: ${value(args, "note").trim() || "-"}`,
+          dedupKey: `reservationChange:${item.id}:rejected`,
+          reservationId: original.id,
+          facilityId: item.facilityId,
+          changeId: item.id,
+        })
+      }
       return null
     }
     case "reservations:cancelMine": {
@@ -1203,6 +1310,83 @@ export async function staticMutation(
               : r
         )
       )
+      const note = value(args, "note").trim()
+      const range = jakartaRange(item.startAt, item.endAt)
+      const name = facilityName(item.facilityId)
+      if (decision === "approved" && !alreadyBooked) {
+        notifyDemo(now, {
+          userId: item.userId,
+          type: "reservation.approved",
+          title: "Reservasi disetujui",
+          body: `Reservasi ${name} pada ${range} disetujui. Datang tepat waktu sesuai jadwal.`,
+          dedupKey: `reservation:${item.id}:approved`,
+          reservationId: item.id,
+          facilityId: item.facilityId,
+        })
+        for (const r of state.reservations) {
+          if (
+            r.id !== id &&
+            r.status === "rejected" &&
+            r.decisionNote === AUTO_REJECTION_NOTE &&
+            r.facilityId === item.facilityId &&
+            overlaps(r.startAt, r.endAt, item.startAt, item.endAt)
+          )
+            notifyDemo(now, {
+              userId: r.userId,
+              type: "reservation.rejected",
+              title: "Pengajuan ditolak otomatis",
+              body: `${AUTO_REJECTION_NOTE} Pengajuan tetap dapat diajukan ulang untuk jadwal lain.`,
+              dedupKey: `reservation:${r.id}:auto_rejected`,
+              reservationId: r.id,
+              facilityId: r.facilityId,
+            })
+        }
+      } else if (alreadyBooked) {
+        notifyDemo(now, {
+          userId: item.userId,
+          type: "reservation.rejected",
+          title: "Pengajuan ditolak otomatis",
+          body: `${AUTO_REJECTION_NOTE} Pengajuan tetap dapat diajukan ulang untuk jadwal lain.`,
+          dedupKey: `reservation:${item.id}:auto_rejected`,
+          reservationId: item.id,
+          facilityId: item.facilityId,
+        })
+      } else {
+        notifyDemo(now, {
+          userId: item.userId,
+          type: "reservation.rejected",
+          title: "Reservasi ditolak",
+          body: note
+            ? `Reservasi ${name} pada ${range} ditolak. Alasan: ${note}.`
+            : `Reservasi ${name} pada ${range} ditolak petugas.`,
+          dedupKey: `reservation:${item.id}:rejected`,
+          reservationId: item.id,
+          facilityId: item.facilityId,
+        })
+      }
+      return null
+    }
+    case "notifications:markRead": {
+      const item = required(
+        state.notifications ?? [],
+        value(args, "notificationId")
+      )
+      if (item.userId !== account().id)
+        throw new Error("Notifikasi tidak ditemukan")
+      if (item.readAt === undefined)
+        change<Notification>("notifications", (items) =>
+          items.map((n) => (n.id === item.id ? { ...n, readAt: now } : n))
+        )
+      return null
+    }
+    case "notifications:markAllRead": {
+      change<Notification>("notifications", (items) =>
+        items.map((n) =>
+          n.userId === account().id && n.readAt === undefined
+            ? { ...n, readAt: now }
+            : n
+        )
+      )
       return null
     }
     case "reservations:cancelByStaff": {
@@ -1224,6 +1408,15 @@ export async function staticMutation(
             : r
         )
       )
+      notifyDemo(now, {
+        userId: item.userId,
+        type: "reservation.cancelled",
+        title: "Reservasi dibatalkan pengelola",
+        body: `Reservasi ${facilityName(item.facilityId)} pada ${jakartaRange(item.startAt, item.endAt)} dibatalkan pengelola. Alasan: ${value(args, "reason").trim()}.`,
+        dedupKey: `reservation:${item.id}:cancelled_by_staff`,
+        reservationId: item.id,
+        facilityId: item.facilityId,
+      })
       return null
     }
     case "reports:create": {
