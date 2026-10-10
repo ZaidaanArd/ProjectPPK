@@ -66,12 +66,17 @@ import {
 import { useAuthenticatedQuery } from "@/lib/use-authenticated-query"
 import { cn } from "@/lib/utils"
 import { displayDuration } from "@/lib/reservation-slots"
+import { ScheduleChangePanel } from "@/components/schedule-change-panel"
+import { useScheduleClock } from "@/hooks/use-schedule-clock"
+import { reservationDisplayStatus } from "../../convex/lib/reservationState"
 
 const labels: Record<string, string> = {
   pending: "Menunggu",
   approved: "Disetujui",
   rejected: "Ditolak",
   cancelled: "Dibatalkan",
+  expired: "Kedaluwarsa",
+  completed: "Selesai",
   in_progress: "Ditangani",
   resolved: "Selesai",
 }
@@ -117,7 +122,7 @@ const reservationTabEmptyMessages: Record<ReservationTab, string> = {
 function reservationMatchesTab(status: string, tab: ReservationTab) {
   if (tab === "menunggu") return status === "pending"
   if (tab === "disetujui") return status === "approved"
-  return status === "rejected" || status === "cancelled"
+  return ["rejected", "cancelled", "expired", "completed"].includes(status)
 }
 
 export type ReportTab = "baru" | "ditangani" | "riwayat"
@@ -561,7 +566,17 @@ export function StaffReservations({
   initialTab?: ReservationTab
   initialItem?: string
 }) {
-  const reservations = useAuthenticatedQuery(api.reservations.listQueue, {})
+  const rows = useAuthenticatedQuery(api.reservations.listQueue, {})
+  const now = useScheduleClock()
+  const reservations = useMemo(
+    () =>
+      rows?.map((item) => ({
+        ...item,
+        status:
+          now === null ? item.status : reservationDisplayStatus(item, now),
+      })),
+    [rows, now]
+  )
   const decide = useMutation(api.reservations.decide)
   const cancel = useMutation(api.reservations.cancelByStaff)
   const [notes, setNotes] = useState<Record<string, string>>({})
@@ -706,6 +721,7 @@ export function StaffReservations({
         description="Saat satu reservasi disetujui, ajuan lain yang bentrok otomatis ditolak."
         icon={IconClockHour4}
       />
+      <ScheduleChangePanel staff />
       {missingItem && (
         <output className="block text-sm text-muted-foreground">
           Reservasi yang dituju sudah tidak tersedia. Anda tetap dapat meninjau

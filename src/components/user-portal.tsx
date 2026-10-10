@@ -68,6 +68,7 @@ import {
   type ChangeReservation,
 } from "@/components/schedule-change-dialog"
 import { reservationDisplayStatus } from "../../convex/lib/reservationState"
+import { ScheduleChangePanel } from "@/components/schedule-change-panel"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -785,6 +786,7 @@ export function ReservationList() {
           onClose={() => setChanging(null)}
         />
       )}
+      <ScheduleChangePanel />
       <header className="relative border-b border-border/70 pb-6 sm:pb-7">
         <IconCalendarPlus
           size={88}
