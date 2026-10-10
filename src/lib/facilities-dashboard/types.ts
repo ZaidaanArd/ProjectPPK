@@ -39,7 +39,13 @@ export type FacilityItem = {
   createdAt?: number
 }
 
-export type SlotStatus = "tersedia" | "terisi" | "terkunci" | "nonaktif"
+export type SlotStatus =
+  | "tersedia"
+  | "terisi"
+  | "terkunci"
+  | "nonaktif"
+  | "pengajuan"
+  | "lewat"
 
 export type TimeSlot = {
   /** Key stabil, mis. "07:00-07:30" */

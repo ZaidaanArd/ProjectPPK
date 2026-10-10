@@ -30,6 +30,8 @@ import { cn } from "@/lib/utils"
 import { Separator } from "@/components/ui/separator"
 import { PhotoGallery } from "./photo-gallery"
 import { StatusBadge } from "./status-badge"
+import { useScheduleClock } from "@/hooks/use-schedule-clock"
+import { jakartaDate } from "../../../convex/lib/reservationState"
 
 export function SlotGridModal({
   facility,
@@ -62,23 +64,35 @@ export function SlotGridModal({
         : []),
     [facility, bookedIds, slotsOverride]
   )
-  const tersedia = slots.filter((s) => s.status === "tersedia").length
+  const tersedia = slots.filter(
+    (s) => s.status === "tersedia" || s.status === "pengajuan"
+  ).length
   const terisi = slots.filter((s) => s.status === "terisi").length
   const gallery = facility ? getGalleryPhotos(facility) : []
   const [hanyaTersedia, setHanyaTersedia] = React.useState(false)
 
   const slotTampil = React.useMemo(
     () =>
-      hanyaTersedia ? slots.filter((s) => s.status === "tersedia") : slots,
+      hanyaTersedia
+        ? slots.filter(
+            (s) => s.status === "tersedia" || s.status === "pengajuan"
+          )
+        : slots,
     [slots, hanyaTersedia]
   )
 
-  const minDate = React.useMemo(() => parseIsoDate(toIsoDate(new Date())), [])
-  const maxDate = React.useMemo(() => {
-    const d = new Date()
-    d.setDate(d.getDate() + 30)
-    return toIsoDate(d)
-  }, [])
+  const now = useScheduleClock()
+  const minDate = React.useMemo(
+    () =>
+      parseIsoDate(
+        now === null ? selectedDate || "1970-01-01" : jakartaDate(now)
+      ),
+    [now, selectedDate]
+  )
+  const maxDate =
+    now === null
+      ? selectedDate || "2099-12-31"
+      : jakartaDate(now + 30 * 86400000)
   const maxCalendarDate = React.useMemo(() => parseIsoDate(maxDate), [maxDate])
   const selectedCalendarDate = selectedDate
     ? parseIsoDate(selectedDate)
@@ -279,7 +293,8 @@ export function SlotGridModal({
                 className="mt-3 grid grid-cols-3 gap-1.5 sm:grid-cols-4"
               >
                 {slotTampil.map((slot) => {
-                  const bisaKlik = slot.status === "tersedia"
+                  const bisaKlik =
+                    slot.status === "tersedia" || slot.status === "pengajuan"
                   return (
                     <button
                       key={slot.id}
@@ -289,19 +304,25 @@ export function SlotGridModal({
                         onPilihSlot?.(facility, slot, selectedDate)
                       }
                       title={
-                        bisaKlik
-                          ? `Slot ${slot.mulai}–${slot.selesai} tanggal ${tanggalLabel} tersedia`
-                          : slot.status === "terkunci"
-                            ? "Terkunci: jadwal perbaikan"
-                            : "Tidak tersedia"
+                        slot.status === "pengajuan"
+                          ? "Ada pengajuan, belum disetujui. Tetap dapat diajukan."
+                          : slot.status === "lewat"
+                            ? "Waktu mulai sudah lewat"
+                            : bisaKlik
+                              ? `Slot ${slot.mulai}–${slot.selesai} tanggal ${tanggalLabel} tersedia`
+                              : slot.status === "terkunci"
+                                ? "Terkunci: jadwal perbaikan"
+                                : "Tidak tersedia"
                       }
                       className={cn(
                         "h-9 rounded-xl border text-[11px] font-semibold tabular-nums transition-all",
-                        bisaKlik
-                          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-800 hover:bg-emerald-500/20 dark:text-emerald-200"
-                          : slot.status === "terkunci"
-                            ? "cursor-not-allowed border-amber-500/30 bg-amber-500/10 text-amber-800/70 dark:text-amber-200/70"
-                            : "cursor-not-allowed border-border bg-muted text-muted-foreground line-through opacity-70"
+                        slot.status === "pengajuan"
+                          ? "border-amber-500/40 bg-amber-500/10 text-amber-900 hover:bg-amber-500/20 dark:text-amber-200"
+                          : bisaKlik
+                            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-800 hover:bg-emerald-500/20 dark:text-emerald-200"
+                            : slot.status === "terkunci"
+                              ? "cursor-not-allowed border-amber-500/30 bg-amber-500/10 text-amber-800/70 dark:text-amber-200/70"
+                              : "cursor-not-allowed border-border bg-muted text-muted-foreground line-through opacity-70"
                       )}
                     >
                       {slot.mulai}
@@ -311,7 +332,8 @@ export function SlotGridModal({
               </div>
 
               <p className="mt-2 text-[11px] text-muted-foreground">
-                Tiap slot 30 menit · klik jam hijau untuk memilih.
+                Tiap slot 30 menit · hijau/kuning dapat diajukan. Kuning: ada
+                pengajuan, belum disetujui. Abu-abu: terisi atau sudah lewat.
               </p>
               <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
                 <span className="inline-flex items-center gap-1">

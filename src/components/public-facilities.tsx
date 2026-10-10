@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useScheduleClock } from "@/hooks/use-schedule-clock"
 import { IconSearch, IconX } from "@tabler/icons-react"
 import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
@@ -106,6 +107,7 @@ function PublicSlotDialog({
   onClose: () => void
 }) {
   const router = useRouter()
+  const now = useScheduleClock()
   const range = useMemo(
     () => (selectedDate ? dayRange(selectedDate) : null),
     [selectedDate]
@@ -122,7 +124,7 @@ function PublicSlotDialog({
   )
   const liveSlots = useMemo<TimeSlot[] | null | undefined>(() => {
     if (!selectedDate || !range) return undefined
-    if (!availability) return null
+    if (!availability || now === null) return null
     return Array.from({ length: 26 }, (_, index) => {
       const startAt = range.start + (7 * 60 + index * 30) * 60_000
       const endAt = startAt + 30 * 60_000
@@ -137,19 +139,28 @@ function PublicSlotDialog({
         mulai: mulai.replace(":", "."),
         selesai: selesai.replace(":", "."),
         status:
-          availability.facilityStatus !== "active" ||
-          availability.maintenance.some(
-            (item) => item.startAt < endAt && startAt < item.endAt
-          )
-            ? "terkunci"
-            : availability.reservations.some(
+          startAt <= now
+            ? "lewat"
+            : availability.facilityStatus !== "active" ||
+                availability.maintenance.some(
                   (item) => item.startAt < endAt && startAt < item.endAt
                 )
-              ? "terisi"
-              : "tersedia",
+              ? "terkunci"
+              : availability.reservations.some(
+                    (item) => item.startAt < endAt && startAt < item.endAt
+                  )
+                ? "terisi"
+                : availability.pending.some(
+                      (item) =>
+                        item.startAt > now &&
+                        item.startAt < endAt &&
+                        startAt < item.endAt
+                    )
+                  ? "pengajuan"
+                  : "tersedia",
       }
     })
-  }, [availability, range, selectedDate])
+  }, [availability, range, selectedDate, now])
   return (
     <SlotGridModal
       facility={facility}
