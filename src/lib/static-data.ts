@@ -1591,6 +1591,18 @@ export async function staticMutation(
       }
       return null
     }
+    case "facilityIssues:update": {
+      requireRole(["officer", "admin"])
+      const issue = required(state.facilityIssues ?? [], value(args, "issueId"))
+      const category = field(args, "category") ? value(args, "category").trim() : issue.category
+      const description = field(args, "description") ? value(args, "description").trim() : issue.description
+      change<FacilityIssue>("facilityIssues", (items) =>
+        items.map((i) =>
+          i.id === issue.id ? { ...i, category, description, revision: i.revision + 1, updatedAt: now } : i
+        )
+      )
+      return null
+    }
     case "emergencyClosures:close": {
       requireRole(["officer", "admin"])
       const facilityId = value(args, "facilityId")
