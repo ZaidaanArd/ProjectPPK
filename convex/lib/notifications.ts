@@ -46,3 +46,15 @@ export async function notify(
     createdAt: Date.now(),
   })
 }
+
+/** WIB time range like "10 Okt, 09.00–11.00" for notification copy. */
+export function jakartaRange(startAt: number, endAt: number): string {
+  const format = new Intl.DateTimeFormat("id-ID", {
+    timeZone: "Asia/Jakarta",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+  return `${format.format(startAt)}–${format.format(endAt)}`
+}

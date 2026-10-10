@@ -13,6 +13,7 @@ import { maintenanceIn } from "./maintenance"
 import { recordAuditEvent } from "./lib/audit"
 import { requireActiveProfile, requireRole } from "./lib/authz"
 import { facilityHandling } from "./lib/facilityHandling"
+import { jakartaRange, notify } from "./lib/notifications"
 import {
   AUTO_REJECTION_NOTE,
   overlaps,
@@ -102,6 +103,15 @@ async function rejectChangeConflicts(
       actorRole: "system",
       note: change._id,
     })
+    await notify(ctx, {
+      userId: change.userId,
+      type: "reservation.change_conflict",
+      title: "Perubahan jadwal ditolak otomatis",
+      body: "Jadwal baru sudah disetujui untuk reservasi lain. Jadwal lama Anda tetap berlaku.",
+      reservationId: change.reservationId,
+      changeId: change._id,
+      dedupKey: `reservationChange:${change._id}:conflict`,
+    })
   }
 }
 
@@ -129,6 +139,7 @@ async function autoReject(
   reservationId: Id<"reservations">,
   now: number
 ) {
+  const item = await ctx.db.get("reservations", reservationId)
   await ctx.db.patch("reservations", reservationId, {
     status: "rejected",
     decisionNote: AUTO_REJECTION_NOTE,
@@ -144,6 +155,16 @@ async function autoReject(
     actorRole: "system",
     note: AUTO_REJECTION_NOTE,
   })
+  if (item) {
+    await notify(ctx, {
+      userId: item.userId,
+      type: "reservation.rejected",
+      title: "Pengajuan ditolak otomatis",
+      body: `${AUTO_REJECTION_NOTE} Pengajuan tetap dapat diajukan ulang untuk jadwal lain.`,
+      reservationId,
+      dedupKey: `reservation:${reservationId}:auto_rejected`,
+    })
+  }
 }
 
 export const listMine = query({
@@ -332,6 +353,14 @@ export const expire = internalMutation({
       actorRole: "system",
       note: EXPIRATION_NOTE,
     })
+    await notify(ctx, {
+      userId: item.userId,
+      type: "reservation.expired",
+      title: "Pengajuan kedaluwarsa",
+      body: `${EXPIRATION_NOTE} Silakan ajukan ulang dengan jadwal baru bila masih diperlukan.`,
+      reservationId: item._id,
+      dedupKey: `reservation:${item._id}:expired`,
+    })
     return null
   },
 })
@@ -474,6 +503,34 @@ export const decide = mutation({
       actorRole: actor.role,
       note: args.note?.trim() || undefined,
     })
+
+    const facility = await ctx.db.get("facilities", reservation.facilityId)
+    const facilityName = facility?.name ?? "Fasilitas"
+    const range = jakartaRange(reservation.startAt, reservation.endAt)
+    if (args.decision === "approved") {
+      await notify(ctx, {
+        userId: reservation.userId,
+        type: "reservation.approved",
+        title: "Reservasi disetujui",
+        body: `Reservasi ${facilityName} pada ${range} disetujui. Datang tepat waktu sesuai jadwal.`,
+        reservationId: reservation._id,
+        facilityId: reservation.facilityId,
+        dedupKey: `reservation:${reservation._id}:approved`,
+      })
+    } else {
+      const note = args.note?.trim()
+      await notify(ctx, {
+        userId: reservation.userId,
+        type: "reservation.rejected",
+        title: "Reservasi ditolak",
+        body: note
+          ? `Reservasi ${facilityName} pada ${range} ditolak. Alasan: ${note}.`
+          : `Reservasi ${facilityName} pada ${range} ditolak petugas.`,
+        reservationId: reservation._id,
+        facilityId: reservation.facilityId,
+        dedupKey: `reservation:${reservation._id}:rejected`,
+      })
+    }
 
     if (args.decision === "approved") {
       const pending = await ctx.db
@@ -837,6 +894,29 @@ export const decideScheduleChange = mutation({
       actorRole: actor.role,
       note: `${change._id}: ${change.originalStartAt}–${change.originalEndAt} → ${change.startAt}–${change.endAt}; ${args.note?.trim() || change.reason}`,
     })
+    if (args.decision === "approved") {
+      await notify(ctx, {
+        userId: change.userId,
+        type: "reservation.change_decided",
+        title: "Perubahan jadwal disetujui",
+        body: `Jadwal reservasi sekarang ${jakartaRange(change.startAt, change.endAt)}. Jadwal lama tidak lagi terkunci.`,
+        reservationId: original._id,
+        facilityId: change.facilityId,
+        changeId: change._id,
+        dedupKey: `reservationChange:${change._id}:approved`,
+      })
+    } else {
+      await notify(ctx, {
+        userId: change.userId,
+        type: "reservation.change_decided",
+        title: "Perubahan jadwal ditolak",
+        body: `Jadwal lama tetap berlaku pada ${jakartaRange(change.originalStartAt, change.originalEndAt)}. Alasan: ${args.note?.trim() || "-"}`,
+        reservationId: original._id,
+        facilityId: change.facilityId,
+        changeId: change._id,
+        dedupKey: `reservationChange:${change._id}:rejected`,
+      })
+    }
     return null
   },
 })
@@ -859,6 +939,16 @@ export const expireScheduleChange = internalMutation({
       action: "reservation.change_expired",
       actorRole: "system",
       note: item._id,
+    })
+    await notify(ctx, {
+      userId: item.userId,
+      type: "reservation.change_decided",
+      title: "Perubahan jadwal kedaluwarsa",
+      body: `${EXPIRATION_NOTE} Jadwal lama tetap berlaku pada ${jakartaRange(item.originalStartAt, item.originalEndAt)}.`,
+      reservationId: item.reservationId,
+      facilityId: item.facilityId,
+      changeId: item._id,
+      dedupKey: `reservationChange:${item._id}:expired`,
     })
     return null
   },
@@ -906,6 +996,16 @@ export const cancelByStaff = mutation({
       actorId: actor._id,
       actorRole: actor.role,
       note: args.reason.trim(),
+    })
+    const facility = await ctx.db.get("facilities", reservation.facilityId)
+    await notify(ctx, {
+      userId: reservation.userId,
+      type: "reservation.cancelled",
+      title: "Reservasi dibatalkan pengelola",
+      body: `Reservasi ${facility?.name ?? "fasilitas"} pada ${jakartaRange(reservation.startAt, reservation.endAt)} dibatalkan pengelola. Alasan: ${args.reason.trim()}.`,
+      reservationId: reservation._id,
+      facilityId: reservation.facilityId,
+      dedupKey: `reservation:${reservation._id}:cancelled_by_staff`,
     })
     await cancelPendingChanges(ctx, reservation._id, now)
 
