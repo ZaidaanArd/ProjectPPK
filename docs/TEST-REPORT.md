@@ -4,7 +4,19 @@
 
 Basis checkout: `c3e5cb0` + perubahan kebijakan waktu, penanganan, dan dokumentasi lokal. Perubahan konfigurasi/video lain tidak termasuk pekerjaan ini. Hasil berikut **bukan** bukti deployment production atau penerimaan UAT.
 
-Kode aplikasi/test yang diuji: `46d1945` (commit dokumentasi menyusul). Remote `origin/main` tetap `c3e5cb0`; tidak ada push/deploy.
+Kode aplikasi/test yang diuji lokal: `46d1945`. Rilis production berikutnya memakai `defd77d`, termasuk format hasil integrasi dan bindings Convex terbaru.
+
+## Rilis dan smoke check production — 11 Oktober 2026
+
+- Frontend `defd77df37257de21589223e066866c0d39e27ab`: Vercel deployment `dpl_D9aSsxisssWx4DrqAZx61H1aD4qP`, status **READY**, domain [sthana.myudak.com](https://sthana.myudak.com). CI GitHub [38086250146](https://github.com/ZaidaanArd/ProjectPPK/actions/runs/38086250146) berhasil.
+- Convex production `decisive-shark-563`: dry-run memvalidasi schema tanpa menghapus index; deploy berhasil sebelum frontend. Tidak menjalankan seed/reset/cleanup pending.
+- Login tiga peran aktif berhasil; tambah akun dan switch admin → pengguna kembali ke portal peran yang tepat. Header/footer publik menampilkan Buka portal.
+- Form reservasi menampilkan aturan minimal 48 jam; form laporan dan preview dampak penanganan tersedia dari backend production. Tidak mengirim booking/laporan baru atau mengonfirmasi penutupan untuk screenshot.
+- Rekap fasilitas CSV berhasil diunduh melalui portal admin; header mencakup fasilitas, lokasi, jumlah reservasi disetujui, menit penggunaan, dan jumlah laporan.
+- `/api/health` merespons `ok`. Pemindaian log Vercel pada jendela smoke check tidak mengembalikan log error; ini bukan jaminan tidak ada error di seluruh periode.
+- Screenshot UI production tersimpan terpisah di `public/docs-assets/*-production.png`; diagram mengikuti schema/aturan kode. Bukti lokal di bawah tetap dibedakan dari smoke check production. **UAT belum disetujui.**
+
+## Hasil verifikasi lokal sebelum rilis
 
 | Pemeriksaan                  | Hasil                                                                                                  |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------ |
@@ -14,7 +26,7 @@ Kode aplikasi/test yang diuji: `46d1945` (commit dokumentasi menyusul). Remote `
 | Lint dan typecheck           | **Lulus:** Oxc, ESLint Convex, TypeScript                                                              |
 | Format hasil integrasi       | **Lulus:** 57 file hasil integrasi sesuai Oxfmt                                                        |
 | Build final                  | **Lulus:** satu build dynamic, 53 halaman; publik dan docs tetap statis                                |
-| Browser dinamis / production | **Belum diverifikasi pada perubahan ini**                                                              |
+| Browser dinamis / production | Smoke check terbatas; lihat bagian rilis production di atas                                            |
 | UAT dan sign-off             | **Belum disetujui**                                                                                    |
 
 Test lokal mencakup tepat/kurang 48 jam, retry identik setelah cutoff, expiry sebelum cron, approval/rescheduling, gangguan untuk pemohon baru, penutupan booking yang sedang berjalan, dua laporan closed pada satu ruang, closure manual, konfirmasi aman, pagination owner, arsip historis, demo expiry, auth, dan CSV. Convex-test memeriksa mutation/otorisasi dalam fixture; bukan cookie Better Auth atau race dua perangkat nyata.
@@ -34,12 +46,12 @@ Untuk browser demo statis, jalankan server lokal dengan NEXT_PUBLIC_DATA_MODE=st
     $env:PLAYWRIGHT_STATIC_MODE = "1"
     pnpm exec playwright test tests/e2e/core-stories.spec.ts tests/e2e/edge-cases.spec.ts --grep "US-09|US-10|US-11|US-12|US-16|US-17|EC-"
 
-Set `PLAYWRIGHT_DOC_SCREENSHOTS=1` untuk capture opsional diagram dan UI di `public/docs-assets`; gambar tidak memakai akun production. Test capture tambahan: `tests/e2e/edge-cases.spec.ts --grep "documentation screenshots"`.
+Set `PLAYWRIGHT_DOC_SCREENSHOTS=1` untuk capture opsional diagram dan UI di `test-results/docs-demo`; gambar tidak memakai akun production dan tidak menimpa gambar laporan production. Test capture tambahan: `tests/e2e/edge-cases.spec.ts --grep "documentation screenshots"`.
 
 `tests/e2e/user-stories.spec.ts` berisi satu walkthrough untuk setiap US-01–US-17. Tambahkan `PLAYWRIGHT_SAVE_VIDEOS=1` untuk merekam ulang video di [docs/videos](./videos/README.md).
 
 Untuk registrasi pending, gunakan frontend localhost yang terhubung **hanya** ke Convex development, tanpa PLAYWRIGHT_STATIC_MODE, lalu jalankan tests/e2e/auth-pending.spec.ts. Jangan arahkan test yang membuat akun/data ke production. Konfigurasi lengkap: [panduan Playwright](../tests/e2e/README.md).
 
-## Gap sebelum klaim rilis
+## Gap sebelum penerimaan UAT
 
-Belum ada hasil UAT untuk US-01–US-17 pada deployment target untuk revisi ini. Persetujuan admin, dua akun beda peran, refresh/switch/logout, isolasi Convex, cron/reconnect, race dua perangkat, dan CSV production tetap perlu browser dinamis development/preview. Catat commit frontend/backend, deployment, tanggal, penguji, hasil aktual, dan sign-off di [UAT](./UAT.md). Tidak ada push, deploy, atau perubahan sheet QA pada pekerjaan lokal ini.
+Smoke check production di atas tidak menggantikan UAT US-01–US-17. Registrasi pending/persetujuan admin, logout satu/semua, isolasi data adversarial, cron/reconnect, race dua perangkat, dan seluruh transisi mutasi tetap perlu regresi dinamis terarah. Catat penguji, hasil aktual, dan sign-off di [UAT](./UAT.md). Sheet QA tidak diubah.

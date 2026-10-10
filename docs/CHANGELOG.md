@@ -2,7 +2,7 @@
 
 Repository ini belum memakai tag versi semantik. Catatan historis di bawah dipisahkan dari pekerjaan lokal terbaru; **merge ke main tidak membuktikan bahwa deployment production telah diperbarui**. Untuk status production, catat SHA Vercel dan Convex saat rilis.
 
-## 11 Oktober 2026 — lokal, belum dirilis
+## 11 Oktober 2026 — production defd77d
 
 - Pengajuan baru minimal 48 jam di form, slot publik, backend, dan demo; retry identik tetap mengembalikan booking yang sama.
 - Dialog Mulai tangani memilih masih layak digunakan atau harus ditutup, dengan keterangan publik terpisah dari laporan privat.
@@ -10,9 +10,9 @@ Repository ini belum memakai tag versi semantik. Catatan historis di bawah dipis
 - Pemohon baru ikut menerima informasi gangguan; notifikasi buka kembali tidak menghidupkan booking batal. Riwayat notifikasi berpaginasi dan memiliki tautan reservasi.
 - Fasilitas diarsipkan tanpa memutus histori; booking aktif harus ditangani lewat penutupan, bukan dinonaktifkan diam-diam.
 - Aturan bisnis, EC-01–EC-30, ADR-0004, laporan bergambar, ERD, dan laporan Google Docs diperbarui. UAT tetap belum disetujui.
-- Verifikasi lokal: 112 test Vitest dan 11 alur browser terarah; rincian pemeriksaan akhir di [Test Report](./TEST-REPORT.md). Tidak push/deploy.
+- Verifikasi lokal: 112 test Vitest dan 11 alur browser terarah. Backend Convex dan frontend Vercel telah dirilis; login tiga peran, switch akun, preview penanganan, health, dan ekspor CSV diperiksa di production. Rincian dan batas smoke check ada di [Test Report](./TEST-REPORT.md).
 
-## 10 Oktober 2026 — belum dirilis
+## 10 Oktober 2026 — masuk rilis 11 Oktober
 
 - Jadwal perbaikan per rentang waktu menggantikan status "Dalam perbaikan" yang menutup fasilitas seharian. Perbaikan hanya boleh di slot kosong; reservasi yang sudah ada tetap berjalan.
 - Halaman petugas **Jadwal perbaikan** dengan jadwalkan, perpanjang, selesai, dan batalkan; tombol **Jadwalkan perbaikan** di kartu laporan.

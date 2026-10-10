@@ -26,31 +26,47 @@ Better Auth menyimpan user/session terpisah dari profil domain. Profil terkait r
 
 ## 4. Implementasi antarmuka
 
-![Katalog fasilitas demo](/docs-assets/facilities.png)
+Screenshot UI berikut diambil dari [production](https://sthana.myudak.com) pada 11 Oktober 2026. Gambar arsitektur, ERD, dan alur penanganan merupakan diagram berdasarkan kode.
+
+![Login production](/docs-assets/login-production.png)
+
+Login memakai email dan password. Pengunjung tidak perlu akun; mahasiswa/dosen mendaftar dan menunggu persetujuan admin. Petugas dibuat admin. Akun pengujian tiga peran tercantum pada bagian Informasi Login di laporan Google Docs kelompok.
+
+![Katalog fasilitas production](/docs-assets/facilities-production.png)
 
 Katalog menyediakan pencarian, filter, foto, dan slot publik. Status pengajuan tidak mengungkap nama/tujuan. Slot lewat/kurang 48 jam nonaktif dengan alasan. Skeleton, empty state Sthani, serta tema terang/gelap memakai komponen bersama.
 
-![Form reservasi demo](/docs-assets/reservation-form.png)
+![Form reservasi production](/docs-assets/reservation-form-production.png)
 
 Form memilih fasilitas dan waktu, memeriksa batas/overlap, lalu konfirmasi. Server menghitung ulang pada submit; state browser bukan izin final. Retry identik mengembalikan ID yang sama.
 
-![Form laporan demo](/docs-assets/report-form.png)
+![Form laporan production](/docs-assets/report-form-production.png)
 
 Laporan menyimpan kategori/deskripsi dan foto opsional. Deskripsi privat tidak otomatis dipublikasikan. Petugas memasukkan keterangan yang aman untuk ditampilkan ketika mulai pekerjaan.
 
-![Dialog dampak penanganan demo](/docs-assets/handling-closed.png)
+![Dialog dampak penanganan production](/docs-assets/handling-production.png)
 
 Usable memulai pekerjaan dan gangguan tanpa menutup booking. Closed menutup segera, preview menghitung affected pending/approved/ongoing, dan konfirmasi menjalankan pembatalan serta notifikasi. Completion closed membutuhkan catatan dan konfirmasi aman. Dua laporan closed pada satu ruang menahan penutupan sampai yang terakhir selesai; closure manual tetap terpisah.
+
+![Ringkasan admin production](/docs-assets/admin-summary-production.png)
+
+Admin melihat rekap akun, fasilitas, reservasi, dan laporan. Ekspor rekap per fasilitas/lokasi memuat jumlah reservasi disetujui, total menit terjadwal, dan jumlah laporan sepanjang periode pencatatan.
+
+### Dampak pekerjaan dan keselamatan
+
+![Alur penanganan dan pembukaan fasilitas](/docs-assets/handling-flow.png)
+
+Estimasi tidak membuka fasilitas otomatis. Jika closure berasal dari penutupan manual, pembukaan tetap menjadi tindakan manual; booking yang sudah batal tidak dipulihkan.
 
 ## 5. Edge case dan hasil pengujian
 
 [EC-01–EC-30](./EDGE-CASES.md) memetakan keadaan batas ke US-01–US-17. Test lokal mencakup tepat 48 jam, retry setelah cutoff, expiry sebelum cron, notifikasi booking baru saat gangguan, penutupan kegiatan berlangsung, dua laporan satu fasilitas, closure manual, riwayat notifikasi, serta histori fasilitas saat arsip.
 
-Bukti eksekusi, jumlah test, dan perintah ada di [Test Report](./TEST-REPORT.md). Screenshot di laporan ini berasal dari **demo statis lokal**, bukan akun/data production. Unit test dan screenshot tidak membuktikan deployment telah lulus UAT.
+Bukti eksekusi, jumlah test, dan perintah ada di [Test Report](./TEST-REPORT.md). Screenshot antarmuka berasal dari production; form diisi sebagai contoh tanpa mengirim booking/laporan baru atau menutup fasilitas. Unit test dan screenshot tidak menggantikan persetujuan UAT.
 
 ## 6. Keamanan dan privasi
 
-Route guard tidak menggantikan role check mutation. Owner berasal dari sesi; publik tidak membaca tujuan/identitas/foto privat. URL foto hanya di query pemilik/petugas. Input waktu, foto, transisi, dan CSV divalidasi di backend. Fasilitas diarsipkan agar booking dan audit tidak terputus. Secrets/kredensial QA tidak masuk screenshot/laporan.
+Route guard tidak menggantikan role check mutation. Owner berasal dari sesi; publik tidak membaca tujuan/identitas/foto privat. URL foto hanya di query pemilik/petugas. Input waktu, foto, transisi, dan CSV divalidasi di backend. Fasilitas diarsipkan agar booking dan audit tidak terputus. Secret server tidak masuk screenshot atau laporan; kredensial akun presentasi hanya tercantum pada Google Docs kelompok sesuai izin pemilik, tidak disalin ke repo publik.
 
 Notifikasi in-app bukan email/push; aplikasi bukan prosedur evakuasi atau jaminan pelayanan. Retensi data dan penghapusan permanen belum ditetapkan; proyek ini tidak mengklaim SLA atau sertifikasi kepatuhan. [Catatan keamanan](./SECURITY-PRIVACY.md).
 
@@ -62,4 +78,4 @@ Rilis harus membawa backend/frontend kompatibel. Backend lebih dahulu, preview d
 
 ## 8. Kesimpulan dan batas bukti
 
-Perubahan menyatukan kebijakan waktu dan keselamatan di UI, backend, demo, test, dan dokumen. Penerimaan kelompok tetap memerlukan penguji, commit frontend/backend, deployment, tanggal, hasil aktual, serta sign-off. Google Sheet adalah log temuan QA, bukan keputusan penerimaan otomatis. Perubahan ini belum dipush/deploy oleh pekerjaan implementasi lokal ini.
+Perubahan menyatukan kebijakan waktu dan keselamatan di UI, backend, demo, test, dan dokumen. Backend production dan frontend commit defd77d telah dirilis pada 11 Oktober 2026; rincian deployment serta smoke check ada di Test Report. Penerimaan kelompok tetap memerlukan hasil aktual dan sign-off. Google Sheet adalah log temuan QA, bukan keputusan penerimaan otomatis.
