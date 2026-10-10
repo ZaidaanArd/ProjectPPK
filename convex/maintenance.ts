@@ -6,6 +6,7 @@ import { internalMutation, mutation, query } from "./_generated/server"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
 import { recordAuditEvent } from "./lib/audit"
 import { requireRole } from "./lib/authz"
+import { jakartaRange, notify } from "./lib/notifications"
 import {
   assertMaintenanceSlotFree,
   validateMaintenanceWindow,
@@ -74,6 +75,22 @@ async function scheduleExpiry(
   window: Doc<"maintenanceWindows">
 ) {
   await ctx.scheduler.runAt(window.endAt, internal.maintenance.expire, {
+    windowId: window._id,
+    endAt: window.endAt,
+  })
+  await scheduleReminder(ctx, window)
+}
+
+/** Reminder 30 min before end, shown in staff and admin portals. */
+export const REMINDER_LEAD_MS = 30 * 60 * 1000
+
+async function scheduleReminder(
+  ctx: MutationCtx,
+  window: Doc<"maintenanceWindows">
+) {
+  const remindAt = window.endAt - REMINDER_LEAD_MS
+  if (remindAt <= Date.now()) return
+  await ctx.scheduler.runAt(remindAt, internal.maintenance.remind, {
     windowId: window._id,
     endAt: window.endAt,
   })
