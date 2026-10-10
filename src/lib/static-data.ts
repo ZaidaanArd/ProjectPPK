@@ -311,6 +311,53 @@ function emit() {
   for (const listener of listeners) listener()
 }
 function replace(next: StaticData) {
+  // Reconcile proposals whenever a booking changes; never release the old slot
+  // just because a proposed replacement loses its target slot.
+  const now = Date.now()
+  next = {
+    ...next,
+    reservationChanges: (next.reservationChanges ?? []).map((item) => {
+      if (item.status !== "pending") return item
+      if (changeDeadline(item) <= now)
+        return {
+          ...item,
+          status: "expired" as const,
+          decisionNote: EXPIRATION_NOTE,
+          updatedAt: now,
+        }
+      const original = next.reservations.find(
+        (r) => r.id === item.reservationId
+      )
+      if (
+        !original ||
+        original.status !== "approved" ||
+        original.startAt !== item.originalStartAt ||
+        original.endAt !== item.originalEndAt
+      )
+        return {
+          ...item,
+          status: "cancelled" as const,
+          decisionNote: "Reservasi asal dibatalkan atau berubah.",
+          updatedAt: now,
+        }
+      if (
+        next.reservations.some(
+          (r) =>
+            r.id !== original.id &&
+            r.facilityId === item.facilityId &&
+            r.status === "approved" &&
+            overlaps(r.startAt, r.endAt, item.startAt, item.endAt)
+        )
+      )
+        return {
+          ...item,
+          status: "rejected" as const,
+          decisionNote: "Jadwal baru sudah terisi. Jadwal lama tetap berlaku.",
+          updatedAt: now,
+        }
+      return item
+    }),
+  }
   state = next
   try {
     localStorage.setItem(storageKey, JSON.stringify(next))

@@ -18,6 +18,77 @@ beforeEach(async () => {
 })
 
 describe("static data mode", () => {
+  it("retains the approved booking until a schedule replacement is approved", async () => {
+    const original = getStaticData().reservations.find(
+      (r) => r.id === "demo-reservation-approved"
+    )!
+    const startAt = original.startAt + 7200000,
+      endAt = startAt + 3600000
+    const changeId = await staticMutation(
+      "reservations:requestScheduleChange",
+      { reservationId: original.id, startAt, endAt, reason: "Perubahan agenda" }
+    )
+    expect(
+      getStaticData().reservations.find((r) => r.id === original.id)?.startAt
+    ).toBe(original.startAt)
+    const hint = staticQuery("facilities:getPublicAvailability", {
+      facilityId: original.facilityId,
+      rangeStart: startAt,
+      rangeEnd: endAt,
+    }) as { pending: unknown[] }
+    expect(hint.pending).toEqual([{ startAt, endAt }])
+    await expect(
+      staticMutation("reservations:requestScheduleChange", {
+        reservationId: original.id,
+        startAt,
+        endAt,
+        reason: "Lagi",
+      })
+    ).rejects.toThrow("Masih ada perubahan")
+    role("officer")
+    await staticMutation("reservations:decideScheduleChange", {
+      changeId,
+      decision: "approved",
+    })
+    expect(
+      getStaticData().reservations.find((r) => r.id === original.id)
+    ).toMatchObject({ status: "approved", startAt, endAt })
+  })
+  it("cancels proposals when original is cancelled and preserves booking on rejected change", async () => {
+    const original = getStaticData().reservations.find(
+      (r) => r.id === "demo-reservation-approved"
+    )!
+    const args = {
+      reservationId: original.id,
+      startAt: original.startAt + 7200000,
+      endAt: original.endAt + 7200000,
+      reason: "Agenda",
+    }
+    const first = await staticMutation(
+      "reservations:requestScheduleChange",
+      args
+    )
+    role("officer")
+    await staticMutation("reservations:decideScheduleChange", {
+      changeId: first,
+      decision: "rejected",
+      note: "Tidak sesuai",
+    })
+    expect(
+      getStaticData().reservations.find((r) => r.id === original.id)?.startAt
+    ).toBe(original.startAt)
+    role("user")
+    const second = await staticMutation(
+      "reservations:requestScheduleChange",
+      args
+    )
+    await staticMutation("reservations:cancelMine", {
+      reservationId: original.id,
+    })
+    expect(
+      getStaticData().reservationChanges?.find((r) => r.id === second)?.status
+    ).toBe("cancelled")
+  })
   it("lets staff cancel a pending request only with a reason", async () => {
     role("officer")
     await expect(
@@ -41,7 +112,7 @@ describe("static data mode", () => {
   })
 
   it("shares a reservation across user, staff, and public availability", async () => {
-    const startAt = Date.parse("2026-10-01T11:00:00+07:00")
+    const startAt = Date.parse("2027-10-01T11:00:00+07:00")
     const endAt = startAt + 30 * 60 * 1000
     const id = await staticMutation("reservations:create", {
       facilityId: "demo-aula",
@@ -78,6 +149,7 @@ describe("static data mode", () => {
       }) as Promise<string>
     const winner = await request("demo-aula", startAt, startAt + 3600000)
     const sameTime = await request("demo-aula", startAt, startAt + 3600000)
+    expect(sameTime).toBe(winner)
     const partial = await request(
       "demo-aula",
       startAt + 1800000,
@@ -98,7 +170,7 @@ describe("static data mode", () => {
     const byId = (id: string) =>
       getStaticData().reservations.find((item) => item.id === id)
     expect(byId(winner)?.status).toBe("approved")
-    for (const id of [sameTime, partial]) {
+    for (const id of [partial]) {
       expect(byId(id)).toMatchObject({
         status: "rejected",
         decisionNote: AUTO_REJECTION_NOTE,
