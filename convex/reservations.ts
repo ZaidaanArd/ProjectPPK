@@ -21,6 +21,7 @@ import { assertNoMaintenanceOverlap } from "./lib/maintenance"
 import { reservationStatusValidator } from "./lib/validators"
 import { assertFacilityCanApprove } from "./lib/workflows"
 import {
+  changeDeadline,
   effectiveReservationStatus,
   EXPIRATION_NOTE,
 } from "./lib/reservationState"
@@ -43,7 +44,8 @@ async function approvedConflict(
   ctx: QueryCtx | MutationCtx,
   facilityId: Id<"facilities">,
   startAt: number,
-  endAt: number
+  endAt: number,
+  excludeId?: Id<"reservations">
 ) {
   const approved = await ctx.db
     .query("reservations")
@@ -54,8 +56,10 @@ async function approvedConflict(
         .lt("startAt", endAt)
     )
     .collect()
-  return approved.some((item) =>
-    overlaps(item.startAt, item.endAt, startAt, endAt)
+  return approved.some(
+    (item) =>
+      item._id !== excludeId &&
+      overlaps(item.startAt, item.endAt, startAt, endAt)
   )
 }
 
@@ -493,6 +497,173 @@ export const reconcilePendingConflicts = internalMutation({
       )
     }
     return { scanned: page.page.length, rejected, done: page.isDone }
+  },
+})
+
+const scheduleChangeItem = v.object({
+  id: v.id("reservationChanges"),
+  reservationId: v.id("reservations"),
+  facilityId: v.id("facilities"),
+  facilityName: v.string(),
+  applicantName: v.string(),
+  originalStartAt: v.number(),
+  originalEndAt: v.number(),
+  startAt: v.number(),
+  endAt: v.number(),
+  reason: v.string(),
+  status: reservationStatusValidator,
+  decisionNote: v.optional(v.string()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+
+export const listScheduleChanges = query({
+  args: {},
+  returns: v.array(scheduleChangeItem),
+  handler: async (ctx) => {
+    const actor = await requireActiveProfile(ctx)
+    const items =
+      actor.role === "user"
+        ? await ctx.db
+            .query("reservationChanges")
+            .withIndex("by_user", (q) => q.eq("userId", actor._id))
+            .order("desc")
+            .collect()
+        : await ctx.db.query("reservationChanges").order("desc").collect()
+    return Promise.all(
+      items.map(async (item) => ({
+        id: item._id,
+        reservationId: item.reservationId,
+        facilityId: item.facilityId,
+        facilityName:
+          (await ctx.db.get("facilities", item.facilityId))?.name ??
+          "Fasilitas dihapus",
+        applicantName:
+          (await ctx.db.get("profiles", item.userId))?.name ??
+          "Pengguna dihapus",
+        originalStartAt: item.originalStartAt,
+        originalEndAt: item.originalEndAt,
+        startAt: item.startAt,
+        endAt: item.endAt,
+        reason: item.reason,
+        status:
+          item.status === "pending" && changeDeadline(item) <= Date.now()
+            ? ("expired" as const)
+            : item.status,
+        decisionNote: item.decisionNote,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+      }))
+    )
+  },
+})
+
+export const requestScheduleChange = mutation({
+  args: {
+    reservationId: v.id("reservations"),
+    startAt: v.number(),
+    endAt: v.number(),
+    reason: v.string(),
+  },
+  returns: v.id("reservationChanges"),
+  handler: async (ctx, args) => {
+    const user = await requireRole(ctx, ["user"])
+    const original = await ctx.db.get("reservations", args.reservationId)
+    const now = Date.now()
+    if (
+      !original ||
+      original.userId !== user._id ||
+      original.status !== "approved" ||
+      original.startAt <= now
+    )
+      throw new ConvexError(
+        "Hanya reservasi disetujui yang belum dimulai dapat diubah"
+      )
+    validateReservationWindow(args.startAt, args.endAt)
+    if (args.startAt <= now)
+      throw new ConvexError("Jadwal baru harus di masa mendatang")
+    if (args.startAt === original.startAt && args.endAt === original.endAt)
+      throw new ConvexError("Pilih jadwal yang berbeda")
+    if (!args.reason.trim())
+      throw new ConvexError("Alasan perubahan wajib diisi")
+    const previous = await ctx.db
+      .query("reservationChanges")
+      .withIndex("by_reservation_status", (q) =>
+        q.eq("reservationId", original._id).eq("status", "pending")
+      )
+      .collect()
+    if (previous.some((item) => changeDeadline(item) > now))
+      throw new ConvexError(
+        "Masih ada perubahan jadwal menunggu. Batalkan atau tunggu keputusan petugas."
+      )
+    const facility = await ctx.db.get("facilities", original.facilityId)
+    if (!facility) throw new ConvexError("Fasilitas tidak ditemukan")
+    assertFacilityCanApprove(facility.status)
+    assertNoMaintenanceOverlap(
+      args,
+      await maintenanceIn(ctx, original.facilityId, args.startAt, args.endAt)
+    )
+    if (
+      await approvedConflict(
+        ctx,
+        original.facilityId,
+        args.startAt,
+        args.endAt,
+        original._id
+      )
+    )
+      throw new ConvexError("Slot sudah digunakan oleh reservasi lain")
+    const item = {
+      reservationId: original._id,
+      userId: user._id,
+      facilityId: original.facilityId,
+      originalStartAt: original.startAt,
+      originalEndAt: original.endAt,
+      startAt: args.startAt,
+      endAt: args.endAt,
+      reason: args.reason.trim(),
+      status: "pending" as const,
+      createdAt: now,
+      updatedAt: now,
+    }
+    const id = await ctx.db.insert("reservationChanges", item)
+    await ctx.scheduler.runAt(
+      changeDeadline(item),
+      internal.reservations.expireScheduleChange,
+      { changeId: id }
+    )
+    await recordAuditEvent(ctx, {
+      entityType: "reservation",
+      entityId: original._id,
+      action: "reservation.change_requested",
+      actorId: user._id,
+      actorRole: user.role,
+      note: `${id}: ${args.startAt}–${args.endAt}; ${item.reason}`,
+    })
+    return id
+  },
+})
+
+export const expireScheduleChange = internalMutation({
+  args: { changeId: v.id("reservationChanges") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const item = await ctx.db.get("reservationChanges", args.changeId)
+    if (!item || item.status !== "pending" || changeDeadline(item) > Date.now())
+      return null
+    await ctx.db.patch("reservationChanges", item._id, {
+      status: "expired",
+      decisionNote: EXPIRATION_NOTE,
+      updatedAt: Date.now(),
+    })
+    await recordAuditEvent(ctx, {
+      entityType: "reservation",
+      entityId: item.reservationId,
+      action: "reservation.change_expired",
+      actorRole: "system",
+      note: item._id,
+    })
+    return null
   },
 })
 
