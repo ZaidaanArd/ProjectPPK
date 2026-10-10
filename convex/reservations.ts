@@ -187,6 +187,20 @@ export const create = mutation({
       throw new ConvexError("Waktu reservasi harus berada di masa mendatang")
     }
 
+    const mine = await ctx.db
+      .query("reservations")
+      .withIndex("by_user", (q) => q.eq("userId", profile._id))
+      .collect()
+    const duplicate = mine.find(
+      (item) =>
+        item.facilityId === facility._id &&
+        item.startAt === args.startAt &&
+        item.endAt === args.endAt &&
+        ["pending", "approved"].includes(item.status)
+    )
+    // An exact retry returns the existing request instead of creating another row.
+    if (duplicate) return duplicate._id
+
     if (await approvedConflict(ctx, facility._id, args.startAt, args.endAt)) {
       throw new ConvexError("Slot sudah digunakan oleh reservasi lain")
     }
@@ -329,6 +343,12 @@ export const decide = mutation({
 
     if (!reservation || reservation.status !== "pending") {
       throw new ConvexError("Reservasi tidak tersedia untuk diproses")
+    }
+
+    if (reservation.startAt <= Date.now()) {
+      throw new ConvexError(
+        "Pengajuan kedaluwarsa. Waktu mulai sudah lewat; minta pemohon mengajukan jadwal baru."
+      )
     }
 
     if (args.decision === "approved") {
