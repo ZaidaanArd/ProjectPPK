@@ -1,7 +1,7 @@
 import { ConvexError } from "convex/values"
 
-const JAKARTA_UTC_OFFSET_MS = 7 * 60 * 60 * 1000
-const SLOT_MS = 30 * 60 * 1000
+export const JAKARTA_UTC_OFFSET_MS = 7 * 60 * 60 * 1000
+export const SLOT_MS = 30 * 60 * 1000
 const OPEN_MINUTE = 7 * 60
 const CLOSE_MINUTE = 20 * 60
 

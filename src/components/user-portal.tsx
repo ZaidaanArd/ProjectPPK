@@ -11,6 +11,7 @@ import { isStaticMode } from "@/lib/data-mode"
 import { toastError } from "@/lib/toast"
 import { saveStaticPhoto } from "@/lib/static-data"
 import { facilityIllustration } from "@/lib/facility-illustrations"
+import { formatMaintenance } from "@/lib/maintenance-display"
 import {
   displayDuration,
   displayTime,
@@ -937,9 +938,15 @@ export function ReservationForm({
       : "skip"
   )
 
-  const conflict = availability
-    ? rangeIsBusy(date, startTime, endTime, availability.reservations)
-    : false
+  // Approved bookings and scheduled repairs both take slots.
+  const busy = useMemo(
+    () =>
+      availability
+        ? [...availability.reservations, ...availability.maintenance]
+        : undefined,
+    [availability]
+  )
+  const conflict = busy ? rangeIsBusy(date, startTime, endTime, busy) : false
   const durationMinutes =
     startTime && endTime
       ? (toTimestamp(date, endTime) - toTimestamp(date, startTime)) / 60000
@@ -1099,7 +1106,7 @@ export function ReservationForm({
           </div>
           <TimeSlotPicker
             date={date}
-            busy={availability?.reservations}
+            busy={busy}
             disabled={!selectedFacility || !availability}
             start={startTime}
             end={endTime}
@@ -1108,6 +1115,20 @@ export function ReservationForm({
               setEndTime(end)
             }}
           />
+          {availability && availability.maintenance.length > 0 && (
+            <p className="flex items-start gap-1.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+              <IconTool
+                size={16}
+                aria-hidden="true"
+                className="mt-0.5 shrink-0"
+              />
+              <span>
+                Jadwal perbaikan:{" "}
+                {availability.maintenance.map(formatMaintenance).join(", ")}.
+                Slot di rentang ini tidak bisa dipesan.
+              </span>
+            </p>
+          )}
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <p
               className={cn(

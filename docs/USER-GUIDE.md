@@ -21,12 +21,13 @@ Siapa pun dari civitas kampus dapat mendaftar sendiri cukup dengan nama, email, 
 ## Petugas
 
 - Di **Reservasi**, tinjau antrean lalu setujui atau tolak pengajuan. Persetujuan ditolak server bila fasilitas tidak aktif atau slot sudah dipakai reservasi disetujui. Pembatalan darurat memerlukan alasan.
-- Di **Laporan**, mulai penanganan tanpa catatan jika belum ada hasil; penyelesaian atau penolakan memerlukan catatan. Bila masalah membuat fasilitas tidak dapat dipakai, tandai **Dalam perbaikan**, lalu aktifkan kembali setelah selesai.
+- Di **Laporan**, mulai penanganan tanpa catatan jika belum ada hasil; penyelesaian atau penolakan memerlukan catatan. Bila ruang perlu ditutup, tekan **Jadwalkan perbaikan** di kartu laporan. Menyelesaikan laporan ikut mengakhiri perbaikannya.
+- Di **Jadwal perbaikan**, pilih fasilitas, tanggal, dan rentang jam yang kosong. Reservasi disetujui maupun menunggu menutup slot, jadi putuskan dulu pengajuan yang menunggu bila perbaikan harus di jam itu. Isi perkiraan jam selesai; **Perpanjang** bila belum beres, **Selesai sekarang** bila lebih cepat, atau **Batalkan** sebelum dimulai. Selama perbaikan, hanya rentang itu yang tidak bisa dipesan.
 
 ## Administrator
 
 - Di **Akun**, setujui/tolak pendaftaran, buat akun pengguna atau petugas, dan kelola status akun.
-- Di **Fasilitas**, tambah/ubah fasilitas dan status operasionalnya.
+- Di **Fasilitas**, tambah/ubah fasilitas, sembunyikan, atau aktifkan kembali. Penutupan sementara untuk perbaikan memakai **Jadwal perbaikan**, yang juga bisa diakses admin.
 - Di dashboard, lihat rekap per fasilitas/lokasi; unduh CSV rekap, reservasi, atau laporan. Ekspor memerlukan sesi admin aktif.
 
 ## Bantuan singkat

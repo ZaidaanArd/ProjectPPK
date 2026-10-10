@@ -6,6 +6,7 @@ import Markdown from "react-markdown"
 import rehypeSlug from "rehype-slug"
 import remarkGfm from "remark-gfm"
 
+import { MermaidDiagram } from "@/components/mermaid-diagram"
 import {
   findPublicDoc,
   publicDocSourceHref,
@@ -83,6 +84,21 @@ export default async function DocsArticlePage({ params }: PageProps) {
                     {children}
                   </a>
                 )
+              },
+              // ```mermaid blocks render as diagrams instead of code.
+              pre: ({ node, children }) => {
+                const code = node?.children[0]
+                const classes =
+                  code?.type === "element" ? code.properties.className : null
+                if (
+                  Array.isArray(classes) &&
+                  classes.includes("language-mermaid") &&
+                  code?.type === "element" &&
+                  code.children[0]?.type === "text"
+                ) {
+                  return <MermaidDiagram chart={code.children[0].value} />
+                }
+                return <pre>{children}</pre>
               },
               table: ({ children }) => (
                 <div className="docs-table-scroll">

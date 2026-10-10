@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select"
 import { useAppQuery as useQuery } from "@/lib/data-hooks"
 import { facilityIllustration } from "@/lib/facility-illustrations"
+import { isOngoing } from "@/lib/maintenance-display"
 import {
   matchKapasitas,
   type KapasitasFilter,
@@ -136,7 +137,10 @@ function PublicSlotDialog({
         mulai: mulai.replace(":", "."),
         selesai: selesai.replace(":", "."),
         status:
-          availability.facilityStatus !== "active"
+          availability.facilityStatus !== "active" ||
+          availability.maintenance.some(
+            (item) => item.startAt < endAt && startAt < item.endAt
+          )
             ? "terkunci"
             : availability.reservations.some(
                   (item) => item.startAt < endAt && startAt < item.endAt
@@ -207,6 +211,7 @@ export function PublicFacilities() {
             },
           ],
           status: item.status === "active" ? "Aktif" : "Dalam Perbaikan",
+          perbaikan: item.nextMaintenance,
           createdAt: item.createdAt,
         }
       }),
@@ -222,7 +227,10 @@ export function PublicFacilities() {
             .toLocaleLowerCase("id")
             .includes(term)) &&
         (type === "semua" || item.tipe === type) &&
-        (status === "semua" || item.status === status) &&
+        (status === "semua" ||
+          (item.perbaikan && isOngoing(item.perbaikan)
+            ? "Dalam Perbaikan"
+            : item.status) === status) &&
         (location === "semua" || item.lokasi === location) &&
         matchKapasitas(item.kapasitas, capacity)
       )

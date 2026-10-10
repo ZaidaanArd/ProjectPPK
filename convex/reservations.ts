@@ -9,6 +9,7 @@ import {
   query,
 } from "./_generated/server"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
+import { maintenanceIn } from "./maintenance"
 import { recordAuditEvent } from "./lib/audit"
 import { requireActiveProfile, requireRole } from "./lib/authz"
 import {
@@ -16,6 +17,7 @@ import {
   overlaps,
   validateReservationWindow,
 } from "./lib/reservationTime"
+import { assertNoMaintenanceOverlap } from "./lib/maintenance"
 import { reservationStatusValidator } from "./lib/validators"
 import { assertFacilityCanApprove } from "./lib/workflows"
 
@@ -185,6 +187,11 @@ export const create = mutation({
       throw new ConvexError("Slot sudah digunakan oleh reservasi lain")
     }
 
+    assertNoMaintenanceOverlap(
+      args,
+      await maintenanceIn(ctx, facility._id, args.startAt, args.endAt)
+    )
+
     const now = Date.now()
     const id = await ctx.db.insert("reservations", {
       userId: profile._id,
@@ -276,6 +283,15 @@ export const decide = mutation({
       }
 
       assertFacilityCanApprove(facility.status)
+      assertNoMaintenanceOverlap(
+        reservation,
+        await maintenanceIn(
+          ctx,
+          reservation.facilityId,
+          reservation.startAt,
+          reservation.endAt
+        )
+      )
 
       if (
         await approvedConflict(

@@ -5,6 +5,7 @@ import {
   IconClipboardCheck,
   IconFileAlert,
   IconHome,
+  IconTool,
   IconUsers,
 } from "@tabler/icons-react"
 
@@ -78,6 +79,12 @@ export const portalNavigation = {
       description: "Tindak lanjut kendala",
       icon: IconFileAlert,
     },
+    {
+      href: "/staff/maintenance",
+      label: "Jadwal perbaikan",
+      description: "Tutup slot selama perbaikan",
+      icon: IconTool,
+    },
   ],
   admin: [
     {
@@ -91,6 +98,12 @@ export const portalNavigation = {
       label: "Fasilitas",
       description: "Data dan status ruang",
       icon: IconBuilding,
+    },
+    {
+      href: "/staff/maintenance",
+      label: "Jadwal perbaikan",
+      description: "Tutup slot selama perbaikan",
+      icon: IconTool,
     },
     {
       href: "/admin/users",

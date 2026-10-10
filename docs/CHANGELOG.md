@@ -2,6 +2,14 @@
 
 Repository ini belum memakai tag versi semantik. Catatan berikut diringkas dari riwayat Git di main sampai commit 17f02f9; **merge ke main tidak membuktikan bahwa deployment production telah diperbarui**. Untuk status production, catat SHA Vercel dan Convex saat rilis.
 
+## 10 Oktober 2026 — belum dirilis
+
+- Jadwal perbaikan per rentang waktu menggantikan status "Dalam perbaikan" yang menutup fasilitas seharian. Perbaikan hanya boleh di slot kosong; reservasi yang sudah ada tetap berjalan.
+- Halaman petugas **Jadwal perbaikan** dengan jadwalkan, perpanjang, selesai, dan batalkan; tombol **Jadwalkan perbaikan** di kartu laporan.
+- Pengguna dan katalog publik melihat jadwal perbaikan; hanya slot di rentang itu yang terkunci.
+- Dokumen [Alur dan logika sistem](./FLOWS.md) dan tab **Alur logika** di halaman Tentang; diagram Mermaid di dokumentasi kini dirender sebagai grafik.
+- Migrasi: tabel baru `maintenanceWindows`. Fasilitas yang masih berstatus lama `maintenance` tetap tertutup penuh sampai admin mengaktifkannya.
+
 ## 26 September 2026 — main 17f02f9
 
 - Halaman Tentang menampilkan badge sosial tim dengan pratinjau yang dapat diklik, termasuk penyesuaian ukuran.

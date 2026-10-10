@@ -33,11 +33,18 @@ export const reportStatusValidator = v.union(
   v.literal("rejected")
 )
 
+export const maintenanceStatusValidator = v.union(
+  v.literal("scheduled"),
+  v.literal("completed"),
+  v.literal("cancelled")
+)
+
 export const auditEntityValidator = v.union(
   v.literal("account"),
   v.literal("facility"),
   v.literal("reservation"),
-  v.literal("report")
+  v.literal("report"),
+  v.literal("maintenance")
 )
 
 export const actorRoleValidator = v.union(roleValidator, v.literal("system"))

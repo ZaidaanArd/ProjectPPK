@@ -22,6 +22,14 @@ export const publicDocs = [
     category: "Teknis",
   },
   {
+    slug: "flows",
+    file: "FLOWS.md",
+    title: "Alur dan logika sistem",
+    summary:
+      "Diagram setiap alur: akun, reservasi, laporan, jadwal perbaikan, dan hak akses.",
+    category: "Teknis",
+  },
+  {
     slug: "data-and-api",
     file: "DATA-AND-API.md",
     title: "Data dan API",

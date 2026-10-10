@@ -30,3 +30,31 @@ export async function expectScrollUnlocked(page: Page) {
     )
     .toBe(false)
 }
+
+/** Tomorrow's date in WIB as YYYY-MM-DD. */
+export function tomorrowInJakarta() {
+  return new Date(Date.now() + (7 + 24) * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10)
+}
+
+/**
+ * Fills the open "Jadwalkan perbaikan" dialog: picks `date`, clicks the first
+ * and last slot of the range, writes a reason, and saves.
+ */
+export async function scheduleRepair(
+  page: Page,
+  options: { date: string; first: string; last: string; reason: string }
+) {
+  const dialog = page.getByRole("dialog", { name: "Jadwalkan perbaikan" })
+  await dialog.getByLabel("Tanggal").fill(options.date)
+  await dialog
+    .getByRole("button", { name: `${options.first} · Tersedia` })
+    .click()
+  await dialog
+    .getByRole("button", { name: `${options.last} · Tersedia` })
+    .click()
+  await dialog.getByLabel("Alasan perbaikan").fill(options.reason)
+  await dialog.getByRole("button", { name: "Simpan jadwal" }).click()
+  await expect(page.getByText("Perbaikan dijadwalkan")).toBeVisible()
+}

@@ -30,6 +30,11 @@ export type FacilityItem = {
   /** Galeri foto ruangan — opsional biar mock lama tidak jebol. Maks 5 per fasilitas. */
   photos?: FacilityPhoto[]
   status: FacilityStatus
+  /**
+   * Jadwal perbaikan terdekat (berlangsung atau akan datang). Hanya rentang
+   * ini yang terkunci; jam lain tetap bisa dipesan.
+   */
+  perbaikan?: { startAt: number; endAt: number } | null
   /** Waktu dibuat untuk pengurutan "Terbaru" di katalog publik. */
   createdAt?: number
 }

@@ -1,12 +1,16 @@
 import { ConvexError, v } from "convex/values"
 
 import { mutation, query } from "./_generated/server"
+import type { QueryCtx } from "./_generated/server"
+import type { Id } from "./_generated/dataModel"
 import { recordAuditEvent } from "./lib/audit"
 import { requireRole } from "./lib/authz"
 import {
   facilityStatusValidator,
   reservationStatusValidator,
 } from "./lib/validators"
+
+const timeRangeValidator = v.object({ startAt: v.number(), endAt: v.number() })
 
 const publicFacilityValidator = v.object({
   id: v.id("facilities"),
@@ -16,8 +20,20 @@ const publicFacilityValidator = v.object({
   capacity: v.number(),
   description: v.string(),
   status: facilityStatusValidator,
+  // The earliest scheduled repair: ongoing if it has started, else upcoming.
+  nextMaintenance: v.union(timeRangeValidator, v.null()),
   createdAt: v.number(),
 })
+
+async function nextMaintenance(ctx: QueryCtx, facilityId: Id<"facilities">) {
+  const window = await ctx.db
+    .query("maintenanceWindows")
+    .withIndex("by_facility_status_start", (q) =>
+      q.eq("facilityId", facilityId).eq("status", "scheduled")
+    )
+    .first()
+  return window ? { startAt: window.startAt, endAt: window.endAt } : null
+}
 
 const managedFacilityValidator = v.object({
   id: v.id("facilities"),
@@ -46,18 +62,21 @@ export const listPublic = query({
         .collect(),
     ])
 
-    return [...active, ...maintenance]
-      .sort((a, b) => a.name.localeCompare(b.name, "id"))
-      .map((facility) => ({
-        id: facility._id,
-        name: facility.name,
-        type: facility.type,
-        location: facility.location,
-        capacity: facility.capacity,
-        description: facility.description,
-        status: facility.status,
-        createdAt: facility.createdAt,
-      }))
+    return Promise.all(
+      [...active, ...maintenance]
+        .sort((a, b) => a.name.localeCompare(b.name, "id"))
+        .map(async (facility) => ({
+          id: facility._id,
+          name: facility.name,
+          type: facility.type,
+          location: facility.location,
+          capacity: facility.capacity,
+          description: facility.description,
+          status: facility.status,
+          nextMaintenance: await nextMaintenance(ctx, facility._id),
+          createdAt: facility.createdAt,
+        }))
+    )
   },
 })
 
@@ -76,6 +95,7 @@ export const getPublicAvailability = query({
         status: reservationStatusValidator,
       })
     ),
+    maintenance: v.array(timeRangeValidator),
   }),
   handler: async (ctx, args) => {
     const facility = await ctx.db.get("facilities", args.facilityId)
@@ -94,8 +114,21 @@ export const getPublicAvailability = query({
       )
       .collect()
 
+    const maintenance = await ctx.db
+      .query("maintenanceWindows")
+      .withIndex("by_facility_status_start", (q) =>
+        q
+          .eq("facilityId", args.facilityId)
+          .eq("status", "scheduled")
+          .lt("startAt", args.rangeEnd)
+      )
+      .collect()
+
     return {
       facilityStatus: facility.status,
+      maintenance: maintenance
+        .filter((window) => window.endAt > args.rangeStart)
+        .map((window) => ({ startAt: window.startAt, endAt: window.endAt })),
       reservations: reservations
         .filter((reservation) => reservation.endAt > args.rangeStart)
         .map((reservation) => ({
@@ -237,6 +270,14 @@ export const setStatus = mutation({
 
     if (!facility) {
       throw new ConvexError("Fasilitas tidak ditemukan")
+    }
+
+    // Repairs are time-bound maintenance windows now; the old whole-facility
+    // "maintenance" status can only be cleared, not set.
+    if (args.status === "maintenance") {
+      throw new ConvexError(
+        "Gunakan Jadwal perbaikan untuk menutup fasilitas selama perbaikan"
+      )
     }
 
     await ctx.db.patch("facilities", facility._id, {

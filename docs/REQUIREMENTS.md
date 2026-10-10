@@ -58,7 +58,7 @@ target dicatat. Merge ke main saja tidak mengubah status menjadi ✅.
 | US-09 |   🧪   | Petugas menyetujui/menolak reservasi; sistem mencegah dua reservasi approved pada fasilitas dan jadwal yang sama. |
 | US-10 |   🧪   | Petugas membatalkan reservasi approved dalam kondisi mendesak dengan alasan pembatalan.                           |
 | US-11 |   🧪   | Petugas memproses laporan, memperbarui status, dan menambahkan catatan resolusi ketika ditutup.                   |
-| US-12 |   🧪   | Petugas menandai fasilitas dalam perbaikan lalu mengaktifkannya kembali setelah selesai.                          |
+| US-12 |   🧪   | Petugas menjadwalkan perbaikan fasilitas di slot kosong; selama perbaikan slot itu tidak dapat direservasi.       |
 | US-13 |   🧪   | Admin mendaftarkan akun petugas secara langsung.                                                                  |
 | US-14 |   🧪   | Admin mendaftarkan akun pengguna secara langsung tanpa registrasi mandiri.                                        |
 | US-15 |   🧪   | Admin memverifikasi atau menolak akun hasil registrasi mandiri sebelum dapat login.                               |

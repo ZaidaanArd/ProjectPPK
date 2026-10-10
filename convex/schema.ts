@@ -6,6 +6,7 @@ import {
   actorRoleValidator,
   auditEntityValidator,
   facilityStatusValidator,
+  maintenanceStatusValidator,
   reportStatusValidator,
   reservationStatusValidator,
   roleValidator,
@@ -84,6 +85,25 @@ export default defineSchema({
     .index("by_facility_and_status", ["facilityId", "status"])
     .index("by_status", ["status"])
     .index("by_created", ["createdAt"]),
+
+  // Scheduled repairs. A window blocks reservations for its time range only;
+  // it is completed by a scheduled job at endAt or early by staff.
+  maintenanceWindows: defineTable({
+    facilityId: v.id("facilities"),
+    reportId: v.optional(v.id("reports")),
+    reason: v.string(),
+    startAt: v.number(),
+    endAt: v.number(),
+    status: maintenanceStatusValidator,
+    createdBy: v.id("profiles"),
+    closedBy: v.optional(v.id("profiles")),
+    closedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_facility_status_start", ["facilityId", "status", "startAt"])
+    .index("by_status_start", ["status", "startAt"])
+    .index("by_report", ["reportId"]),
 
   auditEvents: defineTable({
     entityType: auditEntityValidator,

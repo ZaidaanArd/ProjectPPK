@@ -4,7 +4,12 @@ import type { MutationCtx } from "../_generated/server"
 export async function recordAuditEvent(
   ctx: MutationCtx,
   event: {
-    entityType: "account" | "facility" | "reservation" | "report"
+    entityType:
+      | "account"
+      | "facility"
+      | "reservation"
+      | "report"
+      | "maintenance"
     entityId: string
     action: string
     fromStatus?: string

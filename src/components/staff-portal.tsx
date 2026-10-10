@@ -13,6 +13,7 @@ import {
   IconFileAlert,
   IconProgress,
   IconAlertTriangle,
+  IconTool,
 } from "@tabler/icons-react"
 
 import { api } from "../../convex/_generated/api"
@@ -26,6 +27,10 @@ import {
   DashboardSectionHeader,
   DashboardSkeletonRows,
 } from "@/components/dashboard-sections"
+import {
+  ScheduleMaintenanceDialog,
+  formatWindow,
+} from "@/components/maintenance-portal"
 import { PortalPageHeader } from "@/components/portal-page-header"
 import { ReportTicket, ReservationTicket } from "@/components/portal-cards"
 import { PortalListSkeleton } from "@/components/portal-skeletons"
@@ -42,7 +47,6 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -967,7 +971,11 @@ export function StaffReports({
   const reports = useAuthenticatedQuery(api.reports.listQueue, {})
   const updateStatus = useMutation(api.reports.updateStatus)
   const [notes, setNotes] = useState<Record<string, string>>({})
-  const [maintenance, setMaintenance] = useState<Record<string, boolean>>({})
+  const [schedulingFor, setSchedulingFor] = useState<{
+    reportId: Id<"reports">
+    facilityId: string
+    facilityName: string
+  } | null>(null)
   const [message, setMessage] = useState("")
   const [success, setSuccess] = useState("")
   const [activeTab, setActiveTab] = useState<ReportTab>(initialTab)
@@ -1036,8 +1044,7 @@ export function StaffReports({
 
   async function execute(
     reportId: Id<"reports">,
-    status: "in_progress" | "resolved" | "rejected",
-    maintenanceOverride?: boolean
+    status: "in_progress" | "resolved" | "rejected"
   ) {
     const report = reports?.find((item) => item.id === reportId)
     const note = (notes[reportId] ?? report?.resolutionNote ?? "").trim()
@@ -1046,13 +1053,14 @@ export function StaffReports({
         reportId,
         status,
         note,
-        facilityMaintenance: maintenanceOverride ?? maintenance[reportId],
+        // Reopens a facility still carrying the legacy whole-facility status.
+        facilityMaintenance: status === "in_progress" ? undefined : false,
       })
       const successText =
         status === "in_progress"
           ? "Laporan mulai ditangani."
           : status === "resolved"
-            ? "Laporan ditandai selesai dan fasilitas diaktifkan kembali."
+            ? "Laporan ditandai selesai. Perbaikan terkait diakhiri."
             : "Laporan ditolak."
       setSuccess(successText)
       toast.success(successText)
@@ -1080,8 +1088,7 @@ export function StaffReports({
       return
     }
     if (status === "in_progress") {
-      // Starting work puts the facility under maintenance unless unticked.
-      void execute(reportId, status, maintenance[reportId] ?? true)
+      void execute(reportId, status)
       return
     }
     setConfirmAction({ reportId, status })
@@ -1090,15 +1097,7 @@ export function StaffReports({
   function confirmProcess() {
     if (!confirmAction) return
     setIsSubmitting(true)
-    const report = reports?.find((item) => item.id === confirmAction.reportId)
-    // Closing a report that was being handled reactivates its facility.
-    void execute(
-      confirmAction.reportId,
-      confirmAction.status,
-      confirmAction.status === "resolved" || report?.status === "in_progress"
-        ? false
-        : undefined
-    )
+    void execute(confirmAction.reportId, confirmAction.status)
   }
 
   return (
@@ -1265,26 +1264,50 @@ export function StaffReports({
                               }
                             />
                           </div>
-                          <label
-                            htmlFor={`maintenance-${report.id}`}
-                            className="flex items-center gap-2 text-sm"
-                          >
-                            <Checkbox
-                              id={`maintenance-${report.id}`}
-                              checked={maintenance[report.id] ?? true}
-                              onCheckedChange={(checked) =>
-                                setMaintenance((current) => ({
-                                  ...current,
-                                  [report.id]: checked === true,
-                                }))
-                              }
-                            />
-                            Tandai fasilitas dalam perbaikan
-                          </label>
-                          <p className="-mt-1 text-xs text-muted-foreground">
-                            Otomatis dicentang saat laporan mulai ditangani —
-                            hapus centang bila fasilitas masih bisa dipakai.
-                          </p>
+                          <div className="space-y-2 rounded-2xl border border-amber-500/25 bg-amber-500/5 p-3">
+                            <p className="text-xs text-muted-foreground">
+                              Perlu menutup ruang? Jadwalkan perbaikan di waktu
+                              yang kosong; reservasi yang sudah ada tetap
+                              berjalan.
+                            </p>
+                            {report.maintenance
+                              .filter((item) => item.status === "scheduled")
+                              .map((item) => (
+                                <p
+                                  key={item.id}
+                                  className="flex items-center gap-1.5 text-xs font-medium text-amber-800 dark:text-amber-200"
+                                >
+                                  <IconTool size={14} aria-hidden="true" />
+                                  Perbaikan{" "}
+                                  {formatWindow(item.startAt, item.endAt)}
+                                </p>
+                              ))}
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  setSchedulingFor({
+                                    reportId: report.id,
+                                    facilityId: report.facilityId,
+                                    facilityName: report.facilityName,
+                                  })
+                                }
+                              >
+                                <IconTool size={15} aria-hidden="true" />
+                                Jadwalkan perbaikan
+                              </Button>
+                              <Link
+                                href="/staff/maintenance"
+                                className={buttonVariants({
+                                  size: "sm",
+                                  variant: "ghost",
+                                })}
+                              >
+                                Lihat jadwal
+                              </Link>
+                            </div>
+                          </div>
                           <div className="flex flex-wrap gap-2">
                             {report.status === "pending" && (
                               <Button
@@ -1304,7 +1327,7 @@ export function StaffReports({
                                   requestProcess(report.id, "resolved")
                                 }
                               >
-                                Selesaikan + aktifkan fasilitas
+                                Selesaikan laporan
                               </Button>
                             )}
                             <Button
@@ -1327,6 +1350,13 @@ export function StaffReports({
           )}
         </TabsPanel>
       </Tabs>
+      <ScheduleMaintenanceDialog
+        open={schedulingFor !== null}
+        onClose={() => setSchedulingFor(null)}
+        facilityId={schedulingFor?.facilityId}
+        facilityName={schedulingFor?.facilityName}
+        reportId={schedulingFor?.reportId}
+      />
       <AlertDialog
         open={confirmAction !== null}
         onOpenChange={(open) => {
@@ -1343,7 +1373,7 @@ export function StaffReports({
             <AlertDialogDescription>
               {confirmAction?.status === "rejected"
                 ? `Laporan untuk ${confirmReport?.facilityName ?? "fasilitas ini"} akan ditolak dan tidak dapat diubah lagi.`
-                : `Laporan untuk ${confirmReport?.facilityName ?? "fasilitas ini"} akan ditandai selesai dan fasilitas diaktifkan kembali.`}
+                : `Laporan untuk ${confirmReport?.facilityName ?? "fasilitas ini"} akan ditandai selesai. Perbaikan yang terkait diakhiri dan slotnya terbuka lagi.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {confirmNote && (

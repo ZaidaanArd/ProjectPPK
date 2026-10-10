@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react"
 import {
+  IconArrowLeft,
   IconArrowRight,
   IconCheck,
   IconDatabase,
@@ -29,6 +30,8 @@ import {
   useReducedMotion,
 } from "motion/react"
 
+import { MermaidDiagram } from "@/components/mermaid-diagram"
+import type { FlowDoc } from "@/lib/flow-docs"
 import { cn } from "@/lib/utils"
 
 /** Recorded flow and YouTube id per user story. */
@@ -120,13 +123,14 @@ const storyVideos: { id: string; flow: string; youtube: string }[] = [
   },
 ]
 
-type TabKey = "arsitektur" | "data" | "pengujian" | "keamanan"
+type TabKey = "arsitektur" | "data" | "pengujian" | "keamanan" | "alur"
 
 const tabs: { key: TabKey; label: string; hint: string }[] = [
   { key: "arsitektur", label: "Arsitektur", hint: "Alur permintaan" },
   { key: "data", label: "Data", hint: "Tabel & status" },
   { key: "pengujian", label: "Pengujian", hint: "Test & UAT" },
   { key: "keamanan", label: "Keamanan", hint: "Peran & akses" },
+  { key: "alur", label: "Alur logika", hint: "Semua diagram" },
 ]
 
 /** Advances an index on an interval while `running`. */
@@ -965,7 +969,131 @@ function SecurityPanel({ live, reduced }: { live: boolean; reduced: boolean }) {
 /* Explorer                                                            */
 /* ------------------------------------------------------------------ */
 
-export function DocsExplorer({ qaSheetUrl }: { qaSheetUrl: string }) {
+/* ------------------------------------------------------------------ */
+/* Alur logika                                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Every diagram from docs/FLOWS.md, one at a time, grouped by topic, with
+ * previous/next for walking through them in a presentation.
+ */
+function FlowsPanel({ flows, active }: { flows: FlowDoc[]; active: boolean }) {
+  const [index, setIndex] = useState(0)
+  const flow = flows[index]
+  const groups = flows.reduce<{ name: string; items: number[] }[]>(
+    (list, item, position) => {
+      const last = list.at(-1)
+      if (last?.name === item.group) last.items.push(position)
+      else list.push({ name: item.group, items: [position] })
+      return list
+    },
+    []
+  )
+  if (!flow) return null
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[230px_minmax(0,1fr)]">
+      <nav aria-label="Daftar alur" className="space-y-4">
+        {groups.map((group) => (
+          <div key={group.name}>
+            <p className="mb-1.5 text-[11px] font-bold tracking-[0.12em] text-pink-700 uppercase dark:text-pink-300">
+              {group.name}
+            </p>
+            <ul className="flex flex-wrap gap-1.5 lg:flex-col">
+              {group.items.map((position) => {
+                const item = flows[position]!
+                const selected = position === index
+                return (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => setIndex(position)}
+                      className={cn(
+                        "w-full rounded-xl border px-3 py-1.5 text-left text-xs font-semibold transition-colors",
+                        selected
+                          ? "border-pink-400 bg-pink-50 text-pink-800 dark:bg-pink-400/15 dark:text-pink-100"
+                          : "border-border/70 bg-background hover:border-pink-300 hover:text-pink-700 dark:hover:text-pink-300"
+                      )}
+                    >
+                      {item.title}
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        ))}
+      </nav>
+
+      <section aria-live="polite" className="min-w-0 space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="max-w-2xl">
+            <p className="text-xs font-semibold text-muted-foreground">
+              {flow.group} · {index + 1}/{flows.length}
+            </p>
+            <h3 className="mt-1 font-heading text-xl font-bold">
+              {flow.title}
+            </h3>
+            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+              {flow.summary}
+            </p>
+          </div>
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              aria-label="Alur sebelumnya"
+              disabled={index === 0}
+              onClick={() => setIndex(index - 1)}
+              className="rounded-full border border-border/70 p-2 transition-colors hover:border-pink-400 disabled:opacity-40"
+            >
+              <IconArrowLeft size={16} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              aria-label="Alur berikutnya"
+              disabled={index === flows.length - 1}
+              onClick={() => setIndex(index + 1)}
+              className="rounded-full border border-border/70 p-2 transition-colors hover:border-pink-400 disabled:opacity-40"
+            >
+              <IconArrowRight size={16} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+        {active && (
+          <MermaidDiagram
+            key={flow.id}
+            chart={flow.chart}
+            label={`Diagram: ${flow.title}`}
+          />
+        )}
+        {flow.points.length > 0 && (
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {flow.points.map((point) => (
+              <li key={point} className="flex items-start gap-2 text-sm">
+                <IconCheck
+                  size={16}
+                  aria-hidden="true"
+                  className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+                />
+                <span>{point}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <DocLink href="/docs/flows">Buka semua alur dalam satu halaman</DocLink>
+      </section>
+    </div>
+  )
+}
+
+export function DocsExplorer({
+  qaSheetUrl,
+  flows,
+}: {
+  qaSheetUrl: string
+  flows: FlowDoc[]
+}) {
   const root = useRef<HTMLDivElement>(null)
   const inView = useInView(root, { amount: 0.25 })
   const reduced = Boolean(useReducedMotion())
@@ -1002,6 +1130,7 @@ export function DocsExplorer({ qaSheetUrl }: { qaSheetUrl: string }) {
     keamanan: (
       <SecurityPanel live={inView && active === "keamanan"} reduced={reduced} />
     ),
+    alur: <FlowsPanel flows={flows} active={active === "alur"} />,
   }
 
   return (
@@ -1013,7 +1142,7 @@ export function DocsExplorer({ qaSheetUrl }: { qaSheetUrl: string }) {
         <div
           role="tablist"
           aria-label="Topik dokumentasi"
-          className="grid grid-cols-2 gap-1 border-b border-pink-100 bg-pink-50/50 p-2 sm:grid-cols-4 dark:border-white/10 dark:bg-white/[0.02]"
+          className="grid grid-cols-2 gap-1 border-b border-pink-100 bg-pink-50/50 p-2 sm:grid-cols-3 lg:grid-cols-5 dark:border-white/10 dark:bg-white/[0.02]"
         >
           {tabs.map((tab, index) => {
             const selected = active === tab.key

@@ -22,7 +22,7 @@ const modules = (
 ).glob("./**/*.ts")
 
 describe("report handling", () => {
-  it("starts without a note, requires a completion note, and reactivates the facility", async () => {
+  it("starts without a note, requires a completion note, and reopens a facility left in legacy maintenance", async () => {
     const t = convexTest(schema, modules)
     const { reportId, facilityId } = await t.run(async (ctx) => {
       const now = Date.now()
@@ -62,6 +62,8 @@ describe("report handling", () => {
       return { reportId, facilityId }
     })
     const officer = t.withIdentity({ subject: "report-officer" })
+    // Old clients still send facilityMaintenance: true; it no longer closes
+    // the whole facility (repairs are scheduled windows now).
     await officer.mutation(api.reports.updateStatus, {
       reportId,
       status: "in_progress",
@@ -71,8 +73,12 @@ describe("report handling", () => {
     expect(
       await t.run((ctx) => ctx.db.get("facilities", facilityId))
     ).toMatchObject({
-      status: "maintenance",
+      status: "active",
     })
+    // A facility still carrying the legacy status is reopened on resolve.
+    await t.run((ctx) =>
+      ctx.db.patch("facilities", facilityId, { status: "maintenance" })
+    )
     await expect(
       officer.mutation(api.reports.updateStatus, {
         reportId,

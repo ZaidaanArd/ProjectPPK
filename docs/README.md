@@ -8,6 +8,7 @@ Mulai dari [panduan pengguna](./USER-GUIDE.md) untuk memakai aplikasi, atau [run
 | [UAT / Acceptance Report](./UAT.md)                | Skenario penerimaan US-01–US-17 dan tempat mencatat hasil        |
 | [Test Report](./TEST-REPORT.md)                    | Hasil pengujian yang benar-benar dijalankan dan gap yang tersisa |
 | [Deployment / Operations Runbook](./OPERATIONS.md) | Setup, rilis, health check, insiden, dan rollback                |
+| [Alur dan logika sistem](./FLOWS.md)               | Diagram akun, reservasi, laporan, perbaikan, dan hak akses       |
 | [Release Notes / Changelog](./CHANGELOG.md)        | Ringkasan perubahan berdasarkan riwayat Git                      |
 | [Security & Privacy Notes](./SECURITY-PRIVACY.md)  | Kontrol akses, data yang disimpan, dan batasan yang diketahui    |
 | [Architecture Decision Records](./adr/README.md)   | Alasan keputusan teknis utama                                    |

@@ -1,9 +1,13 @@
 import { ConvexError, v } from "convex/values"
 
 import { mutation, query } from "./_generated/server"
+import { closeWindow } from "./maintenance"
 import { recordAuditEvent } from "./lib/audit"
 import { requireRole } from "./lib/authz"
-import { reportStatusValidator } from "./lib/validators"
+import {
+  maintenanceStatusValidator,
+  reportStatusValidator,
+} from "./lib/validators"
 import { assertReportTransition } from "./lib/workflows"
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024
@@ -144,6 +148,15 @@ export const listQueue = query({
       photoUrl: v.union(v.null(), v.string()),
       status: reportStatusValidator,
       resolutionNote: v.optional(v.string()),
+      // Repairs scheduled from this report, newest first.
+      maintenance: v.array(
+        v.object({
+          id: v.id("maintenanceWindows"),
+          startAt: v.number(),
+          endAt: v.number(),
+          status: maintenanceStatusValidator,
+        })
+      ),
       createdAt: v.number(),
       updatedAt: v.number(),
     })
@@ -154,12 +167,17 @@ export const listQueue = query({
 
     return Promise.all(
       reports.map(async (report) => {
-        const [facility, reporter, photoUrl] = await Promise.all([
+        const [facility, reporter, photoUrl, windows] = await Promise.all([
           ctx.db.get("facilities", report.facilityId),
           ctx.db.get("profiles", report.reporterId),
           report.photoStorageId
             ? ctx.storage.getUrl(report.photoStorageId)
             : Promise.resolve(null),
+          ctx.db
+            .query("maintenanceWindows")
+            .withIndex("by_report", (q) => q.eq("reportId", report._id))
+            .order("desc")
+            .collect(),
         ])
         return {
           id: report._id,
@@ -172,6 +190,12 @@ export const listQueue = query({
           photoUrl,
           status: report.status,
           resolutionNote: report.resolutionNote,
+          maintenance: windows.map((window) => ({
+            id: window._id,
+            startAt: window.startAt,
+            endAt: window.endAt,
+            status: window.status,
+          })),
           createdAt: report.createdAt,
           updatedAt: report.updatedAt,
         }
@@ -189,6 +213,8 @@ export const updateStatus = mutation({
       v.literal("rejected")
     ),
     note: v.string(),
+    // Legacy: older clients toggled a whole-facility maintenance status here.
+    // Only `false` is still honoured, to reopen a facility left in that state.
     facilityMaintenance: v.optional(v.boolean()),
   },
   returns: v.null(),
@@ -218,12 +244,25 @@ export const updateStatus = mutation({
       updatedAt: now,
     })
 
-    if (args.facilityMaintenance !== undefined) {
+    // Closing a report ends its repairs: started ones complete now, future
+    // ones are cancelled, so their slots open again.
+    if (args.status === "resolved" || args.status === "rejected") {
+      const windows = await ctx.db
+        .query("maintenanceWindows")
+        .withIndex("by_report", (q) => q.eq("reportId", report._id))
+        .collect()
+      for (const window of windows) {
+        if (window.status === "scheduled") {
+          await closeWindow(ctx, window, actor, `Laporan ${args.status}`)
+        }
+      }
+    }
+
+    if (args.facilityMaintenance === false) {
       const facility = await ctx.db.get("facilities", report.facilityId)
-      if (facility) {
-        const nextStatus = args.facilityMaintenance ? "maintenance" : "active"
+      if (facility?.status === "maintenance") {
         await ctx.db.patch("facilities", facility._id, {
-          status: nextStatus,
+          status: "active",
           updatedAt: now,
         })
         await recordAuditEvent(ctx, {
@@ -231,7 +270,7 @@ export const updateStatus = mutation({
           entityId: facility._id,
           action: "facility.status_changed_from_report",
           fromStatus: facility.status,
-          toStatus: nextStatus,
+          toStatus: "active",
           actorId: actor._id,
           actorRole: actor.role,
           note: note || undefined,

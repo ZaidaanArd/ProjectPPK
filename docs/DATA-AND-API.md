@@ -10,6 +10,8 @@ erDiagram
   PROFILE ||--o{ AUDIT_EVENT : acts
   FACILITY ||--o{ RESERVATION : receives
   FACILITY ||--o{ REPORT : receives
+  FACILITY ||--o{ MAINTENANCE_WINDOW : closes
+  REPORT |o--o{ MAINTENANCE_WINDOW : triggers
 
   PROFILE {
     string authUserId
@@ -37,6 +39,13 @@ erDiagram
     id photoStorageId
     string status
   }
+  MAINTENANCE_WINDOW {
+    id facilityId
+    id reportId
+    number startAt
+    number endAt
+    string status
+  }
 ```
 
 Schema aktual ada di `convex/schema.ts`. Better Auth menyimpan user, credential, session, dan JWKS di isolated Convex component.
@@ -50,6 +59,9 @@ Schema aktual ada di `convex/schema.ts`. Better Auth menyimpan user, credential,
 | Facility    | `active`, `maintenance`, `inactive`              |
 | Reservation | `pending`, `approved`, `rejected`, `cancelled`   |
 | Report      | `pending`, `in_progress`, `resolved`, `rejected` |
+| Maintenance | `scheduled`, `completed`, `cancelled`            |
+
+Status fasilitas `maintenance` adalah bentuk lama yang menutup seluruh fasilitas. Status ini tidak bisa dipasang lagi; perbaikan kini memakai jadwal perbaikan per rentang waktu.
 
 ## Public functions
 
@@ -63,6 +75,8 @@ Schema aktual ada di `convex/schema.ts`. Better Auth menyimpan user, credential,
 | `reservations` | `listQueue`, `decide`, `cancelByStaff`         | Officer/admin  | Antrean dan keputusan      |
 | `reports`      | `generateUploadUrl`, `create`, `listMine`      | User           | Upload dan laporan sendiri |
 | `reports`      | `listQueue`, `updateStatus`                    | Officer/admin  | Penanganan laporan         |
+| `maintenance`  | `listManaged`, `agenda`                        | Officer/admin  | Jadwal dan slot terisi     |
+| `maintenance`  | `schedule`, `extend`, `close`                  | Officer/admin  | Jadwal perbaikan           |
 | `admin`        | account functions, `analytics`, `exportData`   | Admin          | Administrasi dan rekap     |
 
 Next.js Route Handlers hanya dipakai untuk:
@@ -84,6 +98,15 @@ Next.js Route Handlers hanya dipakai untuk:
 - Pengguna dapat membatalkan minimal 1 jam sebelum mulai.
 - Pengajuan baru berstatus `pending`; belum memblokir slot.
 - Mutation approval mengecek overlap terhadap reservasi approved pada index `by_facility_status_start`.
+- Reservasi tidak boleh beririsan dengan jadwal perbaikan `scheduled`.
+
+## Aturan perbaikan
+
+- Perbaikan hanya boleh di waktu kosong: tidak beririsan dengan reservasi `approved`, reservasi `pending`, atau jadwal perbaikan lain.
+- Kelipatan 30 menit, tidak dimulai sebelum slot sekarang, maksimal 7 hari.
+- Jam selesai wajib; scheduled function `maintenance.expire` menutup jadwal di `endAt`. `close` mengakhiri jadwal yang sedang berjalan atau membatalkan yang belum dimulai. `extend` hanya memeriksa waktu tambahan.
+- Menyelesaikan atau menolak laporan menutup jadwal perbaikan yang terhubung dengannya.
+- Diagram lengkap ada di [Alur dan logika sistem](./FLOWS.md).
 
 ## Upload
 

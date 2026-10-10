@@ -1,7 +1,7 @@
 import path from "node:path"
 import { expect, test, type Page } from "@playwright/test"
 
-import { enterDemo } from "./helpers"
+import { enterDemo, scheduleRepair, tomorrowInJakarta } from "./helpers"
 
 // One walkthrough per user story (docs/REQUIREMENTS.md). With
 // PLAYWRIGHT_SAVE_VIDEOS=1 each run is recorded to docs/videos/US-XX.webm.
@@ -361,36 +361,42 @@ test("US-11: petugas memproses laporan dan menutupnya dengan catatan", async ({
   await beat(page, 1500)
 })
 
-test("US-12: petugas menandai fasilitas dalam perbaikan lalu mengaktifkannya", async ({
+test("US-12: petugas menjadwalkan perbaikan di slot kosong lalu menyelesaikannya", async ({
   page,
 }) => {
   await enterDemo(page, "Petugas")
   await page.goto("/staff/reports")
-  await page
-    .getByRole("checkbox", { name: "Tandai fasilitas dalam perbaikan" })
-    .check()
-  await beat(page)
   await page.getByRole("button", { name: "Mulai tangani" }).click()
   await expect(page.getByRole("status")).toContainText(
     "Laporan mulai ditangani"
   )
+  await page.getByRole("tab", { name: /Sedang ditangani/ }).click()
+  await beat(page)
+  await page.getByRole("button", { name: "Jadwalkan perbaikan" }).click()
+  await beat(page)
+  await scheduleRepair(page, {
+    date: tomorrowInJakarta(),
+    first: "08.00",
+    last: "09.30",
+    reason: "Ganti PC yang tidak menyala",
+  })
+  await beat(page)
 
   const lab = page
     .getByRole("list", { name: "Daftar fasilitas" })
     .locator("li")
     .filter({ hasText: "Lab Komputer 3" })
   await page.goto("/facilities")
-  await expect(lab).toContainText("Dalam Perbaikan")
-  await lab.scrollIntoViewIfNeeded()
+  await expect(lab).toContainText("Perbaikan terjadwal")
+  // The catalog re-renders while demo data hydrates; retry the scroll.
+  await expect(() => lab.scrollIntoViewIfNeeded()).toPass()
   await beat(page, 1200)
 
   await page.goto("/staff/reports?tab=ditangani")
   await page
     .getByRole("textbox", { name: "Catatan penanganan" })
     .fill("Komputer diperbaiki")
-  await page
-    .getByRole("button", { name: "Selesaikan + aktifkan fasilitas" })
-    .click()
+  await page.getByRole("button", { name: "Selesaikan laporan" }).click()
   await page.getByRole("button", { name: "Ya, selesaikan" }).click()
   await expect(page.getByRole("status")).toContainText(
     "Laporan ditandai selesai"
@@ -398,8 +404,8 @@ test("US-12: petugas menandai fasilitas dalam perbaikan lalu mengaktifkannya", a
   await beat(page)
 
   await page.goto("/facilities")
-  await expect(lab).toContainText("Aktif")
-  await lab.scrollIntoViewIfNeeded()
+  await expect(lab).not.toContainText("Perbaikan terjadwal")
+  await expect(() => lab.scrollIntoViewIfNeeded()).toPass()
   await beat(page, 1500)
 })
 

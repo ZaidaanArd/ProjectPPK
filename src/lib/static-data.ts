@@ -2,7 +2,13 @@
 
 import { useEffect, useSyncExternalStore } from "react"
 import {
+  assertMaintenanceSlotFree,
+  assertNoMaintenanceOverlap,
+  validateMaintenanceWindow,
+} from "../../convex/lib/maintenance"
+import {
   AUTO_REJECTION_NOTE,
+  SLOT_MS,
   overlaps,
   validateReservationWindow,
 } from "../../convex/lib/reservationTime"
@@ -66,12 +72,28 @@ type Report = {
   createdAt: number
   updatedAt: number
 }
+type MaintenanceStatus = "scheduled" | "completed" | "cancelled"
+type MaintenanceWindow = {
+  id: string
+  facilityId: string
+  reportId?: string
+  reason: string
+  startAt: number
+  endAt: number
+  status: MaintenanceStatus
+  createdBy: string
+  closedAt?: number
+  createdAt: number
+  updatedAt: number
+}
 export type StaticData = {
   version: 1
   accounts: Account[]
   facilities: Facility[]
   reservations: Reservation[]
   reports: Report[]
+  // Missing in browser data saved before repairs were scheduled.
+  maintenance?: MaintenanceWindow[]
 }
 
 const storageKey = "sthana:static-data:v1"
@@ -86,6 +108,7 @@ const todayDate = new Date(seedTime + 7 * 60 * 60 * 1000)
   .toISOString()
   .slice(0, 10)
 const todaySlot = (time: string) => Date.parse(`${todayDate}T${time}:00+07:00`)
+const currentSlot = Math.floor(seedTime / SLOT_MS) * SLOT_MS
 
 export const initialStaticData: StaticData = {
   version: 1,
@@ -180,8 +203,8 @@ export const initialStaticData: StaticData = {
       type: "Laboratorium",
       location: "Gedung Desain · Lantai 2",
       capacity: 25,
-      description: "Studio produksi audio visual yang sedang dalam perawatan.",
-      status: "maintenance",
+      description: "Studio produksi audio visual dan kegiatan kreatif.",
+      status: "active",
       createdAt: seedTime,
       updatedAt: seedTime,
     },
@@ -240,6 +263,19 @@ export const initialStaticData: StaticData = {
       category: "Perangkat",
       description: "Satu komputer tidak menyala.",
       status: "pending",
+      createdAt: seedTime,
+      updatedAt: seedTime,
+    },
+  ],
+  maintenance: [
+    {
+      id: "demo-maintenance-studio",
+      facilityId: "demo-studio",
+      reason: "Perawatan peralatan audio dan pencahayaan studio.",
+      startAt: currentSlot,
+      endAt: currentSlot + 2 * 24 * 60 * 60 * 1000,
+      status: "scheduled",
+      createdBy: "demo-officer",
       createdAt: seedTime,
       updatedAt: seedTime,
     },
@@ -307,6 +343,76 @@ function rejectPendingConflicts(reservations: Reservation[]) {
     return item
   })
   return changed ? next : null
+}
+
+/** Windows whose end has passed count as completed, like the server's job. */
+function windowStatus(window: MaintenanceWindow): MaintenanceStatus {
+  return window.status === "scheduled" && window.endAt <= Date.now()
+    ? "completed"
+    : window.status
+}
+function maintenanceWindows() {
+  return state.maintenance ?? []
+}
+function scheduledWindows(facilityId: string, startAt: number, endAt: number) {
+  return maintenanceWindows().filter(
+    (item) =>
+      item.facilityId === facilityId &&
+      windowStatus(item) === "scheduled" &&
+      overlaps(item.startAt, item.endAt, startAt, endAt)
+  )
+}
+function reservationsIn(
+  facilityId: string,
+  status: "pending" | "approved",
+  startAt: number,
+  endAt: number
+) {
+  return state.reservations.filter(
+    (item) =>
+      item.facilityId === facilityId &&
+      item.status === status &&
+      overlaps(item.startAt, item.endAt, startAt, endAt)
+  )
+}
+function assertWindowFree(
+  facilityId: string,
+  range: { startAt: number; endAt: number },
+  ignoreId?: string
+) {
+  assertMaintenanceSlotFree(range, {
+    approved: reservationsIn(
+      facilityId,
+      "approved",
+      range.startAt,
+      range.endAt
+    ),
+    pending: reservationsIn(facilityId, "pending", range.startAt, range.endAt),
+    maintenance: scheduledWindows(
+      facilityId,
+      range.startAt,
+      range.endAt
+    ).filter((item) => item.id !== ignoreId),
+  })
+}
+/** Completes a started window now, or cancels one that has not started. */
+function closeWindowNow(
+  window: MaintenanceWindow,
+  now: number
+): MaintenanceWindow {
+  const started = window.startAt <= now
+  return {
+    ...window,
+    status: started ? "completed" : "cancelled",
+    endAt: started ? Math.min(window.endAt, now) : window.endAt,
+    closedAt: now,
+    updatedAt: now,
+  }
+}
+function setMaintenance(
+  update: (items: MaintenanceWindow[]) => MaintenanceWindow[]
+) {
+  replace({ ...state, maintenance: update(maintenanceWindows()) })
 }
 
 export async function hydrateStaticData() {
@@ -469,16 +575,27 @@ export function staticQuery(name: string, args: unknown): unknown {
             description,
             status,
             createdAt,
-          }) => ({
-            id,
-            name,
-            type,
-            location,
-            capacity,
-            description,
-            status,
-            createdAt,
-          })
+          }) => {
+            const next = maintenanceWindows()
+              .filter(
+                (item) =>
+                  item.facilityId === id && windowStatus(item) === "scheduled"
+              )
+              .sort((a, b) => a.startAt - b.startAt)[0]
+            return {
+              id,
+              name,
+              type,
+              location,
+              capacity,
+              description,
+              status,
+              nextMaintenance: next
+                ? { startAt: next.startAt, endAt: next.endAt }
+                : null,
+              createdAt,
+            }
+          }
         )
     case "facilities:getPublicAvailability": {
       const id = value(args, "facilityId")
@@ -496,6 +613,9 @@ export function staticQuery(name: string, args: unknown): unknown {
               r.endAt > start
           )
           .map(({ startAt, endAt, status }) => ({ startAt, endAt, status })),
+        maintenance: scheduledWindows(id, start, end).map(
+          ({ startAt, endAt }) => ({ startAt, endAt })
+        ),
       }
     }
     case "facilities:listManaged":
@@ -537,8 +657,46 @@ export function staticQuery(name: string, args: unknown): unknown {
             "Pengguna dihapus",
           reporterEmail:
             state.accounts.find((a) => a.id === r.reporterId)?.email ?? "-",
+          maintenance: maintenanceWindows()
+            .filter((item) => item.reportId === r.id)
+            .reverse()
+            .map((item) => ({
+              id: item.id,
+              startAt: item.startAt,
+              endAt: item.endAt,
+              status: windowStatus(item),
+            })),
         }))
         .reverse()
+    case "maintenance:listManaged":
+      return maintenanceWindows()
+        .map((item) => ({
+          ...item,
+          status: windowStatus(item),
+          facilityName: facilityName(item.facilityId),
+          reportCategory: state.reports.find((r) => r.id === item.reportId)
+            ?.category,
+          createdByName:
+            state.accounts.find((a) => a.id === item.createdBy)?.name ??
+            "Petugas",
+        }))
+        .reverse()
+    case "maintenance:agenda": {
+      const id = value(args, "facilityId")
+      const start = Number(field(args, "rangeStart"))
+      const end = Number(field(args, "rangeEnd"))
+      return {
+        reservations: [
+          ...reservationsIn(id, "approved", start, end),
+          ...reservationsIn(id, "pending", start, end),
+        ].map(({ startAt, endAt, status }) => ({ startAt, endAt, status })),
+        maintenance: scheduledWindows(id, start, end).map((item) => ({
+          id: item.id,
+          startAt: item.startAt,
+          endAt: item.endAt,
+        })),
+      }
+    }
     case "admin:listAccounts":
       return state.accounts
         .filter(
@@ -633,6 +791,10 @@ export async function staticMutation(
         )
       )
         throw new Error("Slot sudah digunakan oleh reservasi lain")
+      assertNoMaintenanceOverlap(
+        { startAt, endAt },
+        scheduledWindows(facilityId, startAt, endAt)
+      )
       const id = `demo-reservation-${crypto.randomUUID()}`
       change<Reservation>("reservations", (items) => [
         ...items,
@@ -672,10 +834,15 @@ export async function staticMutation(
         item = required(state.reservations, id),
         decision = value(args, "decision") as "approved" | "rejected"
       if (item.status !== "pending") throw new Error("Reservasi sudah diproses")
-      if (decision === "approved")
+      if (decision === "approved") {
         assertFacilityCanApprove(
           required(state.facilities, item.facilityId).status
         )
+        assertNoMaintenanceOverlap(
+          item,
+          scheduledWindows(item.facilityId, item.startAt, item.endAt)
+        )
+      }
       const alreadyBooked =
         decision === "approved" &&
         state.reservations.some(
@@ -775,21 +942,97 @@ export async function staticMutation(
             : r
         )
       )
-      if (field(args, "facilityMaintenance") !== undefined)
+      // Closing a report ends its repairs, like the server.
+      if (status === "resolved" || status === "rejected")
+        setMaintenance((items) =>
+          items.map((w) =>
+            w.reportId === id && windowStatus(w) === "scheduled"
+              ? closeWindowNow(w, now)
+              : w
+          )
+        )
+      // Legacy: only reopening a facility left in "maintenance" is honoured.
+      if (field(args, "facilityMaintenance") === false)
         change<Facility>("facilities", (items) =>
           items.map((f) =>
-            f.id === item.facilityId
-              ? {
-                  ...f,
-                  status: field(args, "facilityMaintenance")
-                    ? "maintenance"
-                    : "active",
-                  updatedAt: now,
-                }
+            f.id === item.facilityId && f.status === "maintenance"
+              ? { ...f, status: "active", updatedAt: now }
               : f
           )
         )
       return null
+    }
+    case "maintenance:schedule": {
+      requireRole(["officer", "admin"])
+      const facilityId = value(args, "facilityId")
+      const facility = required(state.facilities, facilityId)
+      if (facility.status === "inactive")
+        throw new Error("Fasilitas tidak ditemukan atau nonaktif")
+      const reason = value(args, "reason").trim()
+      if (!reason) throw new Error("Alasan perbaikan wajib diisi")
+      const reportId = value(args, "reportId") || undefined
+      if (reportId) {
+        const report = required(state.reports, reportId)
+        if (report.facilityId !== facilityId)
+          throw new Error("Laporan tidak cocok dengan fasilitas ini")
+        if (report.status === "resolved" || report.status === "rejected")
+          throw new Error("Laporan ini sudah ditutup")
+      }
+      const startAt = Number(field(args, "startAt")),
+        endAt = Number(field(args, "endAt"))
+      validateMaintenanceWindow(startAt, endAt, now)
+      assertWindowFree(facilityId, { startAt, endAt })
+      const id = `demo-maintenance-${crypto.randomUUID()}`
+      setMaintenance((items) => [
+        ...items,
+        {
+          id,
+          facilityId,
+          reportId,
+          reason,
+          startAt,
+          endAt,
+          status: "scheduled",
+          createdBy: account().id,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ])
+      return id
+    }
+    case "maintenance:extend": {
+      requireRole(["officer", "admin"])
+      const window = required(maintenanceWindows(), value(args, "windowId"))
+      if (windowStatus(window) !== "scheduled")
+        throw new Error("Jadwal perbaikan tidak aktif")
+      const endAt = Number(field(args, "endAt"))
+      if (endAt <= window.endAt)
+        throw new Error(
+          "Waktu selesai baru harus setelah waktu selesai sekarang. Gunakan Selesai untuk mengakhiri lebih cepat."
+        )
+      validateMaintenanceWindow(window.startAt, endAt, now)
+      assertWindowFree(
+        window.facilityId,
+        { startAt: window.endAt, endAt },
+        window.id
+      )
+      setMaintenance((items) =>
+        items.map((w) =>
+          w.id === window.id ? { ...w, endAt, updatedAt: now } : w
+        )
+      )
+      return null
+    }
+    case "maintenance:close": {
+      requireRole(["officer", "admin"])
+      const window = required(maintenanceWindows(), value(args, "windowId"))
+      if (windowStatus(window) !== "scheduled")
+        throw new Error("Jadwal perbaikan tidak aktif")
+      const closed = closeWindowNow(window, now)
+      setMaintenance((items) =>
+        items.map((w) => (w.id === window.id ? closed : w))
+      )
+      return closed.status
     }
     case "facilities:create": {
       requireRole(["admin"])
@@ -839,6 +1082,10 @@ export async function staticMutation(
       requireRole(["admin"])
       const id = value(args, "facilityId")
       required(state.facilities, id)
+      if (value(args, "status") === "maintenance")
+        throw new Error(
+          "Gunakan Jadwal perbaikan untuk menutup fasilitas selama perbaikan"
+        )
       change<Facility>("facilities", (items) =>
         items.map((f) =>
           f.id === id

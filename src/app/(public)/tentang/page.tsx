@@ -19,7 +19,14 @@ import { DocsExplorer } from "@/components/about/docs-explorer"
 import { DialogMascot } from "@/components/dialog-mascot"
 import { ImagesBadge } from "@/components/ui/images-badge"
 import { SthaniFace, type SthaniExpression } from "@/components/sthani-face"
-import { publicDocHref, publicDocs, qaSheetUrl } from "@/lib/public-docs"
+import { parseFlowDocs } from "@/lib/flow-docs"
+import {
+  findPublicDoc,
+  publicDocHref,
+  publicDocs,
+  qaSheetUrl,
+} from "@/lib/public-docs"
+import { readPublicDoc } from "@/lib/read-public-doc"
 import { site, siteUrl } from "@/lib/site"
 
 const pageUrl = siteUrl ? `${siteUrl}/tentang` : undefined
@@ -168,7 +175,11 @@ const teamMembers = [
   },
 ] as const
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  // The flow explorer shows the diagrams of docs/FLOWS.md, read at build time.
+  const flowsDoc = findPublicDoc("flows")
+  const flows = flowsDoc ? parseFlowDocs(await readPublicDoc(flowsDoc)) : []
+
   return (
     <LandingMotion>
       <main id="main-content" className="sthana-about">
@@ -476,7 +487,7 @@ export default function AboutPage() {
               </Link>
             </div>
 
-            <DocsExplorer qaSheetUrl={qaSheetUrl} />
+            <DocsExplorer qaSheetUrl={qaSheetUrl} flows={flows} />
 
             <ul className="about-docs-grid">
               {documentCards.map((doc) => (

@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test"
 
-import { enterDemo, expectScrollUnlocked } from "./helpers"
+import {
+  enterDemo,
+  expectScrollUnlocked,
+  scheduleRepair,
+  tomorrowInJakarta,
+} from "./helpers"
 
 test.skip(
   process.env.PLAYWRIGHT_STATIC_MODE !== "1" ||
@@ -64,51 +69,51 @@ test("US-10: keputusan setujui memerlukan konfirmasi", async ({ page }) => {
   await expect(page.getByText("Praktikum bersama")).toBeVisible()
 })
 
-test("US-11/12: mulai tanpa catatan, perbaikan, lalu aktif kembali", async ({
+test("US-11/12: mulai tanpa catatan, jadwalkan perbaikan, lalu selesai", async ({
   page,
 }) => {
   await enterDemo(page, "Petugas")
   await page.goto("/staff/reports")
-  await page
-    .getByRole("checkbox", { name: "Tandai fasilitas dalam perbaikan" })
-    .check()
   await page.getByRole("button", { name: "Mulai tangani" }).click()
   await expect(page.getByRole("status")).toContainText(
     "Laporan mulai ditangani"
   )
   await page.getByRole("tab", { name: /Sedang ditangani/ }).click()
-  await expect(
-    page.getByText("Ditangani", { exact: true }).first()
-  ).toBeVisible()
+  await page.getByRole("button", { name: "Jadwalkan perbaikan" }).click()
+  await scheduleRepair(page, {
+    date: tomorrowInJakarta(),
+    first: "08.00",
+    last: "09.30",
+    reason: "Ganti PC",
+  })
 
-  await page.goto("/facilities")
   const lab = page
     .getByRole("list", { name: "Daftar fasilitas" })
     .locator("li")
     .filter({ hasText: "Lab Komputer 3" })
-  await expect(lab).toContainText("Dalam Perbaikan")
+  await page.goto("/facilities")
+  await expect(lab).toContainText("Perbaikan terjadwal")
+  // Only the repair window is closed; the facility stays bookable.
+  await expect(
+    lab.getByRole("button", { name: "Cek Jadwal Slot" })
+  ).toBeEnabled()
 
   await page.goto("/staff/reports?tab=ditangani")
-  await page
-    .getByRole("button", { name: "Selesaikan + aktifkan fasilitas" })
-    .click()
+  await page.getByRole("button", { name: "Selesaikan laporan" }).click()
   await expect(page.getByText("Isi catatan penanganan sebelum")).toBeVisible()
   await expect(page.getByText("Selesaikan laporan ini?")).toBeHidden()
   await page
     .getByRole("textbox", { name: "Catatan penanganan" })
     .fill("Komputer diperbaiki")
-  await page
-    .getByRole("button", { name: "Selesaikan + aktifkan fasilitas" })
-    .click()
+  await page.getByRole("button", { name: "Selesaikan laporan" }).click()
   await expect(page.getByText("Selesaikan laporan ini?")).toBeVisible()
   await page.getByRole("button", { name: "Ya, selesaikan" }).click()
   await expect(page.getByRole("status")).toContainText(
     "Laporan ditandai selesai"
   )
-  await page.getByRole("tab", { name: /Riwayat/ }).click()
-  await expect(page.getByText("Selesai", { exact: true }).first()).toBeVisible()
+  // Closing the report cancels its repair that had not started yet.
   await page.goto("/facilities")
-  await expect(lab).toContainText("Aktif")
+  await expect(lab).not.toContainText("Perbaikan terjadwal")
 })
 
 test("US-11: tolak laporan memerlukan catatan dan konfirmasi", async ({
@@ -323,15 +328,21 @@ test("Halaman fasilitas publik: chips, filter aktif, urutkan, dan status perawat
   page,
 }) => {
   await page.goto("/facilities")
-  await expect(page.getByText("6 fasilitas", { exact: true })).toBeVisible()
+  await expect(
+    page.getByText("6 fasilitas ditemukan", { exact: true })
+  ).toBeVisible()
 
   await page.getByRole("button", { name: "Aula", exact: true }).click()
-  await expect(page.getByText("1 fasilitas", { exact: true })).toBeVisible()
+  await expect(
+    page.getByText("1 fasilitas ditemukan", { exact: true })
+  ).toBeVisible()
   await expect(page.getByText("Aula Gedung A")).toBeVisible()
   await expect(page.getByText("Lab Komputer 3")).toBeHidden()
 
   await page.getByRole("button", { name: "Hapus filter Tipe: Aula" }).click()
-  await expect(page.getByText("6 fasilitas", { exact: true })).toBeVisible()
+  await expect(
+    page.getByText("6 fasilitas ditemukan", { exact: true })
+  ).toBeVisible()
 
   await page.getByRole("combobox", { name: "Urutkan" }).click()
   await page.getByRole("option", { name: "Kapasitas terbesar" }).click()
@@ -343,41 +354,46 @@ test("Halaman fasilitas publik: chips, filter aktif, urutkan, dan status perawat
     .getByRole("list", { name: "Daftar fasilitas" })
     .locator("li")
     .filter({ hasText: "Studio Multimedia" })
+  // The seeded repair is ongoing, but only its own time range is closed.
+  await expect(studio).toContainText("Dalam perbaikan s.d.")
   await expect(
-    studio.getByRole("button", { name: "Sedang Perbaikan" })
-  ).toBeDisabled()
+    studio.getByRole("button", { name: "Cek Jadwal Slot" })
+  ).toBeEnabled()
 })
 
-test("US-12: mulai tangani otomatis menandai fasilitas dalam perbaikan", async ({
+test("US-12: perbaikan hanya di slot kosong dan menutup slot itu bagi pengguna", async ({
   page,
 }) => {
+  const date = tomorrowInJakarta()
   await enterDemo(page, "Petugas")
-  await page.goto("/staff/reports")
+  await page.goto("/staff/maintenance")
+  await page.getByRole("button", { name: "Jadwalkan perbaikan" }).click()
+  const dialog = page.getByRole("dialog", { name: "Jadwalkan perbaikan" })
+  await dialog.getByLabel("Fasilitas").selectOption({ label: "Lab Komputer 3" })
+  await dialog.getByLabel("Tanggal").fill(date)
+  // The pending 13.00–14.00 request holds its slots: repairs yield.
   await expect(
-    page.getByRole("checkbox", { name: "Tandai fasilitas dalam perbaikan" })
-  ).toBeChecked()
-  await page.getByRole("button", { name: "Mulai tangani" }).click()
-  await expect(page.getByRole("status")).toContainText(
-    "Laporan mulai ditangani"
-  )
+    dialog.getByRole("button", { name: "13.00 · Terisi" })
+  ).toBeDisabled()
+  await expect(dialog).toContainText("1 reservasi menunggu")
+  await dialog.getByRole("button", { name: "10.00 · Tersedia" }).click()
+  await dialog.getByRole("button", { name: "11.30 · Tersedia" }).click()
+  await dialog.getByLabel("Alasan perbaikan").fill("Ganti kabel jaringan")
+  await dialog.getByRole("button", { name: "Simpan jadwal" }).click()
+  await expect(page.getByText("Perbaikan dijadwalkan")).toBeVisible()
+  await expect(
+    page.getByRole("paragraph").filter({ hasText: "Ganti kabel jaringan" })
+  ).toBeVisible()
 
-  const lab = page
-    .getByRole("list", { name: "Daftar fasilitas" })
-    .locator("li")
-    .filter({ hasText: "Lab Komputer 3" })
-  await page.goto("/facilities")
-  await expect(lab).toContainText("Dalam Perbaikan")
-
-  // Rejecting a report that was being handled reactivates the facility.
-  await page.goto("/staff/reports?tab=ditangani")
-  await page
-    .getByRole("textbox", { name: "Catatan penanganan" })
-    .fill("Ternyata bukan kerusakan")
-  await page.getByRole("button", { name: "Tolak" }).click()
-  await page.getByRole("button", { name: "Ya, tolak" }).click()
-  await expect(page.getByRole("status")).toContainText("Laporan ditolak")
-  await page.goto("/facilities")
-  await expect(lab).toContainText("Aktif")
+  await enterDemo(page, "Pengguna")
+  await page.goto(`/app/reservations/new?facility=demo-lab&date=${date}`)
+  await expect(page.getByText("Jadwal perbaikan:")).toBeVisible()
+  await expect(
+    page.getByRole("button", { name: /10.00.*Terisi/ })
+  ).toBeDisabled()
+  await expect(
+    page.getByRole("button", { name: /12.00.*Tersedia/ })
+  ).toBeEnabled()
 })
 
 test("Bagikan: kartu reservasi dapat diunduh sebagai story gelap", async ({

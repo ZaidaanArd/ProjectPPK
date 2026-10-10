@@ -25,6 +25,7 @@ import {
 } from "@/lib/facilities-dashboard/constants"
 import type { FacilityItem, TimeSlot } from "@/lib/facilities-dashboard/types"
 import { getGalleryPhotos } from "@/lib/facilities-dashboard/types"
+import { maintenanceSummary } from "@/lib/maintenance-display"
 import { cn } from "@/lib/utils"
 import { Separator } from "@/components/ui/separator"
 import { PhotoGallery } from "./photo-gallery"
@@ -174,6 +175,15 @@ export function SlotGridModal({
           Fasilitas dalam perbaikan — seluruh slot terkunci otomatis.
         </output>
       )}
+      {facility.status !== "Dalam Perbaikan" && facility.perbaikan && (
+        <output className="mb-4 flex items-start gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+          <IconLock size={15} aria-hidden="true" className="mt-0.5 shrink-0" />
+          <span>
+            {maintenanceSummary(facility.perbaikan)}. Slot di rentang itu
+            terkunci; jam lain tetap bisa dipesan.
+          </span>
+        </output>
+      )}
       {facility.status === "Nonaktif" && (
         <output className="mb-4 rounded-2xl border bg-muted px-3 py-2 text-sm text-muted-foreground">
           Fasilitas nonaktif — tidak menerima reservasi baru.
@@ -282,7 +292,7 @@ export function SlotGridModal({
                         bisaKlik
                           ? `Slot ${slot.mulai}–${slot.selesai} tanggal ${tanggalLabel} tersedia`
                           : slot.status === "terkunci"
-                            ? "Terkunci (maintenance)"
+                            ? "Terkunci: jadwal perbaikan"
                             : "Tidak tersedia"
                       }
                       className={cn(

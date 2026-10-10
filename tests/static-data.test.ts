@@ -194,10 +194,12 @@ describe("static data mode", () => {
         staticQuery("reports:listQueue", {}) as { id: string; status: string }[]
       ).find((item) => item.id === id)?.status
     ).toBe("in_progress")
+    // Repairs are scheduled windows now; the legacy flag no longer closes the
+    // whole facility.
     expect(
       getStaticData().facilities.find((facility) => facility.id === "demo-aula")
         ?.status
-    ).toBe("maintenance")
+    ).toBe("active")
     await expect(
       staticMutation("reports:updateStatus", {
         reportId: id,
@@ -224,6 +226,69 @@ describe("static data mode", () => {
       getStaticData().facilities.find((facility) => facility.id === "demo-aula")
         ?.status
     ).toBe("active")
+  })
+
+  it("schedules repairs only in free time and blocks those slots for bookings", async () => {
+    const reservation = getStaticData().reservations.find(
+      (item) => item.id === "demo-reservation-pending"
+    )!
+    const day = reservation.startAt - 6 * 60 * 60 * 1000 // 07.00 WIB
+    const hour = 60 * 60 * 1000
+    role("officer")
+    const schedule = (startAt: number, endAt: number) =>
+      staticMutation("maintenance:schedule", {
+        facilityId: "demo-lab",
+        startAt,
+        endAt,
+        reason: "Ganti PC",
+        reportId: "demo-report",
+      })
+    // The seeded 13.00–14.00 request is still pending.
+    await expect(schedule(day + 5 * hour, day + 8 * hour)).rejects.toThrow(
+      "Setujui atau tolak dulu"
+    )
+    const windowId = (await schedule(day + hour, day + 3 * hour)) as string
+
+    role("user")
+    await expect(
+      staticMutation("reservations:create", {
+        facilityId: "demo-lab",
+        purpose: "Praktikum",
+        startAt: day + 2 * hour,
+        endAt: day + 4 * hour,
+      })
+    ).rejects.toThrow("jadwal perbaikan")
+    const availability = staticQuery("facilities:getPublicAvailability", {
+      facilityId: "demo-lab",
+      rangeStart: day,
+      rangeEnd: day + 13 * hour,
+    }) as { maintenance: { startAt: number; endAt: number }[] }
+    expect(availability.maintenance).toEqual([
+      { startAt: day + hour, endAt: day + 3 * hour },
+    ])
+
+    role("officer")
+    expect(await staticMutation("maintenance:close", { windowId })).toBe(
+      "cancelled"
+    )
+    role("user")
+    await staticMutation("reservations:create", {
+      facilityId: "demo-lab",
+      purpose: "Praktikum",
+      startAt: day + 2 * hour,
+      endAt: day + 3 * hour,
+    })
+  })
+
+  it("seeds an ongoing repair that keeps the studio bookable after it ends", () => {
+    const studio = (
+      staticQuery("facilities:listPublic", {}) as {
+        id: string
+        nextMaintenance: { startAt: number; endAt: number } | null
+      }[]
+    ).find((facility) => facility.id === "demo-studio")
+    expect(studio?.nextMaintenance?.startAt).toBeLessThanOrEqual(Date.now())
+    expect(studio?.nextMaintenance?.endAt).toBeGreaterThan(Date.now())
   })
 
   it("exports current demo data as CSV", async () => {

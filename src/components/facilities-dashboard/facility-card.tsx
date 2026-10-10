@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/card"
 import type { DemoRole, FacilityItem } from "@/lib/facilities-dashboard/types"
 import { getCoverUrl } from "@/lib/facilities-dashboard/types"
+import { isOngoing, maintenanceSummary } from "@/lib/maintenance-display"
 import { cn } from "@/lib/utils"
 import { StatusBadge } from "./status-badge"
 
@@ -43,8 +44,15 @@ export function FacilityCard({
   const isAdmin = role === "admin"
   const bisaMaintenance = role === "admin" || role === "petugas"
   const nonaktif = facility.status === "Nonaktif"
+  // Legacy whole-facility maintenance blocks every slot. A scheduled repair
+  // (facility.perbaikan) only blocks its own time range.
   const maintenance = facility.status === "Dalam Perbaikan"
   const unavailable = nonaktif || maintenance
+  const perbaikan = maintenanceSummary(facility.perbaikan)
+  const shownStatus =
+    facility.perbaikan && isOngoing(facility.perbaikan)
+      ? "Dalam Perbaikan"
+      : facility.status
 
   const cover = getCoverUrl(facility)
   const hasMultiple = (facility.photos?.length ?? 0) > 1
@@ -110,7 +118,7 @@ export function FacilityCard({
           >
             {facility.nama}
           </CardTitle>
-          <StatusBadge status={facility.status} />
+          <StatusBadge status={shownStatus} />
         </div>
         <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
           <Badge variant="secondary">{facility.tipe}</Badge>
@@ -144,6 +152,12 @@ export function FacilityCard({
         >
           {facility.deskripsi || "Belum ada deskripsi."}
         </p>
+        {perbaikan && !unavailable && (
+          <p className="mt-3 flex items-start gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-800 dark:text-amber-200">
+            <IconTool size={14} aria-hidden="true" className="mt-px shrink-0" />
+            <span>{perbaikan}. Jam lain tetap bisa dipesan.</span>
+          </p>
+        )}
       </CardContent>
 
       <CardFooter

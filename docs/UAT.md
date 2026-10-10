@@ -29,7 +29,7 @@ Prasyarat: gunakan fasilitas QA, dua akun pengguna yang berbeda, satu petugas, d
 | US-09 | Dua petugas menyetujui slot sama                                        | Maksimal satu reservasi disetujui; yang lain mendapat error jelas               | Belum diuji  |
 | US-10 | Petugas batalkan reservasi disetujui tanpa/dengan alasan                | Form memfokuskan alasan kosong; alasan valid tersimpan                          | Belum diuji  |
 | US-11 | Mulai laporan tanpa catatan; selesaikan/tolak tanpa lalu dengan catatan | Mulai berhasil; status akhir wajib catatan                                      | Belum diuji  |
-| US-12 | Tandai fasilitas Dalam perbaikan lalu Aktif kembali                     | Status publik dan kemampuan menyetujui reservasi mengikuti perubahan            | Belum diuji  |
+| US-12 | Jadwalkan perbaikan di slot yang bentrok, lalu di slot kosong           | Bentrok ditolak; slot perbaikan tertutup bagi reservasi, jam lain tetap terbuka | Belum diuji  |
 | US-13 | Admin buat akun petugas                                                 | Akun aktif dengan peran petugas; tidak masuk area admin                         | Belum diuji  |
 | US-14 | Admin buat akun pengguna                                                | Akun aktif dengan peran pengguna; password sementara wajib diganti bila diminta | Belum diuji  |
 | US-15 | Registrasi mandiri lalu admin setujui/tolak                             | Pending tidak mendapat sesi; hanya akun disetujui dapat login                   | Belum diuji  |

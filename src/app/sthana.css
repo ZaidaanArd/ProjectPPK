@@ -4946,3 +4946,45 @@
     transition: none;
   }
 }
+
+/* Rendered Mermaid diagrams (docs pages and the about-page flow explorer). */
+.mermaid-diagram {
+  margin: 0 0 22px;
+  padding: 18px;
+  overflow-x: auto;
+  border: 1px solid #f1e4eb;
+  border-radius: 16px;
+  background: #fffafc;
+}
+.mermaid-diagram-svg svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+.mermaid-diagram-source {
+  margin: 0;
+  color: #68586a;
+  background: transparent;
+  font-size: 12px;
+  white-space: pre-wrap;
+  opacity: 0.6;
+}
+.mermaid-diagram-error {
+  margin-top: 8px;
+  color: #b42318;
+  font-size: 12px;
+}
+.docs-prose .mermaid-diagram-source {
+  padding: 0;
+  color: #68586a;
+  background: transparent;
+}
+.dark .mermaid-diagram {
+  border-color: #3e303e;
+  background: #1d171f;
+}
+.dark .mermaid-diagram-source,
+.dark .docs-prose .mermaid-diagram-source {
+  color: #cbb9c9;
+}

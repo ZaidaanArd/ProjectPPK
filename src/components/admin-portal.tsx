@@ -37,7 +37,7 @@ import {
 import { PortalPageHeader } from "@/components/portal-page-header"
 import { PortalListSkeleton } from "@/components/portal-skeletons"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -947,27 +947,16 @@ export function AdminFacilities() {
                         ? "Sembunyikan"
                         : "Aktifkan"}
                     </Button>
-                    {facility.status !== "maintenance" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          void runWithToast(
-                            () =>
-                              setStatus({
-                                facilityId: facility.id,
-                                status: "maintenance",
-                              }),
-                            {
-                              success: `${facility.name} dalam perawatan`,
-                              error: "Status fasilitas gagal diubah",
-                            }
-                          )
-                        }
-                      >
-                        Perawatan
-                      </Button>
-                    )}
+                    {/* Repairs are time-bound windows scheduled by staff. */}
+                    <Link
+                      href="/staff/maintenance"
+                      className={buttonVariants({
+                        size: "sm",
+                        variant: "outline",
+                      })}
+                    >
+                      Jadwal perbaikan
+                    </Link>
                   </div>
                 </div>
               </Card>

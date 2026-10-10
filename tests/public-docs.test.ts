@@ -86,3 +86,26 @@ describe("public documentation", () => {
     expect(findPublicDoc("../../secret")).toBeUndefined()
   })
 })
+
+describe("flow documentation", () => {
+  it("turns every FLOWS.md diagram into an explorer entry", async () => {
+    const { parseFlowDocs } = await import("../src/lib/flow-docs")
+    const markdown = readFileSync(
+      join(process.cwd(), "docs", "FLOWS.md"),
+      "utf8"
+    )
+    const flows = parseFlowDocs(markdown)
+    expect(flows).toHaveLength(markdown.match(/```mermaid/g)?.length ?? 0)
+    for (const flow of flows) {
+      expect(flow.group).not.toBe("")
+      expect(flow.summary).not.toBe("")
+      expect(flow.chart).not.toContain("```")
+    }
+    expect(flows.map((flow) => flow.group)).toContain("Jadwal perbaikan")
+    expect(
+      flows.find((flow) => flow.title === "Aturan utama")?.points
+    ).toContain(
+      "Reservasi yang sudah disetujui tetap berjalan; perbaikan harus mencari waktu lain."
+    )
+  })
+})
