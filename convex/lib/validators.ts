@@ -45,12 +45,38 @@ export const maintenanceStatusValidator = v.union(
   v.literal("cancelled")
 )
 
+export const issueStatusValidator = v.union(
+  v.literal("open"),
+  v.literal("closed")
+)
+
+export const closureStatusValidator = v.union(
+  v.literal("closed"),
+  v.literal("reopened")
+)
+
+export const notificationTypeValidator = v.union(
+  v.literal("reservation.approved"),
+  v.literal("reservation.rejected"),
+  v.literal("reservation.cancelled"),
+  v.literal("reservation.expired"),
+  v.literal("reservation.change_decided"),
+  v.literal("reservation.change_conflict"),
+  v.literal("disruption.created"),
+  v.literal("disruption.updated"),
+  v.literal("disruption.resolved"),
+  v.literal("emergency.closed"),
+  v.literal("maintenance.reminder")
+)
+
 export const auditEntityValidator = v.union(
   v.literal("account"),
   v.literal("facility"),
   v.literal("reservation"),
   v.literal("report"),
-  v.literal("maintenance")
+  v.literal("maintenance"),
+  v.literal("disruption"),
+  v.literal("closure")
 )
 
 export const actorRoleValidator = v.union(roleValidator, v.literal("system"))
