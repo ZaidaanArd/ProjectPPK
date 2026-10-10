@@ -126,6 +126,34 @@ type Notification = {
   dedupKey: string
   createdAt: number
 }
+type FacilityIssue = {
+  id: string
+  facilityId: string
+  reportId?: string
+  category: string
+  description: string
+  startAt: number
+  endAt?: number
+  status: "open" | "closed"
+  revision: number
+  createdBy: string
+  closedAt?: number
+  createdAt: number
+  updatedAt: number
+}
+type EmergencyClosure = {
+  id: string
+  facilityId: string
+  reportId?: string
+  reason: string
+  estimatedEndAt?: number
+  status: "closed" | "reopened"
+  closedBy: string
+  closedAt: number
+  reopenedAt?: number
+  createdAt: number
+  updatedAt: number
+}
 export type StaticData = {
   version: 1
   accounts: Account[]
@@ -136,6 +164,8 @@ export type StaticData = {
   // Missing in browser data saved before repairs were scheduled.
   maintenance?: MaintenanceWindow[]
   notifications?: Notification[]
+  facilityIssues?: FacilityIssue[]
+  emergencyClosures?: EmergencyClosure[]
 }
 
 const storageKey = "sthana:static-data:v1"
