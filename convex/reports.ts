@@ -276,24 +276,17 @@ export const updateStatus = mutation({
           actor
         )
       } else {
-        const existing = await ctx.db
-          .query("emergencyClosures")
-          .withIndex("by_facility_status", (q) =>
-            q.eq("facilityId", report.facilityId).eq("status", "closed")
-          )
-          .first()
-        if (!existing)
-          await closeFacility(
-            ctx,
-            {
-              facilityId: report.facilityId,
-              reportId: report._id,
-              reason: publicNotice,
-              mode: "safety",
-            },
-            actor,
-            "handling"
-          )
+        await closeFacility(
+          ctx,
+          {
+            facilityId: report.facilityId,
+            reportId: report._id,
+            reason: publicNotice,
+            mode: "safety",
+          },
+          actor,
+          "handling"
+        )
       }
     } else if (report.handlingImpact === "closed" && !args.confirmSafe) {
       throw new ConvexError(

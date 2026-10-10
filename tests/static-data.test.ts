@@ -105,6 +105,44 @@ describe("static data mode", () => {
       "inactive"
     )
   })
+  it("escalates a manual long-repair closure without losing its ownership", async () => {
+    const reservation = getStaticData().reservations.find(
+      (r) => r.status === "approved"
+    )!
+    const reportId = await staticMutation("reports:create", {
+      facilityId: reservation.facilityId,
+      category: "Struktur",
+      description: "QA privat",
+    })
+    role("officer")
+    const closureId = await staticMutation("emergencyClosures:close", {
+      facilityId: reservation.facilityId,
+      mode: "long_repair",
+      reason: "Perbaikan besar",
+    })
+    expect(
+      getStaticData().reservations.find((r) => r.id === reservation.id)?.status
+    ).toBe("approved")
+    await staticMutation("reports:updateStatus", {
+      reportId,
+      status: "in_progress",
+      note: "",
+      handlingImpact: "closed",
+      publicNotice: "Tidak aman",
+    })
+    expect(
+      getStaticData().reservations.find((r) => r.id === reservation.id)?.status
+    ).toBe("cancelled")
+    expect(
+      getStaticData().emergencyClosures?.find((c) => c.id === closureId)
+    ).toMatchObject({ mode: "safety", source: "manual", status: "closed" })
+    expect(
+      getStaticData().notifications?.filter(
+        (n) =>
+          n.reservationId === reservation.id && n.type === "emergency.closed"
+      )
+    ).toHaveLength(2)
+  })
   it("retains the approved booking until a schedule replacement is approved", async () => {
     const original = getStaticData().reservations.find(
       (r) => r.id === "demo-reservation-approved"

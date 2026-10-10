@@ -298,6 +298,51 @@ describe("reservation and repair edge cases", () => {
       })
     ).toHaveLength(1)
   })
+  it("escalates a manual long repair to safety and cancels retained bookings", async () => {
+    const { t, userId, officer, facilityId, reportId } = await setup()
+    const reservationId = await t.run((ctx) =>
+      ctx.db.insert("reservations", {
+        userId,
+        facilityId,
+        purpose: "QA",
+        status: "approved",
+        startAt: future,
+        endAt: future + 3600000,
+        createdAt: now,
+        updatedAt: now,
+      })
+    )
+    const closureId = await officer.mutation(api.emergencyClosures.close, {
+      facilityId,
+      reason: "Perbaikan besar",
+      mode: "long_repair",
+    })
+    expect(
+      (await t.run((ctx) => ctx.db.get("reservations", reservationId)))?.status
+    ).toBe("approved")
+    await officer.mutation(api.reports.updateStatus, {
+      reportId,
+      status: "in_progress",
+      note: "",
+      handlingImpact: "closed",
+      publicNotice: "Bangunan tidak aman",
+    })
+    expect(
+      (await t.run((ctx) => ctx.db.get("reservations", reservationId)))?.status
+    ).toBe("cancelled")
+    expect(
+      await t.run((ctx) => ctx.db.get("emergencyClosures", closureId))
+    ).toMatchObject({ mode: "safety", source: "manual", status: "closed" })
+    await officer.mutation(api.reports.updateStatus, {
+      reportId,
+      status: "resolved",
+      note: "Selesai",
+      confirmSafe: true,
+    })
+    expect(
+      (await t.run((ctx) => ctx.db.get("emergencyClosures", closureId)))?.status
+    ).toBe("closed")
+  })
   it("excludes expired requests from a closure impact preview", async () => {
     const { t, userId, officer, facilityId } = await setup()
     await t.run((ctx) =>

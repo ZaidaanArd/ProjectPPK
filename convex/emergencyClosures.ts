@@ -218,7 +218,8 @@ export async function closeFacility(
       q.eq("facilityId", facility._id).eq("status", "closed")
     )
     .first()
-  if (existing) throw new ConvexError("Fasilitas ini sudah ditutup darurat")
+  if (existing && !(source === "handling" && args.mode === "safety"))
+    throw new ConvexError("Fasilitas ini sudah ditutup darurat")
 
   const now = Date.now()
   if (
@@ -226,23 +227,35 @@ export async function closeFacility(
     (!Number.isFinite(args.estimatedEndAt) || args.estimatedEndAt <= now)
   )
     throw new ConvexError("Estimasi selesai harus di masa mendatang")
-  const closureId = await ctx.db.insert("emergencyClosures", {
-    mode: args.mode,
-    source,
-    facilityId: facility._id,
-    reportId: args.reportId,
-    reason,
-    estimatedEndAt: args.estimatedEndAt,
-    status: "closed",
-    closedBy: actor._id,
-    closedAt: now,
-    createdAt: now,
-    updatedAt: now,
-  })
+  const closureId =
+    existing?._id ??
+    (await ctx.db.insert("emergencyClosures", {
+      mode: args.mode,
+      source,
+      facilityId: facility._id,
+      reportId: args.reportId,
+      reason,
+      estimatedEndAt: args.estimatedEndAt,
+      status: "closed",
+      closedBy: actor._id,
+      closedAt: now,
+      createdAt: now,
+      updatedAt: now,
+    }))
+  if (existing) {
+    // A hazardous report escalates a waiting/long-repair closure. Preserve its
+    // manual ownership: finishing the report must not automatically reopen it.
+    await ctx.db.patch("emergencyClosures", existing._id, {
+      mode: "safety",
+      reason,
+      estimatedEndAt: undefined,
+      updatedAt: now,
+    })
+  }
   await recordAuditEvent(ctx, {
     entityType: "closure",
     entityId: closureId,
-    action: "closure.closed",
+    action: existing ? "closure.safety_rechecked" : "closure.closed",
     toStatus: "closed",
     actorId: actor._id,
     actorRole: actor.role,

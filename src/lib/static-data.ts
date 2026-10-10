@@ -1850,16 +1850,18 @@ export async function staticMutation(
       const facility = required(state.facilities, facilityId)
       if (facility.status === "inactive")
         throw new Error("Fasilitas tidak ditemukan atau nonaktif")
-      if (
-        (state.emergencyClosures ?? []).some(
-          (c) => c.facilityId === facilityId && c.status === "closed"
-        )
-      )
-        throw new Error("Fasilitas ini sudah ditutup darurat")
       requireText(value(args, "reason"))
       const mode = value(args, "mode") as "safety" | "long_repair"
       if (mode !== "safety" && mode !== "long_repair")
         throw new Error("Mode penutupan tidak valid")
+      const existing = (state.emergencyClosures ?? []).find(
+        (c) => c.facilityId === facilityId && c.status === "closed"
+      )
+      if (
+        existing &&
+        !(value(args, "source") === "handling" && mode === "safety")
+      )
+        throw new Error("Fasilitas ini sudah ditutup darurat")
       const estimatedEndAt =
         field(args, "estimatedEndAt") === undefined
           ? undefined
@@ -1875,24 +1877,40 @@ export async function staticMutation(
         required(state.reports, reportId).facilityId !== facilityId
       )
         throw new Error("Laporan tidak cocok dengan fasilitas ini")
-      const id = `demo-closure-${crypto.randomUUID()}`
-      change<EmergencyClosure>("emergencyClosures", (items) => [
-        ...items,
-        {
-          id,
-          facilityId,
-          reportId,
-          mode,
-          source: value(args, "source") === "handling" ? "handling" : "manual",
-          estimatedEndAt,
-          reason: value(args, "reason").trim(),
-          status: "closed",
-          closedBy: account().id,
-          closedAt: now,
-          createdAt: now,
-          updatedAt: now,
-        },
-      ])
+      const id = existing?.id ?? `demo-closure-${crypto.randomUUID()}`
+      if (existing) {
+        change<EmergencyClosure>("emergencyClosures", (items) =>
+          items.map((c) =>
+            c.id === id
+              ? {
+                  ...c,
+                  mode: "safety",
+                  estimatedEndAt: undefined,
+                  reason: value(args, "reason").trim(),
+                  updatedAt: now,
+                }
+              : c
+          )
+        )
+      } else
+        change<EmergencyClosure>("emergencyClosures", (items) => [
+          ...items,
+          {
+            id,
+            facilityId,
+            reportId,
+            mode,
+            source:
+              value(args, "source") === "handling" ? "handling" : "manual",
+            estimatedEndAt,
+            reason: value(args, "reason").trim(),
+            status: "closed",
+            closedBy: account().id,
+            closedAt: now,
+            createdAt: now,
+            updatedAt: now,
+          },
+        ])
       const affected = state.reservations.filter(
         (r) =>
           r.facilityId === facilityId &&
@@ -1939,7 +1957,10 @@ export async function staticMutation(
             mode === "safety"
               ? `Reservasi pada ${jakartaRange(r.startAt, r.endAt)} dibatalkan pengelola.`
               : `Perbaikan sampai pemberitahuan lebih lanjut. Dapat dibatalkan atau tetap menunggu.`,
-          dedupKey: `closure:${id}:reservation:${r.id}`,
+          dedupKey:
+            mode === "safety"
+              ? `closure:${id}:reservation:${r.id}`
+              : `closure:${id}:notice:reservation:${r.id}`,
           reservationId: r.id,
           facilityId,
           closureId: id,
@@ -2111,11 +2132,7 @@ export async function staticMutation(
             description: value(args, "publicNotice"),
             startAt: now,
           })
-        else if (
-          !(state.emergencyClosures ?? []).some(
-            (c) => c.facilityId === item.facilityId && c.status === "closed"
-          )
-        )
+        else
           await staticMutation("emergencyClosures:close", {
             facilityId: item.facilityId,
             reportId: item.id,
