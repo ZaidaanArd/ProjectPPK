@@ -432,6 +432,57 @@ export const cancelMine = mutation({
   },
 })
 
+export const cancelMineForDisruption = mutation({
+  args: {
+    reservationId: v.id("reservations"),
+    issueId: v.id("facilityIssues"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const profile = await requireRole(ctx, ["user"])
+    const reservation = await ctx.db.get("reservations", args.reservationId)
+    if (!reservation || reservation.userId !== profile._id) {
+      throw new ConvexError("Reservasi tidak ditemukan")
+    }
+    if (reservation.status !== "pending" && reservation.status !== "approved") {
+      throw new ConvexError("Reservasi ini tidak dapat dibatalkan")
+    }
+    if (reservation.endAt <= Date.now()) {
+      throw new ConvexError("Reservasi ini tidak dapat dibatalkan")
+    }
+    const issue = await ctx.db.get("facilityIssues", args.issueId)
+    if (!issue || issue.status !== "open" || issue.facilityId !== reservation.facilityId) {
+      throw new ConvexError("Gangguan tidak berlaku untuk reservasi ini")
+    }
+    const issueEnd = issue.endAt ?? Number.MAX_SAFE_INTEGER
+    if (!overlaps(reservation.startAt, reservation.endAt, issue.startAt, issueEnd)) {
+      throw new ConvexError("Gangguan tidak berdampak pada jadwal ini")
+    }
+    if (reservation.status === "approved" && reservation.startAt <= Date.now()) {
+      throw new ConvexError("Kegiatan sudah berlangsung. Hubungi petugas.")
+    }
+    const now = Date.now()
+    await ctx.db.patch("reservations", reservation._id, {
+      status: "cancelled",
+      cancelledBy: profile._id,
+      cancelledAt: now,
+      updatedAt: now,
+    })
+    await recordAuditEvent(ctx, {
+      entityType: "reservation",
+      entityId: reservation._id,
+      action: "reservation.cancelled_by_user",
+      fromStatus: reservation.status,
+      toStatus: "cancelled",
+      actorId: profile._id,
+      actorRole: profile.role,
+      note: `disruption:${issue._id}`,
+    })
+    await cancelPendingChanges(ctx, reservation._id, now)
+    return null
+  },
+})
+
 export const decide = mutation({
   args: {
     reservationId: v.id("reservations"),
