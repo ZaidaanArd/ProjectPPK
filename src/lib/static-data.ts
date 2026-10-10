@@ -1526,6 +1526,128 @@ export async function staticMutation(
       )
       return null
     }
+    case "reservations:cancelMineForDisruption": {
+      requireRole(["user"])
+      const item = required(state.reservations, value(args, "reservationId"))
+      const issue = required(state.facilityIssues ?? [], value(args, "issueId"))
+      if (item.userId !== account().id) throw new Error("Reservasi tidak ditemukan")
+      if (issue.status !== "open" || issue.facilityId !== item.facilityId)
+        throw new Error("Gangguan tidak berlaku untuk reservasi ini")
+      if (!overlaps(item.startAt, item.endAt, issue.startAt, issue.endAt ?? Number.MAX_SAFE_INTEGER))
+        throw new Error("Gangguan tidak berdampak pada jadwal ini")
+      if (item.status === "approved" && item.startAt <= now)
+        throw new Error("Kegiatan sudah berlangsung. Hubungi petugas.")
+      change<Reservation>("reservations", (items) =>
+        items.map((r) => (r.id === item.id ? { ...r, status: "cancelled", updatedAt: now } : r))
+      )
+      return null
+    }
+    case "facilityIssues:create": {
+      requireRole(["officer", "admin"])
+      const facilityId = value(args, "facilityId")
+      required(state.facilities, facilityId)
+      requireText(value(args, "category"))
+      requireText(value(args, "description"))
+      const id = `demo-issue-${crypto.randomUUID()}`
+      const startAt = Number(field(args, "startAt"))
+      const endRaw = field(args, "endAt")
+      const endAt = endRaw ? Number(endRaw) : undefined
+      change<FacilityIssue>("facilityIssues", (items) => [
+        ...items,
+        { id, facilityId, category: value(args, "category").trim(), description: value(args, "description").trim(), startAt, endAt, status: "open", revision: 1, createdBy: account().id, createdAt: now, updatedAt: now },
+      ])
+      for (const r of state.reservations) {
+        if (r.facilityId !== facilityId || r.endAt <= now) continue
+        if (!overlaps(r.startAt, r.endAt, startAt, endAt ?? Number.MAX_SAFE_INTEGER)) continue
+        notifyDemo(now, {
+          userId: r.userId,
+          type: "disruption.created",
+          title: `Gangguan di ${facilityName(facilityId)}`,
+          body: `${value(args, "category").trim()} masih dapat digunakan.`,
+          dedupKey: `disruption:${id}:rev1:user:${r.userId}:created`,
+          facilityId,
+          issueId: id,
+        })
+      }
+      return id
+    }
+    case "facilityIssues:resolve": {
+      requireRole(["officer", "admin"])
+      const issue = required(state.facilityIssues ?? [], value(args, "issueId"))
+      change<FacilityIssue>("facilityIssues", (items) =>
+        items.map((i) => (i.id === issue.id ? { ...i, status: "closed", closedAt: now, updatedAt: now } : i))
+      )
+      for (const r of state.reservations) {
+        if (r.facilityId !== issue.facilityId || r.endAt <= now) continue
+        notifyDemo(now, {
+          userId: r.userId,
+          type: "disruption.resolved",
+          title: `Gangguan selesai di ${facilityName(issue.facilityId)}`,
+          body: `${issue.category} telah selesai ditangani.`,
+          dedupKey: `disruption:${issue.id}:rev${issue.revision}:user:${r.userId}:resolved`,
+          facilityId: issue.facilityId,
+          issueId: issue.id,
+        })
+      }
+      return null
+    }
+    case "emergencyClosures:close": {
+      requireRole(["officer", "admin"])
+      const facilityId = value(args, "facilityId")
+      required(state.facilities, facilityId)
+      requireText(value(args, "reason"))
+      const mode = value(args, "mode") as "safety" | "long_repair"
+      const id = `demo-closure-${crypto.randomUUID()}`
+      change<EmergencyClosure>("emergencyClosures", (items) => [
+        ...items,
+        { id, facilityId, reason: value(args, "reason").trim(), status: "closed", closedBy: account().id, closedAt: now, createdAt: now, updatedAt: now },
+      ])
+      const affected = state.reservations.filter(
+        (r) => r.facilityId === facilityId && r.endAt > now && ["pending", "approved"].includes(r.status)
+      )
+      if (mode === "safety") {
+        change<Reservation>("reservations", (items) =>
+          items.map((r) =>
+            affected.some((a) => a.id === r.id)
+              ? { ...r, status: "cancelled", decisionNote: `Dibatalkan pengelola karena penutupan darurat: ${value(args, "reason").trim()}`, updatedAt: now }
+              : r
+          )
+        )
+      }
+      for (const r of affected) {
+        notifyDemo(now, {
+          userId: r.userId,
+          type: "emergency.closed",
+          title: mode === "safety" ? `Reservasi dibatalkan: ${facilityName(facilityId)} ditutup darurat` : `Perbaikan besar di ${facilityName(facilityId)}`,
+          body: mode === "safety" ? `Reservasi pada ${jakartaRange(r.startAt, r.endAt)} dibatalkan pengelola.` : `Perbaikan sampai pemberitahuan lebih lanjut. Dapat dibatalkan atau tetap menunggu.`,
+          dedupKey: mode === "safety" ? `closure:${id}:reservation:${r.id}` : `closure:${id}:notice:user:${r.userId}`,
+          reservationId: r.id,
+          facilityId,
+          closureId: id,
+        })
+      }
+      return id
+    }
+    case "emergencyClosures:reopen": {
+      requireRole(["officer", "admin"])
+      const closure = required(state.emergencyClosures ?? [], value(args, "closureId"))
+      change<EmergencyClosure>("emergencyClosures", (items) =>
+        items.map((c) => (c.id === closure.id ? { ...c, status: "reopened", reopenedAt: now, updatedAt: now } : c))
+      )
+      return null
+    }
+    case "emergencyClosures:cancelMineForClosure": {
+      requireRole(["user"])
+      const item = required(state.reservations, value(args, "reservationId"))
+      const closure = required(state.emergencyClosures ?? [], value(args, "closureId"))
+      if (item.userId !== account().id) throw new Error("Reservasi tidak ditemukan")
+      if (closure.status !== "closed" || closure.facilityId !== item.facilityId)
+        throw new Error("Penutupan tidak berlaku untuk reservasi ini")
+      change<Reservation>("reservations", (items) =>
+        items.map((r) => (r.id === item.id ? { ...r, status: "cancelled", updatedAt: now } : r))
+      )
+      return null
+    }
     case "reservations:cancelByStaff": {
       requireRole(["officer", "admin"])
       const id = value(args, "reservationId"),
