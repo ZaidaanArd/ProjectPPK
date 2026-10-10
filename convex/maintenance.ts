@@ -384,8 +384,7 @@ export const close = mutation({
  * Runs at a window's endAt. Does nothing if the window was closed or extended
  * since this run was scheduled (the extension schedules its own run).
  */
-export const expire = internalMutation({
-  args: { windowId: v.id("maintenanceWindows"), endAt: v.number() },
+export const expire = internalMutation({  args: { windowId: v.id("maintenanceWindows"), endAt: v.number() },
   returns: v.null(),
   handler: async (ctx, args) => {
     const window = await ctx.db.get("maintenanceWindows", args.windowId)
@@ -408,6 +407,39 @@ export const expire = internalMutation({
       fromStatus: "scheduled",
       toStatus: "completed",
       actorRole: "system",
+    })
+    return null
+  },
+})
+
+/**
+ * Runs 30 min before a window ends. Idempotent per window+endAt; notifies the
+ * creator so staff and admin portals can show Selesaikan/Perpanjang.
+ */
+export const remind = internalMutation({
+  args: { windowId: v.id("maintenanceWindows"), endAt: v.number() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const window = await ctx.db.get("maintenanceWindows", args.windowId)
+    if (!window || window.status !== "scheduled" || window.endAt !== args.endAt)
+      return null
+    const facility = await ctx.db.get("facilities", window.facilityId)
+    await notify(ctx, {
+      userId: window.createdBy,
+      type: "maintenance.reminder",
+      title: `Perbaikan hampir selesai di ${facility?.name ?? "fasilitas"}`,
+      body: `Jadwal ${jakartaRange(window.startAt, window.endAt)} berakhir 30 menit lagi. Selesaikan atau perpanjang dari portal petugas/admin.`,
+      facilityId: window.facilityId,
+      dedupKey: `maintenance:${window._id}:reminder:${args.endAt}`,
+    })
+    await recordAuditEvent(ctx, {
+      entityType: "maintenance",
+      entityId: window._id,
+      action: "maintenance.reminder_sent",
+      fromStatus: "scheduled",
+      toStatus: "scheduled",
+      actorRole: "system",
+      note: String(args.endAt),
     })
     return null
   },
