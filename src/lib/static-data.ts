@@ -995,8 +995,9 @@ export function staticQuery(name: string, args: unknown): unknown {
       const id = value(args, "facilityId")
       const s = Number(field(args, "startAt"))
       const e = field(args, "endAt") ? Number(field(args, "endAt")) : Number.MAX_SAFE_INTEGER
+      const at = Date.now()
       const inRange = (r: Reservation) =>
-        r.facilityId === id && r.endAt > now && r.endAt > s && overlaps(r.startAt, r.endAt, s, e)
+        r.facilityId === id && r.endAt > at && r.endAt > s && overlaps(r.startAt, r.endAt, s, e)
       return {
         approved: state.reservations.filter((r) => r.status === "approved" && inRange(r)).length,
         pending: state.reservations.filter((r) => r.status === "pending" && inRange(r)).length,
@@ -1025,14 +1026,15 @@ export function staticQuery(name: string, args: unknown): unknown {
         .reverse()
     case "emergencyClosures:previewImpact": {
       const id = value(args, "facilityId")
+      const at = Date.now()
       const pending: { id: string; startAt: number; endAt: number }[] = []
       const approvedFuture: { id: string; startAt: number; endAt: number }[] = []
       const ongoing: { id: string; startAt: number; endAt: number }[] = []
       for (const r of state.reservations) {
-        if (r.facilityId !== id || r.endAt <= now) continue
+        if (r.facilityId !== id || r.endAt <= at) continue
         if (!["pending", "approved"].includes(r.status)) continue
         const item = { id: r.id, startAt: r.startAt, endAt: r.endAt }
-        if (r.startAt <= now) ongoing.push(item)
+        if (r.startAt <= at) ongoing.push(item)
         else if (r.status === "pending") pending.push(item)
         else approvedFuture.push(item)
       }
