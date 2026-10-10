@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test"
 
 import {
   enterDemo,
+  chooseCalendarDate,
   expectScrollUnlocked,
   scheduleRepair,
   tomorrowInJakarta,
@@ -369,8 +370,11 @@ test("US-12: perbaikan hanya di slot kosong dan menutup slot itu bagi pengguna",
   await page.goto("/staff/maintenance")
   await page.getByRole("button", { name: "Jadwalkan perbaikan" }).click()
   const dialog = page.getByRole("dialog", { name: "Jadwalkan perbaikan" })
-  await dialog.getByLabel("Fasilitas").selectOption({ label: "Lab Komputer 3" })
-  await dialog.getByLabel("Tanggal").fill(date)
+  await dialog.getByRole("combobox", { name: "Fasilitas", exact: true }).click()
+  await dialog
+    .getByRole("option", { name: "Lab Komputer 3", exact: true })
+    .click()
+  await chooseCalendarDate(page, "Tanggal perbaikan", date)
   // The pending 13.00–14.00 request holds its slots: repairs yield.
   await expect(
     dialog.getByRole("button", { name: "13.00 · Terisi" })

@@ -1,7 +1,14 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useMemo, useState, type FormEvent } from "react"
+import { useRouter } from "next/navigation"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+} from "react"
 import { toast } from "sonner"
 import {
   IconCalendarPlus,
@@ -15,6 +22,7 @@ import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
 import { PortalPageHeader } from "@/components/portal-page-header"
 import { PortalListSkeleton } from "@/components/portal-skeletons"
+import { ReservationDatePicker } from "@/components/reservation-date-picker"
 import { TimeSlotPicker } from "@/components/time-slot-picker"
 import {
   AlertDialog,
@@ -37,6 +45,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import {
   useAppAuth,
@@ -55,10 +70,6 @@ import { useAuthenticatedQuery } from "@/lib/use-authenticated-query"
 import { cn } from "@/lib/utils"
 
 const SLOT_MS = 30 * 60 * 1000
-// Native controls: popovers rendered in a portal are inert behind a modal
-// <dialog>, so the dialogs below avoid them.
-const fieldClass =
-  "h-9 w-full rounded-3xl border border-transparent bg-input/50 px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
 const DAY_MS = 24 * 60 * 60 * 1000
 
 const dateLabel = new Intl.DateTimeFormat("id-ID", {
@@ -136,18 +147,23 @@ export function ScheduleMaintenanceDialog({
   open,
   onClose,
   facilityId: fixedFacilityId,
+  initialFacilityId,
   facilityName,
   reportId,
 }: {
   open: boolean
   onClose: () => void
   facilityId?: string
+  initialFacilityId?: string
   facilityName?: string
   reportId?: Id<"reports">
 }) {
   const facilities = useAppQuery(api.facilities.listPublic)
   const schedule = useMutation(api.maintenance.schedule)
-  const [chosenFacility, setChosenFacility] = useState("")
+  const [chosenFacility, setChosenFacility] = useState(initialFacilityId ?? "")
+  const [previousOpen, setPreviousOpen] = useState(open)
+  const [previousInitialFacilityId, setPreviousInitialFacilityId] =
+    useState(initialFacilityId)
   const facilityId = fixedFacilityId ?? chosenFacility
   const [date, setDate] = useState(todayInJakarta)
   const [start, setStart] = useState("")
@@ -158,6 +174,20 @@ export function ScheduleMaintenanceDialog({
   const { agenda, busy } = useDayAgenda(facilityId, date)
   const pendingCount =
     agenda?.reservations.filter((item) => item.status === "pending").length ?? 0
+
+  // Reset on a new opening before the dialog and its agenda are rendered.
+  if (
+    open !== previousOpen ||
+    initialFacilityId !== previousInitialFacilityId
+  ) {
+    setPreviousOpen(open)
+    setPreviousInitialFacilityId(initialFacilityId)
+    if (open && !fixedFacilityId) {
+      setChosenFacility(initialFacilityId ?? "")
+      setStart("")
+      setEnd("")
+    }
+  }
 
   function reset() {
     setChosenFacility("")
@@ -231,37 +261,44 @@ export function ScheduleMaintenanceDialog({
         {!fixedFacilityId && (
           <div className="grid gap-1.5">
             <Label htmlFor="maintenance-facility">Fasilitas</Label>
-            <select
-              id="maintenance-facility"
-              className={fieldClass}
-              value={chosenFacility}
-              onChange={(event) => {
-                setChosenFacility(event.target.value)
+            <Select
+              value={chosenFacility || null}
+              disabled={!facilities || pending}
+              onValueChange={(value) => {
+                setChosenFacility(value ?? "")
                 setStart("")
                 setEnd("")
               }}
             >
-              <option value="">Pilih fasilitas</option>
-              {(facilities ?? []).map((facility) => (
-                <option key={facility.id} value={facility.id}>
-                  {facility.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="maintenance-facility" className="w-full">
+                <SelectValue>
+                  {(value: string | null) =>
+                    facilities?.find((facility) => facility.id === value)
+                      ?.name ?? "Pilih fasilitas"
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent portalled={false}>
+                {(facilities ?? []).map((facility) => (
+                  <SelectItem key={facility.id} value={facility.id}>
+                    {facility.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
 
         <div className="max-w-xs space-y-1.5">
           <Label htmlFor="maintenance-date">Tanggal</Label>
-          <input
+          <ReservationDatePicker
             id="maintenance-date"
-            type="date"
-            className={fieldClass}
-            min={todayInJakarta()}
+            label="Tanggal perbaikan"
+            portalled={false}
+            disabled={pending}
             value={date}
-            onChange={(event) => {
-              if (!event.target.value) return
-              setDate(event.target.value)
+            onChange={(value) => {
+              setDate(value)
               setStart("")
               setEnd("")
             }}
@@ -393,36 +430,47 @@ function ExtendDialog({
       <form onSubmit={submit} className="space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="extend-date">Tanggal selesai baru</Label>
-          <input
+          <ReservationDatePicker
             id="extend-date"
-            type="date"
-            className={fieldClass}
-            min={currentEndDate}
-            value={shownDate}
-            onChange={(event) => setDate(event.target.value)}
+            label="Tanggal selesai baru"
+            portalled={false}
+            disabled={pending}
+            minDate={currentEndDate || todayInJakarta()}
+            value={shownDate || todayInJakarta()}
+            onChange={(value) => {
+              setDate(value)
+              setTime("")
+            }}
           />
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="extend-time">Jam selesai baru</Label>
-          <select
-            id="extend-time"
-            className={cn(fieldClass, "w-40")}
-            value={time}
-            onChange={(event) => setTime(event.target.value)}
+          <Select
+            value={time || null}
+            onValueChange={(value) => setTime(value ?? "")}
+            disabled={pending}
           >
-            <option value="">Pilih jam</option>
-            {reservationTimes.slice(1).map((item) => (
-              <option
-                key={item}
-                value={item}
-                disabled={
-                  !window || toTimestamp(shownDate, item) <= window.endAt
+            <SelectTrigger id="extend-time" className="w-40">
+              <SelectValue>
+                {(value: string | null) =>
+                  value ? displayTime(value) : "Pilih jam"
                 }
-              >
-                {displayTime(item)}
-              </option>
-            ))}
-          </select>
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent portalled={false}>
+              {reservationTimes.slice(1).map((item) => (
+                <SelectItem
+                  key={item}
+                  value={item}
+                  disabled={
+                    !window || toTimestamp(shownDate, item) <= window.endAt
+                  }
+                >
+                  {displayTime(item)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         {message && (
           <p role="alert" className="text-sm text-destructive">
@@ -527,15 +575,69 @@ function WindowCard({
   )
 }
 
-export function StaffMaintenance() {
+export function StaffMaintenance({
+  initialFacilityId,
+  autoSchedule = false,
+}: {
+  initialFacilityId?: string
+  autoSchedule?: boolean
+}) {
+  const router = useRouter()
+  const facilities = useAuthenticatedQuery(api.facilities.listPublic, {})
   const windows = useAuthenticatedQuery(api.maintenance.listManaged, {})
   const closeWindow = useMutation(api.maintenance.close)
   const [scheduling, setScheduling] = useState(false)
+  const [scheduleFacilityId, setScheduleFacilityId] = useState<string>()
+  const [entryMessage, setEntryMessage] = useState("")
+  const [handledRequest, setHandledRequest] = useState<string | null>(null)
+  const requestKey = autoSchedule ? (initialFacilityId ?? "") : null
   const [extending, setExtending] = useState<WindowItem | null>(null)
   const [closing, setClosing] = useState<WindowItem | null>(null)
   const [busy, setBusy] = useState(false)
   const now = useNow()
   const closingPhase = closing ? phase(closing, now) : null
+
+  const clearScheduleRequest = useCallback(() => {
+    const url = new URL(window.location.href)
+    if (!url.searchParams.has("facility") && !url.searchParams.has("schedule"))
+      return
+    url.searchParams.delete("facility")
+    url.searchParams.delete("schedule")
+    router.replace(`${url.pathname}${url.search}${url.hash}`, { scroll: false })
+  }, [router])
+
+  // Consume each URL request once after the facility list is available.
+  if (requestKey === null && handledRequest !== null) {
+    setHandledRequest(null)
+  } else if (
+    requestKey !== null &&
+    facilities &&
+    handledRequest !== requestKey
+  ) {
+    setHandledRequest(requestKey)
+    const facility = facilities.find((item) => item.id === requestKey)
+    if (!facility) {
+      setEntryMessage(
+        "Fasilitas tidak ditemukan atau sudah nonaktif. Pilih fasilitas lain melalui Jadwalkan perbaikan."
+      )
+    } else {
+      setEntryMessage("")
+      setScheduleFacilityId(facility.id)
+      setScheduling(true)
+    }
+  }
+
+  useEffect(() => {
+    if (entryMessage && requestKey !== null && handledRequest === requestKey) {
+      clearScheduleRequest()
+    }
+  }, [entryMessage, requestKey, handledRequest, clearScheduleRequest])
+
+  function closeScheduling() {
+    setScheduling(false)
+    setScheduleFacilityId(undefined)
+    clearScheduleRequest()
+  }
 
   const groups = useMemo(() => {
     const ongoing: WindowItem[] = []
@@ -602,7 +704,18 @@ export function StaffMaintenance() {
         description="Perbaikan memakai slot yang kosong. Selama berlangsung, hanya rentang itu yang tertutup untuk reservasi."
         icon={IconTool}
       />
-      <Button onClick={() => setScheduling(true)}>
+      {entryMessage && (
+        <output className="block rounded-2xl border border-border/70 bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+          {entryMessage}
+        </output>
+      )}
+      <Button
+        onClick={() => {
+          setEntryMessage("")
+          setScheduleFacilityId(undefined)
+          setScheduling(true)
+        }}
+      >
         <IconCalendarPlus size={16} aria-hidden="true" />
         Jadwalkan perbaikan
       </Button>
@@ -645,7 +758,8 @@ export function StaffMaintenance() {
 
       <ScheduleMaintenanceDialog
         open={scheduling}
-        onClose={() => setScheduling(false)}
+        initialFacilityId={scheduleFacilityId}
+        onClose={closeScheduling}
       />
       <ExtendDialog window={extending} onClose={() => setExtending(null)} />
       <AlertDialog

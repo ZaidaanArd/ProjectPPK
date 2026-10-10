@@ -947,16 +947,26 @@ export function AdminFacilities() {
                         ? "Sembunyikan"
                         : "Aktifkan"}
                     </Button>
-                    {/* Repairs are time-bound windows scheduled by staff. */}
-                    <Link
-                      href="/staff/maintenance"
-                      className={buttonVariants({
-                        size: "sm",
-                        variant: "outline",
-                      })}
-                    >
-                      Jadwal perbaikan
-                    </Link>
+                    {facility.status === "inactive" ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled
+                        title="Aktifkan fasilitas untuk menjadwalkan perbaikan"
+                      >
+                        Jadwal perbaikan
+                      </Button>
+                    ) : (
+                      <Link
+                        href={`/staff/maintenance?facility=${encodeURIComponent(facility.id)}&schedule=1`}
+                        className={buttonVariants({
+                          size: "sm",
+                          variant: "outline",
+                        })}
+                      >
+                        Jadwal perbaikan
+                      </Link>
+                    )}
                   </div>
                 </div>
               </Card>
