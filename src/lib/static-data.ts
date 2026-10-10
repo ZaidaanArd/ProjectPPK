@@ -712,10 +712,33 @@ function reportItem(report: Report) {
 }
 function facilityHandling(id: string) {
   const facility = state.facilities.find((item) => item.id === id)
-  return reportHandlingState(
+  const closure = (state.emergencyClosures ?? []).find(
+    (c) => c.facilityId === id && c.status === "closed"
+  )
+  if (closure) {
+    return {
+      status: "maintenance" as const,
+      handlingNotice:
+        "Fasilitas ditutup darurat sampai petugas membuka kembali dan memastikan aman digunakan.",
+    }
+  }
+  const base = reportHandlingState(
     facility?.status ?? "inactive",
     state.reports.filter((report) => report.facilityId === id)
   )
+  if (base.status !== "active") return base
+  const issues = (state.facilityIssues ?? []).filter(
+    (issue) => issue.facilityId === id && issue.status === "open"
+  )
+  if (issues.length === 0) return base
+  const first = issues[0]
+  const more = issues.length > 1 ? ` (+${issues.length - 1} lainnya)` : ""
+  return {
+    status: base.status,
+    handlingNotice:
+      base.handlingNotice ??
+      `Ada gangguan: ${first.category}${more}. Fasilitas masih dapat digunakan.`,
+  }
 }
 function jakartaRange(startAt: number, endAt: number) {
   const format = new Intl.DateTimeFormat("id-ID", {
