@@ -40,6 +40,9 @@ export function reservationSteps(item: Tracked): ProgressStep[] {
     "Disetujui",
   ]
   if (item.status === "approved") return build(labels, 2, item)
+  if (item.status === "completed")
+    return build(["Diajukan", "Disetujui", "Selesai"], 2, item)
+  if (item.status === "expired") return build(labels, 2, item, "Kedaluwarsa")
   if (item.status === "rejected") return build(labels, 2, item, "Ditolak")
   if (item.status === "cancelled") return build(labels, 2, item, "Dibatalkan")
   return build(labels, 1, item)

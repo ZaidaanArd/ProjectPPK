@@ -59,6 +59,8 @@ const statusTone: Record<string, Tone> = {
   resolved: "emerald",
   rejected: "red",
   cancelled: "zinc",
+  expired: "zinc",
+  completed: "zinc",
 }
 
 const weekday = new Intl.DateTimeFormat("id-ID", {

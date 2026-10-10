@@ -74,6 +74,7 @@ const statusLabel: Record<string, string> = {
   active: "Aktif",
   rejected: "Ditolak",
   cancelled: "Dibatalkan",
+  expired: "Kedaluwarsa",
   in_progress: "Ditangani",
   resolved: "Selesai",
   disabled: "Nonaktif",
@@ -88,6 +89,7 @@ const statusTextClass: Record<string, string> = {
   resolved: "text-emerald-800 dark:text-emerald-300",
   rejected: "text-red-800 dark:text-red-300",
   cancelled: "text-muted-foreground",
+  expired: "text-muted-foreground",
 }
 
 const accountRoleLabel: Record<string, string> = {

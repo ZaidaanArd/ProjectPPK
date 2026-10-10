@@ -10,6 +10,7 @@ import {
   reservationStatusValidator,
   roleValidator,
 } from "./lib/validators"
+import { effectiveReservationStatus } from "./lib/reservationState"
 
 const accountValidator = v.object({
   id: v.id("profiles"),
@@ -286,6 +287,7 @@ export const analytics = query({
       "approved",
       "rejected",
       "cancelled",
+      "expired",
     ] as const
     const reportStatuses = [
       "pending",
@@ -304,7 +306,9 @@ export const analytics = query({
       reports: reports.length,
       reservationsByStatus: reservationStatuses.map((status) => ({
         status,
-        count: reservations.filter((item) => item.status === status).length,
+        count: reservations.filter(
+          (item) => effectiveReservationStatus(item, Date.now()) === status
+        ).length,
       })),
       reportsByStatus: reportStatuses.map((status) => ({
         status,
@@ -393,7 +397,7 @@ export const exportData = query({
               purpose: item.purpose,
               startAt: item.startAt,
               endAt: item.endAt,
-              status: item.status,
+              status: effectiveReservationStatus(item, Date.now()),
             }
           })
         ),

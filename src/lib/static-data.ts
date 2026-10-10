@@ -800,10 +800,12 @@ export function staticQuery(name: string, args: unknown): unknown {
         reservations: state.reservations.length,
         reports: state.reports.length,
         reservationsByStatus: (
-          ["pending", "approved", "rejected", "cancelled"] as const
+          ["pending", "approved", "rejected", "cancelled", "expired"] as const
         ).map((status) => ({
           status,
-          count: state.reservations.filter((r) => r.status === status).length,
+          count: state.reservations.filter(
+            (r) => effectiveReservationStatus(r, Date.now()) === status
+          ).length,
         })),
         reportsByStatus: (
           ["pending", "in_progress", "resolved", "rejected"] as const
@@ -1529,7 +1531,7 @@ export function staticCsv(kind: "reservations" | "reports" | "summary") {
           r.purpose,
           r.startAt,
           r.endAt,
-          r.status,
+          effectiveReservationStatus(r, Date.now()),
         ])
       : state.reports.map((r) => [
           r.id,

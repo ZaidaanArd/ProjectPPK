@@ -25,6 +25,7 @@ describe("reservationSteps", () => {
     for (const [status, label] of [
       ["rejected", "Ditolak"],
       ["cancelled", "Dibatalkan"],
+      ["expired", "Kedaluwarsa"],
     ] as const) {
       const steps = reservationSteps({ status, createdAt: 1, updatedAt: 9 })
       expect(states(steps)).toEqual(["done", "done", "error"])
@@ -57,6 +58,15 @@ describe("reportSteps", () => {
 })
 
 describe("step timestamps", () => {
+  it("shows completed approved bookings as completed rather than pending review", () => {
+    const steps = reservationSteps({
+      status: "completed",
+      createdAt: 1,
+      updatedAt: 9,
+    })
+    expect(steps[2]?.label).toBe("Selesai")
+    expect(states(steps)).toEqual(["done", "done", "done"])
+  })
   it("does not repeat the submission time on later steps", () => {
     const pending = reservationSteps({
       status: "pending",
