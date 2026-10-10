@@ -25,17 +25,31 @@ export function ReservationDisruptionActions({
   startAt: number
   endAt: number
 }) {
-  const issues = useAuthenticatedQuery(api.facilityIssues.listOpen, { facilityId })
-  const closures = useAuthenticatedQuery(api.emergencyClosures.listActiveForFacility, {
+  const issues = useAuthenticatedQuery(api.facilityIssues.listOpen, {
     facilityId,
   })
-  const cancelForIssue = useAppMutation(api.reservations.cancelMineForDisruption)
-  const cancelForClosure = useAppMutation(api.emergencyClosures.cancelMineForClosure)
+  const closures = useAuthenticatedQuery(
+    api.emergencyClosures.listActiveForFacility,
+    {
+      facilityId,
+    }
+  )
+  const cancelForIssue = useAppMutation(
+    api.reservations.cancelMineForDisruption
+  )
+  const cancelForClosure = useAppMutation(
+    api.emergencyClosures.cancelMineForClosure
+  )
   const [busy, setBusy] = useState<string | null>(null)
 
   if (status !== "approved" && status !== "pending") return null
   const openIssues = (issues ?? []).filter((issue) =>
-    overlaps(startAt, endAt, issue.startAt, issue.endAt ?? Number.MAX_SAFE_INTEGER)
+    overlaps(
+      startAt,
+      endAt,
+      issue.startAt,
+      issue.endAt ?? Number.MAX_SAFE_INTEGER
+    )
   )
   const activeClosures = closures ?? []
   if (openIssues.length === 0 && activeClosures.length === 0) return null
@@ -68,7 +82,10 @@ export function ReservationDisruptionActions({
     <div className="space-y-2">
       {openIssues.map((issue) => (
         <div key={issue.id} className="space-y-2">
-          <DisruptionBanner category={issue.category} description={issue.description} />
+          <DisruptionBanner
+            category={issue.category}
+            description={issue.description}
+          />
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
@@ -76,7 +93,9 @@ export function ReservationDisruptionActions({
               disabled={busy !== null}
               onClick={() => void cancelIssue(issue.id)}
             >
-              {busy === (issue.id as string) ? "Membatalkan…" : "Batalkan karena gangguan"}
+              {busy === (issue.id as string)
+                ? "Membatalkan…"
+                : "Batalkan karena gangguan"}
             </Button>
           </div>
         </div>
@@ -91,10 +110,13 @@ export function ReservationDisruptionActions({
               disabled={busy !== null}
               onClick={() => void cancelClosure(closure.id)}
             >
-              {busy === (closure.id as string) ? "Membatalkan…" : "Batalkan (fasilitas ditutup)"}
+              {busy === (closure.id as string)
+                ? "Membatalkan…"
+                : "Batalkan (fasilitas ditutup)"}
             </Button>
             <span className="text-xs text-muted-foreground">
-              Tetap menunggu juga boleh; reservasi tidak berubah bila tidak dibatalkan.
+              Tetap menunggu juga boleh; reservasi tidak berubah bila tidak
+              dibatalkan.
             </span>
           </div>
         </div>

@@ -31,7 +31,10 @@ function todayJakarta() {
 export function MaintenanceReminderSection({ now }: { now: number }) {
   const windows = useAuthenticatedQuery(api.maintenance.listManaged, {})
   const soon = (windows ?? []).filter(
-    (w) => w.status === "scheduled" && w.endAt > now && w.endAt - now <= 60 * 60 * 1000
+    (w) =>
+      w.status === "scheduled" &&
+      w.endAt > now &&
+      w.endAt - now <= 60 * 60 * 1000
   )
   if (soon.length === 0) return null
   const fmt = new Intl.DateTimeFormat("id-ID", {
@@ -59,7 +62,12 @@ function MaintenanceReminderSectionItem({
   facilityName: string
   endLabel: string
 }) {
-  return <MaintenanceReminderBanner facilityName={facilityName} endAtLabel={endLabel} />
+  return (
+    <MaintenanceReminderBanner
+      facilityName={facilityName}
+      endAtLabel={endLabel}
+    />
+  )
 }
 
 export function StaffDisruptionPanel() {
@@ -115,15 +123,21 @@ export function StaffDisruptionPanel() {
   return (
     <section aria-label="Gangguan ringan" className="space-y-3">
       <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-        Gangguan ringan ({issues?.filter((i) => i.status === "open").length ?? 0} aktif)
+        Gangguan ringan (
+        {issues?.filter((i) => i.status === "open").length ?? 0} aktif)
       </h2>
       <Card className="gap-3 p-5">
         <form onSubmit={submit} className="grid gap-3">
           <div className="grid gap-1.5">
             <Label htmlFor="issue-facility">Fasilitas</Label>
-            <Select value={facilityId || null} onValueChange={(v) => setFacilityId(v ?? "")}>
+            <Select
+              value={facilityId || null}
+              onValueChange={(v) => setFacilityId(v ?? "")}
+            >
               <SelectTrigger id="issue-facility" className="w-full">
-                <SelectValue>{(v: string | null) => v ?? "Pilih fasilitas"}</SelectValue>
+                <SelectValue>
+                  {(v: string | null) => v ?? "Pilih fasilitas"}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {(facilities ?? []).map((f) => (
@@ -146,7 +160,12 @@ export function StaffDisruptionPanel() {
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="issue-date">Tanggal dampak</Label>
-              <Input id="issue-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <Input
+                id="issue-date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
             </div>
           </div>
           <div className="grid gap-1.5">
@@ -161,22 +180,42 @@ export function StaffDisruptionPanel() {
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
               <Label htmlFor="issue-start">Mulai</Label>
-              <Select value={start} onValueChange={(v) => setStart(v ?? "09:00")}>
-                <SelectTrigger id="issue-start"><SelectValue>{(v: string | null) => v ?? "Pilih"}</SelectValue></SelectTrigger>
+              <Select
+                value={start}
+                onValueChange={(v) => setStart(v ?? "09:00")}
+              >
+                <SelectTrigger id="issue-start">
+                  <SelectValue>
+                    {(v: string | null) => v ?? "Pilih"}
+                  </SelectValue>
+                </SelectTrigger>
                 <SelectContent>
                   {reservationTimes.map((t) => (
-                    <SelectItem key={t} value={t}>{t.replace(":", ".")}</SelectItem>
+                    <SelectItem key={t} value={t}>
+                      {t.replace(":", ".")}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="issue-end">Selesai (kosongkan bila belum tahu)</Label>
-              <Select value={end || null} onValueChange={(v) => setEnd(v ?? "")}>
-                <SelectTrigger id="issue-end"><SelectValue>{(v: string | null) => v ?? "Belum tahu"}</SelectValue></SelectTrigger>
+              <Label htmlFor="issue-end">
+                Selesai (kosongkan bila belum tahu)
+              </Label>
+              <Select
+                value={end || null}
+                onValueChange={(v) => setEnd(v ?? "")}
+              >
+                <SelectTrigger id="issue-end">
+                  <SelectValue>
+                    {(v: string | null) => v ?? "Belum tahu"}
+                  </SelectValue>
+                </SelectTrigger>
                 <SelectContent>
                   {reservationTimes.map((t) => (
-                    <SelectItem key={t} value={t}>{t.replace(":", ".")}</SelectItem>
+                    <SelectItem key={t} value={t}>
+                      {t.replace(":", ".")}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -184,10 +223,15 @@ export function StaffDisruptionPanel() {
           </div>
           {impact && (
             <p className="text-sm text-muted-foreground">
-              Terdampak: {impact.approved} disetujui, {impact.pending} menunggu. Masih dapat digunakan dipilih otomatis.
+              Terdampak: {impact.approved} disetujui, {impact.pending} menunggu.
+              Masih dapat digunakan dipilih otomatis.
             </p>
           )}
-          {message && <p role="alert" className="text-sm text-destructive">{message}</p>}
+          {message && (
+            <p role="alert" className="text-sm text-destructive">
+              {message}
+            </p>
+          )}
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={busy}>
               {busy ? "Mempublikasikan…" : "Catat & publikasikan"}
@@ -196,28 +240,32 @@ export function StaffDisruptionPanel() {
         </form>
       </Card>
       <div className="grid items-start gap-3 lg:grid-cols-2">
-        {(issues ?? []).filter((i) => i.status === "open").map((issue) => (
-          <Card key={issue.id} className="gap-2 p-4">
-            <div className="flex items-start justify-between gap-2">
-              <p className="font-semibold">{issue.facilityName}</p>
-              <Badge variant="secondary">rev{issue.revision}</Badge>
-            </div>
-            <p className="text-sm">{issue.category} — {issue.description}</p>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                toast.promise(resolveIssue({ issueId: issue.id }), {
-                  loading: "Menutup gangguan…",
-                  success: "Gangguan selesai; banner hilang",
-                  error: (e) => toastError("Gagal menutup gangguan", e),
-                })
-              }}
-            >
-              Selesaikan
-            </Button>
-          </Card>
-        ))}
+        {(issues ?? [])
+          .filter((i) => i.status === "open")
+          .map((issue) => (
+            <Card key={issue.id} className="gap-2 p-4">
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-semibold">{issue.facilityName}</p>
+                <Badge variant="secondary">rev{issue.revision}</Badge>
+              </div>
+              <p className="text-sm">
+                {issue.category} — {issue.description}
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  toast.promise(resolveIssue({ issueId: issue.id }), {
+                    loading: "Menutup gangguan…",
+                    success: "Gangguan selesai; banner hilang",
+                    error: (e) => toastError("Gagal menutup gangguan", e),
+                  })
+                }}
+              >
+                Selesaikan
+              </Button>
+            </Card>
+          ))}
       </div>
     </section>
   )
@@ -242,10 +290,14 @@ export function StaffClosurePanel() {
 
   async function submit(e: FormEvent) {
     e.preventDefault()
-    if (!facilityId || !reason.trim()) return setMessage("Fasilitas dan alasan wajib diisi.")
-    if (!confirmScope) return setMessage("Centang konfirmasi cakupan pembatalan.")
+    if (!facilityId || !reason.trim())
+      return setMessage("Fasilitas dan alasan wajib diisi.")
+    if (!confirmScope)
+      return setMessage("Centang konfirmasi cakupan pembatalan.")
     if (mode === "long_repair" && !confirmSafe)
-      return setMessage("Untuk perbaikan besar, centang bahwa reservasi lama tetap berlaku.")
+      return setMessage(
+        "Untuk perbaikan besar, centang bahwa reservasi lama tetap berlaku."
+      )
     setBusy(true)
     try {
       await closeFacility({
@@ -253,7 +305,11 @@ export function StaffClosurePanel() {
         reason,
         mode,
       })
-      toast.success(mode === "safety" ? "Fasilitas ditutup; reservasi terdampak dibatalkan" : "Fasilitas diblokir; pengguna overlap diberi tahu")
+      toast.success(
+        mode === "safety"
+          ? "Fasilitas ditutup; reservasi terdampak dibatalkan"
+          : "Fasilitas diblokir; pengguna overlap diberi tahu"
+      )
       setReason("")
       setConfirmScope(false)
       setConfirmSafe(false)
@@ -267,80 +323,127 @@ export function StaffClosurePanel() {
   return (
     <section aria-label="Penutupan darurat" className="space-y-3">
       <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-        Penutupan darurat ({closures?.filter((c) => c.status === "closed").length ?? 0} aktif)
+        Penutupan darurat (
+        {closures?.filter((c) => c.status === "closed").length ?? 0} aktif)
       </h2>
       <Card className="gap-3 p-5">
         <form onSubmit={submit} className="grid gap-3">
           <div className="grid gap-1.5">
             <Label htmlFor="closure-facility">Fasilitas</Label>
-            <Select value={facilityId || null} onValueChange={(v) => setFacilityId(v ?? "")}>
+            <Select
+              value={facilityId || null}
+              onValueChange={(v) => setFacilityId(v ?? "")}
+            >
               <SelectTrigger id="closure-facility" className="w-full">
-                <SelectValue>{(v: string | null) => v ?? "Pilih fasilitas"}</SelectValue>
+                <SelectValue>
+                  {(v: string | null) => v ?? "Pilih fasilitas"}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {(facilities ?? []).map((f) => (
-                  <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                  <SelectItem key={f.id} value={f.id}>
+                    {f.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="closure-reason">Alasan wajib</Label>
-            <Textarea id="closure-reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Kabel listrik berbahaya" />
+            <Textarea
+              id="closure-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Kabel listrik berbahaya"
+            />
           </div>
           <div className="grid gap-2">
             <Label>Mode penutupan</Label>
             <label className="flex gap-2 text-sm">
-              <input type="radio" checked={mode === "safety"} onChange={() => setMode("safety")} />
+              <input
+                type="radio"
+                checked={mode === "safety"}
+                onChange={() => setMode("safety")}
+              />
               Keselamatan — batalkan otomatis reservasi terdampak
             </label>
             <label className="flex gap-2 text-sm">
-              <input type="radio" checked={mode === "long_repair"} onChange={() => setMode("long_repair")} />
+              <input
+                type="radio"
+                checked={mode === "long_repair"}
+                onChange={() => setMode("long_repair")}
+              />
               Perbaikan besar tanpa estimasi — blokir baru, existing boleh pilih
             </label>
           </div>
           <label className="flex gap-2 text-sm">
-            <input type="checkbox" checked={confirmScope} onChange={(e) => setConfirmScope(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={confirmScope}
+              onChange={(e) => setConfirmScope(e.target.checked)}
+            />
             Saya memahami cakupan pembatalan di preview
           </label>
           {mode === "long_repair" && (
             <label className="flex gap-2 text-sm">
-              <input type="checkbox" checked={confirmSafe} onChange={(e) => setConfirmSafe(e.target.checked)} />
+              <input
+                type="checkbox"
+                checked={confirmSafe}
+                onChange={(e) => setConfirmSafe(e.target.checked)}
+              />
               Reservasi lama tetap berlaku sampai pengguna memilih
             </label>
           )}
           {impact && (
             <p className="text-sm text-muted-foreground">
-              Preview: {impact.pending.length} menunggu, {impact.approvedFuture.length} disetujui mendatang, {impact.ongoing.length} berlangsung. Dihitung ulang saat eksekusi.
+              Preview: {impact.pending.length} menunggu,{" "}
+              {impact.approvedFuture.length} disetujui mendatang,{" "}
+              {impact.ongoing.length} berlangsung. Dihitung ulang saat eksekusi.
             </p>
           )}
-          {message && <p role="alert" className="text-sm text-destructive">{message}</p>}
+          {message && (
+            <p role="alert" className="text-sm text-destructive">
+              {message}
+            </p>
+          )}
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" variant="destructive" disabled={busy}>{busy ? "Menutup…" : "Tutup darurat"}</Button>
+            <Button type="submit" variant="destructive" disabled={busy}>
+              {busy ? "Menutup…" : "Tutup darurat"}
+            </Button>
           </div>
         </form>
       </Card>
       <div className="grid items-start gap-3 lg:grid-cols-2">
-        {(closures ?? []).filter((c) => c.status === "closed").map((c) => (
-          <Card key={c.id} className="gap-2 p-4">
-            <p className="font-semibold">{c.facilityName}</p>
-            <p className="text-sm">{c.reason}</p>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                if (!window.confirm("Fasilitas sudah aman untuk digunakan kembali? Reservasi yang dibatalkan tidak aktif lagi.")) return
-                toast.promise(reopen({ closureId: c.id, confirmSafe: true }), {
-                  loading: "Membuka kembali…",
-                  success: "Fasilitas dibuka kembali",
-                  error: (e) => toastError("Gagal membuka kembali", e),
-                })
-              }}
-            >
-              Buka kembali (konfirmasi aman)
-            </Button>
-          </Card>
-        ))}
+        {(closures ?? [])
+          .filter((c) => c.status === "closed")
+          .map((c) => (
+            <Card key={c.id} className="gap-2 p-4">
+              <p className="font-semibold">{c.facilityName}</p>
+              <p className="text-sm">{c.reason}</p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  if (
+                    !window.confirm(
+                      "Fasilitas sudah aman untuk digunakan kembali? Reservasi yang dibatalkan tidak aktif lagi."
+                    )
+                  )
+                    return
+                  toast.promise(
+                    reopen({ closureId: c.id, confirmSafe: true }),
+                    {
+                      loading: "Membuka kembali…",
+                      success: "Fasilitas dibuka kembali",
+                      error: (e) => toastError("Gagal membuka kembali", e),
+                    }
+                  )
+                }}
+              >
+                Buka kembali (konfirmasi aman)
+              </Button>
+            </Card>
+          ))}
       </div>
     </section>
   )

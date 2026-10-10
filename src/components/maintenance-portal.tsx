@@ -66,7 +66,11 @@ import {
   type BusyRange,
 } from "@/lib/reservation-slots"
 import { toastError } from "@/lib/toast"
-import { StaffClosurePanel, StaffDisruptionPanel, MaintenanceReminderSection } from "@/components/staff-ops-panels"
+import {
+  StaffClosurePanel,
+  StaffDisruptionPanel,
+  MaintenanceReminderSection,
+} from "@/components/staff-ops-panels"
 import { useAuthenticatedQuery } from "@/lib/use-authenticated-query"
 import { cn } from "@/lib/utils"
 

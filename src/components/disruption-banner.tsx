@@ -27,7 +27,8 @@ export function DisruptionBanner({
         <p className="font-semibold">Ada gangguan: {category}</p>
         <p className="line-clamp-3 text-[13px]">{description}</p>
         <p className="mt-0.5 text-xs opacity-80">
-          Fasilitas masih dapat digunakan{endText ?? " sampai pemberitahuan lebih lanjut"}.
+          Fasilitas masih dapat digunakan
+          {endText ?? " sampai pemberitahuan lebih lanjut"}.
         </p>
       </div>
     </output>
@@ -55,7 +56,9 @@ export function ClosureBanner({
       <div className="min-w-0">
         <p className="font-semibold">Fasilitas ditutup darurat</p>
         <p className="line-clamp-3 text-[13px]">{reason}</p>
-        <p className="mt-0.5 text-xs opacity-80">{estimateText ?? "Sampai pemberitahuan lebih lanjut"}.</p>
+        <p className="mt-0.5 text-xs opacity-80">
+          {estimateText ?? "Sampai pemberitahuan lebih lanjut"}.
+        </p>
       </div>
     </div>
   )
@@ -77,7 +80,10 @@ export function MaintenanceReminderBanner({
         className
       )}
     >
-      <IconAlertTriangle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+      <IconAlertTriangle
+        aria-hidden="true"
+        className="mt-0.5 h-4 w-4 shrink-0"
+      />
       <div className="min-w-0">
         <p className="font-semibold">Perbaikan hampir selesai</p>
         <p className="text-[13px]">
