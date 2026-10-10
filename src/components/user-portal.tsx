@@ -786,7 +786,6 @@ export function ReservationList() {
           onClose={() => setChanging(null)}
         />
       )}
-      <ScheduleChangePanel />
       <header className="relative border-b border-border/70 pb-6 sm:pb-7">
         <IconCalendarPlus
           size={88}
@@ -814,6 +813,7 @@ export function ReservationList() {
           Ajukan reservasi
         </Link>
       </header>
+      <ScheduleChangePanel />
       {message && (
         <p role="alert" className="text-sm text-destructive">
           {message}
