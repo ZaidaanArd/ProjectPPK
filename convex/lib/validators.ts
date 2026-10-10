@@ -23,7 +23,8 @@ export const reservationStatusValidator = v.union(
   v.literal("pending"),
   v.literal("approved"),
   v.literal("rejected"),
-  v.literal("cancelled")
+  v.literal("cancelled"),
+  v.literal("expired")
 )
 
 export const reportStatusValidator = v.union(
