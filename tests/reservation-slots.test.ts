@@ -61,6 +61,26 @@ describe("selectSlot", () => {
 })
 
 describe("helpers", () => {
+  it("disables start boundaries at or before now in WIB, including crossing a past slot", () => {
+    const slots = daySlots(date, [], { now: toTimestamp(date, "15:30") })
+    expect(slots.find((slot) => slot.start === "15:30")?.past).toBe(true)
+    expect(slots.find((slot) => slot.start === "16:00")?.past).toBe(false)
+    expect(selectSlot(slots, { start: "", end: "" }, 0).blocked).toBe(true)
+    expect(
+      daySlots("2026-10-02", [], { now: toTimestamp(date, "19:59") }).some(
+        (slot) => slot.past
+      )
+    ).toBe(false)
+  })
+  it("keeps pending slots selectable and approved slots blocked", () => {
+    const slots = daySlots(date, busy, { pending: busy })
+    expect(slots.find((slot) => slot.start === "09:00")).toMatchObject({
+      taken: true,
+      pending: true,
+    })
+    const pending = daySlots(date, [], { pending: busy })
+    expect(selectSlot(pending, { start: "", end: "" }, 4).blocked).toBe(false)
+  })
   it("formats durations and detects overlaps", () => {
     expect(displayDuration(90)).toBe("1 jam 30 menit")
     expect(rangeIsBusy(date, "08:30", "09:30", busy)).toBe(true)
