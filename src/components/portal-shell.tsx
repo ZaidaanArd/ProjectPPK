@@ -21,6 +21,7 @@ import { toast } from "sonner"
 import { api } from "../../convex/_generated/api"
 import { AppSidebar } from "@/components/app-sidebar"
 import { DialogMascot } from "@/components/dialog-mascot"
+import { NotificationBell } from "@/components/notification-bell"
 import { PortalOnboarding } from "@/components/portal-onboarding"
 import { PortalShellLoading } from "@/components/portal-skeletons"
 import {
@@ -422,6 +423,7 @@ export function PortalShell({
               </Breadcrumb>
             </div>
             <div className="flex items-center gap-2">
+              <NotificationBell disabled={passwordChangeRequired} />
               <Button
                 variant="ghost"
                 size="sm"

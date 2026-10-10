@@ -5,9 +5,12 @@ import {
   accountStatusValidator,
   actorRoleValidator,
   auditEntityValidator,
+  closureStatusValidator,
   facilityStatusValidator,
   handlingImpactValidator,
+  issueStatusValidator,
   maintenanceStatusValidator,
+  notificationTypeValidator,
   reportStatusValidator,
   reservationStatusValidator,
   roleValidator,
@@ -127,6 +130,64 @@ export default defineSchema({
     .index("by_facility_status_start", ["facilityId", "status", "startAt"])
     .index("by_status_start", ["status", "startAt"])
     .index("by_report", ["reportId"]),
+
+  // Light facility disruptions. Informational only: they never lock slots.
+  // A disruption can start while its end is still unknown (endAt omitted).
+  facilityIssues: defineTable({
+    facilityId: v.id("facilities"),
+    reportId: v.optional(v.id("reports")),
+    category: v.string(),
+    description: v.string(),
+    startAt: v.number(),
+    endAt: v.optional(v.number()),
+    status: issueStatusValidator,
+    revision: v.number(),
+    createdBy: v.id("profiles"),
+    closedBy: v.optional(v.id("profiles")),
+    closedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_facility_status", ["facilityId", "status"])
+    .index("by_status", ["status"])
+    .index("by_report", ["reportId"]),
+
+  // Safety closures. Decided manually: no auto-open from estimates, finished
+  // reports or maintenance. Reopening never resurrects cancelled bookings.
+  emergencyClosures: defineTable({
+    facilityId: v.id("facilities"),
+    reportId: v.optional(v.id("reports")),
+    reason: v.string(),
+    estimatedEndAt: v.optional(v.number()),
+    status: closureStatusValidator,
+    closedBy: v.id("profiles"),
+    closedAt: v.number(),
+    reopenedBy: v.optional(v.id("profiles")),
+    reopenedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_facility_status", ["facilityId", "status"])
+    .index("by_status", ["status"]),
+
+  // In-app notifications. dedupKey makes scheduled/retried jobs idempotent;
+  // owner-only access is enforced in convex/notifications.ts.
+  notifications: defineTable({
+    userId: v.id("profiles"),
+    type: notificationTypeValidator,
+    title: v.string(),
+    body: v.string(),
+    reservationId: v.optional(v.id("reservations")),
+    facilityId: v.optional(v.id("facilities")),
+    issueId: v.optional(v.id("facilityIssues")),
+    changeId: v.optional(v.id("reservationChanges")),
+    closureId: v.optional(v.id("emergencyClosures")),
+    readAt: v.optional(v.number()),
+    dedupKey: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_user_created", ["userId", "createdAt"])
+    .index("by_dedup_key", ["dedupKey"]),
 
   auditEvents: defineTable({
     entityType: auditEntityValidator,

@@ -37,7 +37,7 @@ belum berjalan. Approved yang berakhir ditampilkan **Selesai**, tetapi tetap
   lain menolak target perubahan yang bentrok tanpa membatalkan booking asal.
 - Audit mencatat ID perubahan, snapshot lama/baru, alasan dan aktor.
 
-## API dan koordinasi dengan Orang 2
+## API dan koordinasi modul gangguan & notifikasi
 
 `reservations.requestScheduleChange`, `listScheduleChanges`,
 `decideScheduleChange`, `cancelScheduleChange` adalah API publik dengan role
@@ -47,7 +47,7 @@ rentang pending, tidak nama/email/purpose/ID pemohon.
 
 Schema tambahan: `reservations.status` menerima `expired`;
 `reservationChanges` menyimpan usulan (indeks pemilik, reservasi/status,
-status, fasilitas/status/waktu). Orang 2 harus memakai mutation ini untuk
+status, fasilitas/status/waktu). Modul gangguan memakai mutation ini untuk
 perubahan jadwal, tidak mengubah timestamp approved ketika pengguna baru
 mengirim permintaan. Event audit `reservation.change_*` tersedia sebagai
 titik integrasi notifikasi; notifikasi/emergency closure bukan scope ini.

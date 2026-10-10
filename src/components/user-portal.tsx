@@ -68,6 +68,7 @@ import {
   type ChangeReservation,
 } from "@/components/schedule-change-dialog"
 import { reservationDisplayStatus } from "../../convex/lib/reservationState"
+import { ReservationDisruptionActions } from "@/components/reservation-disruption-actions"
 import { ScheduleChangePanel } from "@/components/schedule-change-panel"
 import {
   AlertDialog,
@@ -931,6 +932,13 @@ export function ReservationList() {
                         </Button>
                       ) : null}
                     </div>
+                    <ReservationDisruptionActions
+                      reservationId={item.id}
+                      facilityId={item.facilityId}
+                      status={item.status}
+                      startAt={item.startAt}
+                      endAt={item.endAt}
+                    />
                   </ReservationTicket>
                 ))}
               </div>

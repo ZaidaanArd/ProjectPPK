@@ -10,6 +10,8 @@ export async function recordAuditEvent(
       | "reservation"
       | "report"
       | "maintenance"
+      | "disruption"
+      | "closure"
     entityId: string
     action: string
     fromStatus?: string

@@ -68,17 +68,21 @@ export const listPublic = query({
     return Promise.all(
       [...active, ...maintenance]
         .sort((a, b) => a.name.localeCompare(b.name, "id"))
-        .map(async (facility) => ({
-          id: facility._id,
-          name: facility.name,
-          type: facility.type,
-          location: facility.location,
-          capacity: facility.capacity,
-          description: facility.description,
-          ...(await facilityHandling(ctx, facility)),
-          nextMaintenance: await nextMaintenance(ctx, facility._id),
-          createdAt: facility.createdAt,
-        }))
+        .map(async (facility) => {
+          const handling = await facilityHandling(ctx, facility)
+          return {
+            id: facility._id,
+            name: facility.name,
+            type: facility.type,
+            location: facility.location,
+            capacity: facility.capacity,
+            description: facility.description,
+            status: handling.status,
+            handlingNotice: handling.handlingNotice,
+            nextMaintenance: await nextMaintenance(ctx, facility._id),
+            createdAt: facility.createdAt,
+          }
+        })
     )
   },
 })

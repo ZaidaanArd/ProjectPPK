@@ -111,6 +111,49 @@ type MaintenanceWindow = {
   createdAt: number
   updatedAt: number
 }
+type Notification = {
+  id: string
+  userId: string
+  type: string
+  title: string
+  body: string
+  reservationId?: string
+  facilityId?: string
+  issueId?: string
+  changeId?: string
+  closureId?: string
+  readAt?: number
+  dedupKey: string
+  createdAt: number
+}
+type FacilityIssue = {
+  id: string
+  facilityId: string
+  reportId?: string
+  category: string
+  description: string
+  startAt: number
+  endAt?: number
+  status: "open" | "closed"
+  revision: number
+  createdBy: string
+  closedAt?: number
+  createdAt: number
+  updatedAt: number
+}
+type EmergencyClosure = {
+  id: string
+  facilityId: string
+  reportId?: string
+  reason: string
+  estimatedEndAt?: number
+  status: "closed" | "reopened"
+  closedBy: string
+  closedAt: number
+  reopenedAt?: number
+  createdAt: number
+  updatedAt: number
+}
 export type StaticData = {
   version: 1
   accounts: Account[]
@@ -120,6 +163,9 @@ export type StaticData = {
   reports: Report[]
   // Missing in browser data saved before repairs were scheduled.
   maintenance?: MaintenanceWindow[]
+  notifications?: Notification[]
+  facilityIssues?: FacilityIssue[]
+  emergencyClosures?: EmergencyClosure[]
 }
 
 const storageKey = "sthana:static-data:v1"
@@ -666,10 +712,59 @@ function reportItem(report: Report) {
 }
 function facilityHandling(id: string) {
   const facility = state.facilities.find((item) => item.id === id)
-  return reportHandlingState(
+  const closure = (state.emergencyClosures ?? []).find(
+    (c) => c.facilityId === id && c.status === "closed"
+  )
+  if (closure) {
+    return {
+      status: "maintenance" as const,
+      handlingNotice:
+        "Fasilitas ditutup darurat sampai petugas membuka kembali dan memastikan aman digunakan.",
+    }
+  }
+  const base = reportHandlingState(
     facility?.status ?? "inactive",
     state.reports.filter((report) => report.facilityId === id)
   )
+  if (base.status !== "active") return base
+  const issues = (state.facilityIssues ?? []).filter(
+    (issue) => issue.facilityId === id && issue.status === "open"
+  )
+  if (issues.length === 0) return base
+  const first = issues[0]
+  const more = issues.length > 1 ? ` (+${issues.length - 1} lainnya)` : ""
+  return {
+    status: base.status,
+    handlingNotice:
+      base.handlingNotice ??
+      `Ada gangguan: ${first.category}${more}. Fasilitas masih dapat digunakan.`,
+  }
+}
+function jakartaRange(startAt: number, endAt: number) {
+  const format = new Intl.DateTimeFormat("id-ID", {
+    timeZone: "Asia/Jakarta",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+  return `${format.format(startAt)}–${format.format(endAt)}`
+}
+/** Mirrors the server notify() helper: idempotent per dedupKey. */
+function notifyDemo(
+  now: number,
+  event: Omit<Notification, "id" | "createdAt" | "readAt">
+) {
+  if ((state.notifications ?? []).some((n) => n.dedupKey === event.dedupKey))
+    return
+  change<Notification>("notifications", (items) => [
+    {
+      ...event,
+      id: `demo-notification-${crypto.randomUUID()}`,
+      createdAt: now,
+    },
+    ...items,
+  ])
 }
 
 export function staticQuery(name: string, args: unknown): unknown {
@@ -838,6 +933,113 @@ export function staticQuery(name: string, args: unknown): unknown {
         })),
       }
     }
+    case "notifications:listMine":
+      return (state.notifications ?? [])
+        .filter((notification) => notification.userId === account().id)
+        .slice(0, 50)
+        .map((notification) => ({
+          id: notification.id,
+          type: notification.type,
+          title: notification.title,
+          body: notification.body,
+          reservationId: notification.reservationId,
+          facilityId: notification.facilityId,
+          issueId: notification.issueId,
+          changeId: notification.changeId,
+          closureId: notification.closureId,
+          readAt: notification.readAt,
+          createdAt: notification.createdAt,
+        }))
+    case "notifications:unreadCount":
+      return (state.notifications ?? []).filter(
+        (notification) =>
+          notification.userId === account().id &&
+          notification.readAt === undefined
+      ).length
+    case "facilityIssues:listOpen": {
+      const id = value(args, "facilityId")
+      return (state.facilityIssues ?? [])
+        .filter((i) => i.facilityId === id && i.status === "open")
+        .map((i) => ({
+          id: i.id,
+          facilityId: i.facilityId,
+          facilityName: facilityName(i.facilityId),
+          category: i.category,
+          description: i.description,
+          startAt: i.startAt,
+          endAt: i.endAt,
+          revision: i.revision,
+          createdAt: i.createdAt,
+          updatedAt: i.updatedAt,
+        }))
+    }
+    case "facilityIssues:listManaged":
+      return (state.facilityIssues ?? [])
+        .map((i) => ({
+          id: i.id,
+          facilityId: i.facilityId,
+          facilityName: facilityName(i.facilityId),
+          category: i.category,
+          description: i.description,
+          startAt: i.startAt,
+          endAt: i.endAt,
+          status: i.status,
+          revision: i.revision,
+          createdByName:
+            state.accounts.find((a) => a.id === i.createdBy)?.name ?? "Petugas",
+          createdAt: i.createdAt,
+          updatedAt: i.updatedAt,
+        }))
+        .reverse()
+    case "facilityIssues:previewImpact": {
+      const id = value(args, "facilityId")
+      const s = Number(field(args, "startAt"))
+      const e = field(args, "endAt") ? Number(field(args, "endAt")) : Number.MAX_SAFE_INTEGER
+      const at = Date.now()
+      const inRange = (r: Reservation) =>
+        r.facilityId === id && r.endAt > at && r.endAt > s && overlaps(r.startAt, r.endAt, s, e)
+      return {
+        approved: state.reservations.filter((r) => r.status === "approved" && inRange(r)).length,
+        pending: state.reservations.filter((r) => r.status === "pending" && inRange(r)).length,
+      }
+    }
+    case "emergencyClosures:listActiveForFacility": {
+      const id = value(args, "facilityId")
+      return (state.emergencyClosures ?? [])
+        .filter((c) => c.facilityId === id && c.status === "closed")
+        .map((c) => ({ id: c.id, facilityId: c.facilityId, reason: c.reason, estimatedEndAt: c.estimatedEndAt, closedAt: c.closedAt }))
+    }
+    case "emergencyClosures:listManaged":
+      return (state.emergencyClosures ?? [])
+        .map((c) => ({
+          id: c.id,
+          facilityId: c.facilityId,
+          facilityName: facilityName(c.facilityId),
+          reason: c.reason,
+          estimatedEndAt: c.estimatedEndAt,
+          status: c.status,
+          closedByName: state.accounts.find((a) => a.id === c.closedBy)?.name ?? "Petugas",
+          closedAt: c.closedAt,
+          reopenedAt: c.reopenedAt,
+          createdAt: c.createdAt,
+        }))
+        .reverse()
+    case "emergencyClosures:previewImpact": {
+      const id = value(args, "facilityId")
+      const at = Date.now()
+      const pending: { id: string; startAt: number; endAt: number }[] = []
+      const approvedFuture: { id: string; startAt: number; endAt: number }[] = []
+      const ongoing: { id: string; startAt: number; endAt: number }[] = []
+      for (const r of state.reservations) {
+        if (r.facilityId !== id || r.endAt <= at) continue
+        if (!["pending", "approved"].includes(r.status)) continue
+        const item = { id: r.id, startAt: r.startAt, endAt: r.endAt }
+        if (r.startAt <= at) ongoing.push(item)
+        else if (r.status === "pending") pending.push(item)
+        else approvedFuture.push(item)
+      }
+      return { pending, approvedFuture, ongoing }
+    }
     case "admin:listAccounts":
       return state.accounts
         .filter(
@@ -895,7 +1097,10 @@ function change<T>(
     | "reservations"
     | "reports"
     | "accounts"
-    | "reservationChanges",
+    | "reservationChanges"
+    | "notifications"
+    | "facilityIssues"
+    | "emergencyClosures",
   update: (items: T[]) => T[]
 ) {
   replace({ ...state, [key]: update((state[key] ?? []) as T[]) })
@@ -1135,6 +1340,47 @@ export async function staticMutation(
             : r
         ),
       })
+      if (decision === "approved") {
+        notifyDemo(now, {
+          userId: item.userId,
+          type: "reservation.change_decided",
+          title: "Perubahan jadwal disetujui",
+          body: `Jadwal reservasi sekarang ${jakartaRange(item.startAt, item.endAt)}. Jadwal lama tidak lagi terkunci.`,
+          dedupKey: `reservationChange:${item.id}:approved`,
+          reservationId: original.id,
+          facilityId: item.facilityId,
+          changeId: item.id,
+        })
+        for (const r of state.reservations) {
+          if (
+            r.id !== original.id &&
+            r.status === "rejected" &&
+            r.decisionNote === AUTO_REJECTION_NOTE &&
+            r.facilityId === item.facilityId &&
+            overlaps(r.startAt, r.endAt, item.startAt, item.endAt)
+          )
+            notifyDemo(now, {
+              userId: r.userId,
+              type: "reservation.rejected",
+              title: "Pengajuan ditolak otomatis",
+              body: `${AUTO_REJECTION_NOTE} Pengajuan tetap dapat diajukan ulang untuk jadwal lain.`,
+              dedupKey: `reservation:${r.id}:auto_rejected`,
+              reservationId: r.id,
+              facilityId: r.facilityId,
+            })
+        }
+      } else {
+        notifyDemo(now, {
+          userId: item.userId,
+          type: "reservation.change_decided",
+          title: "Perubahan jadwal ditolak",
+          body: `Jadwal lama tetap berlaku pada ${jakartaRange(original.startAt, original.endAt)}. Alasan: ${value(args, "note").trim() || "-"}`,
+          dedupKey: `reservationChange:${item.id}:rejected`,
+          reservationId: original.id,
+          facilityId: item.facilityId,
+          changeId: item.id,
+        })
+      }
       return null
     }
     case "reservations:cancelMine": {
@@ -1203,6 +1449,217 @@ export async function staticMutation(
               : r
         )
       )
+      const note = value(args, "note").trim()
+      const range = jakartaRange(item.startAt, item.endAt)
+      const name = facilityName(item.facilityId)
+      if (decision === "approved" && !alreadyBooked) {
+        notifyDemo(now, {
+          userId: item.userId,
+          type: "reservation.approved",
+          title: "Reservasi disetujui",
+          body: `Reservasi ${name} pada ${range} disetujui. Datang tepat waktu sesuai jadwal.`,
+          dedupKey: `reservation:${item.id}:approved`,
+          reservationId: item.id,
+          facilityId: item.facilityId,
+        })
+        for (const r of state.reservations) {
+          if (
+            r.id !== id &&
+            r.status === "rejected" &&
+            r.decisionNote === AUTO_REJECTION_NOTE &&
+            r.facilityId === item.facilityId &&
+            overlaps(r.startAt, r.endAt, item.startAt, item.endAt)
+          )
+            notifyDemo(now, {
+              userId: r.userId,
+              type: "reservation.rejected",
+              title: "Pengajuan ditolak otomatis",
+              body: `${AUTO_REJECTION_NOTE} Pengajuan tetap dapat diajukan ulang untuk jadwal lain.`,
+              dedupKey: `reservation:${r.id}:auto_rejected`,
+              reservationId: r.id,
+              facilityId: r.facilityId,
+            })
+        }
+      } else if (alreadyBooked) {
+        notifyDemo(now, {
+          userId: item.userId,
+          type: "reservation.rejected",
+          title: "Pengajuan ditolak otomatis",
+          body: `${AUTO_REJECTION_NOTE} Pengajuan tetap dapat diajukan ulang untuk jadwal lain.`,
+          dedupKey: `reservation:${item.id}:auto_rejected`,
+          reservationId: item.id,
+          facilityId: item.facilityId,
+        })
+      } else {
+        notifyDemo(now, {
+          userId: item.userId,
+          type: "reservation.rejected",
+          title: "Reservasi ditolak",
+          body: note
+            ? `Reservasi ${name} pada ${range} ditolak. Alasan: ${note}.`
+            : `Reservasi ${name} pada ${range} ditolak petugas.`,
+          dedupKey: `reservation:${item.id}:rejected`,
+          reservationId: item.id,
+          facilityId: item.facilityId,
+        })
+      }
+      return null
+    }
+    case "notifications:markRead": {
+      const item = required(
+        state.notifications ?? [],
+        value(args, "notificationId")
+      )
+      if (item.userId !== account().id)
+        throw new Error("Notifikasi tidak ditemukan")
+      if (item.readAt === undefined)
+        change<Notification>("notifications", (items) =>
+          items.map((n) => (n.id === item.id ? { ...n, readAt: now } : n))
+        )
+      return null
+    }
+    case "notifications:markAllRead": {
+      change<Notification>("notifications", (items) =>
+        items.map((n) =>
+          n.userId === account().id && n.readAt === undefined
+            ? { ...n, readAt: now }
+            : n
+        )
+      )
+      return null
+    }
+    case "reservations:cancelMineForDisruption": {
+      requireRole(["user"])
+      const item = required(state.reservations, value(args, "reservationId"))
+      const issue = required(state.facilityIssues ?? [], value(args, "issueId"))
+      if (item.userId !== account().id) throw new Error("Reservasi tidak ditemukan")
+      if (issue.status !== "open" || issue.facilityId !== item.facilityId)
+        throw new Error("Gangguan tidak berlaku untuk reservasi ini")
+      if (!overlaps(item.startAt, item.endAt, issue.startAt, issue.endAt ?? Number.MAX_SAFE_INTEGER))
+        throw new Error("Gangguan tidak berdampak pada jadwal ini")
+      if (item.status === "approved" && item.startAt <= now)
+        throw new Error("Kegiatan sudah berlangsung. Hubungi petugas.")
+      change<Reservation>("reservations", (items) =>
+        items.map((r) => (r.id === item.id ? { ...r, status: "cancelled", updatedAt: now } : r))
+      )
+      return null
+    }
+    case "facilityIssues:create": {
+      requireRole(["officer", "admin"])
+      const facilityId = value(args, "facilityId")
+      required(state.facilities, facilityId)
+      requireText(value(args, "category"))
+      requireText(value(args, "description"))
+      const id = `demo-issue-${crypto.randomUUID()}`
+      const startAt = Number(field(args, "startAt"))
+      const endRaw = field(args, "endAt")
+      const endAt = endRaw ? Number(endRaw) : undefined
+      change<FacilityIssue>("facilityIssues", (items) => [
+        ...items,
+        { id, facilityId, category: value(args, "category").trim(), description: value(args, "description").trim(), startAt, endAt, status: "open", revision: 1, createdBy: account().id, createdAt: now, updatedAt: now },
+      ])
+      for (const r of state.reservations) {
+        if (r.facilityId !== facilityId || r.endAt <= now) continue
+        if (!overlaps(r.startAt, r.endAt, startAt, endAt ?? Number.MAX_SAFE_INTEGER)) continue
+        notifyDemo(now, {
+          userId: r.userId,
+          type: "disruption.created",
+          title: `Gangguan di ${facilityName(facilityId)}`,
+          body: `${value(args, "category").trim()} masih dapat digunakan.`,
+          dedupKey: `disruption:${id}:rev1:user:${r.userId}:created`,
+          facilityId,
+          issueId: id,
+        })
+      }
+      return id
+    }
+    case "facilityIssues:resolve": {
+      requireRole(["officer", "admin"])
+      const issue = required(state.facilityIssues ?? [], value(args, "issueId"))
+      change<FacilityIssue>("facilityIssues", (items) =>
+        items.map((i) => (i.id === issue.id ? { ...i, status: "closed", closedAt: now, updatedAt: now } : i))
+      )
+      for (const r of state.reservations) {
+        if (r.facilityId !== issue.facilityId || r.endAt <= now) continue
+        notifyDemo(now, {
+          userId: r.userId,
+          type: "disruption.resolved",
+          title: `Gangguan selesai di ${facilityName(issue.facilityId)}`,
+          body: `${issue.category} telah selesai ditangani.`,
+          dedupKey: `disruption:${issue.id}:rev${issue.revision}:user:${r.userId}:resolved`,
+          facilityId: issue.facilityId,
+          issueId: issue.id,
+        })
+      }
+      return null
+    }
+    case "facilityIssues:update": {
+      requireRole(["officer", "admin"])
+      const issue = required(state.facilityIssues ?? [], value(args, "issueId"))
+      const category = field(args, "category") ? value(args, "category").trim() : issue.category
+      const description = field(args, "description") ? value(args, "description").trim() : issue.description
+      change<FacilityIssue>("facilityIssues", (items) =>
+        items.map((i) =>
+          i.id === issue.id ? { ...i, category, description, revision: i.revision + 1, updatedAt: now } : i
+        )
+      )
+      return null
+    }
+    case "emergencyClosures:close": {
+      requireRole(["officer", "admin"])
+      const facilityId = value(args, "facilityId")
+      required(state.facilities, facilityId)
+      requireText(value(args, "reason"))
+      const mode = value(args, "mode") as "safety" | "long_repair"
+      const id = `demo-closure-${crypto.randomUUID()}`
+      change<EmergencyClosure>("emergencyClosures", (items) => [
+        ...items,
+        { id, facilityId, reason: value(args, "reason").trim(), status: "closed", closedBy: account().id, closedAt: now, createdAt: now, updatedAt: now },
+      ])
+      const affected = state.reservations.filter(
+        (r) => r.facilityId === facilityId && r.endAt > now && ["pending", "approved"].includes(r.status)
+      )
+      if (mode === "safety") {
+        change<Reservation>("reservations", (items) =>
+          items.map((r) =>
+            affected.some((a) => a.id === r.id)
+              ? { ...r, status: "cancelled", decisionNote: `Dibatalkan pengelola karena penutupan darurat: ${value(args, "reason").trim()}`, updatedAt: now }
+              : r
+          )
+        )
+      }
+      for (const r of affected) {
+        notifyDemo(now, {
+          userId: r.userId,
+          type: "emergency.closed",
+          title: mode === "safety" ? `Reservasi dibatalkan: ${facilityName(facilityId)} ditutup darurat` : `Perbaikan besar di ${facilityName(facilityId)}`,
+          body: mode === "safety" ? `Reservasi pada ${jakartaRange(r.startAt, r.endAt)} dibatalkan pengelola.` : `Perbaikan sampai pemberitahuan lebih lanjut. Dapat dibatalkan atau tetap menunggu.`,
+          dedupKey: mode === "safety" ? `closure:${id}:reservation:${r.id}` : `closure:${id}:notice:user:${r.userId}`,
+          reservationId: r.id,
+          facilityId,
+          closureId: id,
+        })
+      }
+      return id
+    }
+    case "emergencyClosures:reopen": {
+      requireRole(["officer", "admin"])
+      const closure = required(state.emergencyClosures ?? [], value(args, "closureId"))
+      change<EmergencyClosure>("emergencyClosures", (items) =>
+        items.map((c) => (c.id === closure.id ? { ...c, status: "reopened", reopenedAt: now, updatedAt: now } : c))
+      )
+      return null
+    }
+    case "emergencyClosures:cancelMineForClosure": {
+      requireRole(["user"])
+      const item = required(state.reservations, value(args, "reservationId"))
+      const closure = required(state.emergencyClosures ?? [], value(args, "closureId"))
+      if (item.userId !== account().id) throw new Error("Reservasi tidak ditemukan")
+      if (closure.status !== "closed" || closure.facilityId !== item.facilityId)
+        throw new Error("Penutupan tidak berlaku untuk reservasi ini")
+      change<Reservation>("reservations", (items) =>
+        items.map((r) => (r.id === item.id ? { ...r, status: "cancelled", updatedAt: now } : r))
+      )
       return null
     }
     case "reservations:cancelByStaff": {
@@ -1224,6 +1681,15 @@ export async function staticMutation(
             : r
         )
       )
+      notifyDemo(now, {
+        userId: item.userId,
+        type: "reservation.cancelled",
+        title: "Reservasi dibatalkan pengelola",
+        body: `Reservasi ${facilityName(item.facilityId)} pada ${jakartaRange(item.startAt, item.endAt)} dibatalkan pengelola. Alasan: ${value(args, "reason").trim()}.`,
+        dedupKey: `reservation:${item.id}:cancelled_by_staff`,
+        reservationId: item.id,
+        facilityId: item.facilityId,
+      })
       return null
     }
     case "reports:create": {
