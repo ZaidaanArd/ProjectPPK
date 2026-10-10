@@ -69,6 +69,7 @@ import { displayDuration } from "@/lib/reservation-slots"
 import { ScheduleChangePanel } from "@/components/schedule-change-panel"
 import { useScheduleClock } from "@/hooks/use-schedule-clock"
 import { reservationDisplayStatus } from "../../convex/lib/reservationState"
+import { StartReportDialog } from "@/components/start-report-dialog"
 
 const labels: Record<string, string> = {
   pending: "Menunggu",
@@ -994,6 +995,8 @@ export function StaffReports({
 }) {
   const reports = useAuthenticatedQuery(api.reports.listQueue, {})
   const updateStatus = useMutation(api.reports.updateStatus)
+  const [startingId, setStartingId] = useState<Id<"reports"> | null>(null)
+  const [confirmSafe, setConfirmSafe] = useState(false)
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [schedulingFor, setSchedulingFor] = useState<{
     reportId: Id<"reports">
@@ -1077,6 +1080,7 @@ export function StaffReports({
         reportId,
         status,
         note,
+        confirmSafe: status === "in_progress" ? undefined : confirmSafe,
         // Reopens a facility still carrying the legacy whole-facility status.
         facilityMaintenance: status === "in_progress" ? undefined : false,
       })
@@ -1112,9 +1116,10 @@ export function StaffReports({
       return
     }
     if (status === "in_progress") {
-      void execute(reportId, status)
+      setStartingId(reportId)
       return
     }
+    setConfirmSafe(false)
     setConfirmAction({ reportId, status })
   }
 
@@ -1290,9 +1295,9 @@ export function StaffReports({
                           </div>
                           <div className="space-y-2 rounded-2xl border border-amber-500/25 bg-amber-500/5 p-3">
                             <p className="text-xs text-muted-foreground">
-                              Perlu menutup ruang? Jadwalkan perbaikan di waktu
-                              yang kosong; reservasi yang sudah ada tetap
-                              berjalan.
+                              Jadwal pekerjaan terencana harus memakai waktu
+                              kosong. Untuk penutupan langsung, pilih dampak
+                              “Harus ditutup” saat Mulai tangani.
                             </p>
                             {report.maintenance
                               .filter((item) => item.status === "scheduled")
@@ -1381,6 +1386,16 @@ export function StaffReports({
         facilityName={schedulingFor?.facilityName}
         reportId={schedulingFor?.reportId}
       />
+      <StartReportDialog
+        key={startingId ?? "closed"}
+        report={reports?.find((report) => report.id === startingId) ?? null}
+        note={startingId ? (notes[startingId] ?? "") : ""}
+        onClose={() => setStartingId(null)}
+        onStarted={() => {
+          setSuccess("Laporan mulai ditangani.")
+          toast.success("Laporan mulai ditangani.")
+        }}
+      />
       <AlertDialog
         open={confirmAction !== null}
         onOpenChange={(open) => {
@@ -1397,7 +1412,7 @@ export function StaffReports({
             <AlertDialogDescription>
               {confirmAction?.status === "rejected"
                 ? `Laporan untuk ${confirmReport?.facilityName ?? "fasilitas ini"} akan ditolak dan tidak dapat diubah lagi.`
-                : `Laporan untuk ${confirmReport?.facilityName ?? "fasilitas ini"} akan ditandai selesai. Perbaikan yang terkait diakhiri dan slotnya terbuka lagi.`}
+                : `Laporan untuk ${confirmReport?.facilityName ?? "fasilitas ini"} akan ditandai selesai. Fasilitas tetap tertutup jika masih ada penanganan atau penutupan lain.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {confirmNote && (
@@ -1410,13 +1425,29 @@ export function StaffReports({
               </p>
             </div>
           )}
+          {confirmReport?.handlingImpact === "closed" && (
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={confirmSafe}
+                onChange={(event) => setConfirmSafe(event.target.checked)}
+                className="mt-1 accent-pink-600"
+              />
+              <span>
+                Penanganan selesai dan fasilitas aman digunakan kembali.
+              </span>
+            </label>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isSubmitting}>Batal</AlertDialogCancel>
             <AlertDialogAction
               variant={
                 confirmAction?.status === "rejected" ? "destructive" : "default"
               }
-              disabled={isSubmitting}
+              disabled={
+                isSubmitting ||
+                (confirmReport?.handlingImpact === "closed" && !confirmSafe)
+              }
               onClick={confirmProcess}
             >
               {isSubmitting

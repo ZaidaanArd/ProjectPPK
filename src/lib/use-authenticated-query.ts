@@ -14,7 +14,7 @@ import { useAppAuth, useAppQuery } from "@/lib/data-hooks"
  */
 export function useAuthenticatedQuery<Query extends FunctionReference<"query">>(
   query: Query,
-  args: FunctionArgs<Query>
+  args: FunctionArgs<Query> | "skip"
 ): FunctionReturnType<Query> | undefined {
   const { isAuthenticated } = useAppAuth()
   const queryArgs = [

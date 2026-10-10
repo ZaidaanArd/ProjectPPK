@@ -65,6 +65,7 @@ export function TimeSlotPicker({
   onChange,
   pendingRanges,
   allowElapsed = false,
+  minimumLeadMs = 0,
 }: {
   date: string
   busy: readonly BusyRange[] | undefined
@@ -74,6 +75,7 @@ export function TimeSlotPicker({
   onChange: (range: { start: string; end: string }) => void
   pendingRanges?: readonly BusyRange[]
   allowElapsed?: boolean
+  minimumLeadMs?: number
 }) {
   const reduced = Boolean(useReducedMotion())
   const now = useScheduleClock()
@@ -81,11 +83,12 @@ export function TimeSlotPicker({
     () =>
       daySlots(date, busy ?? [], {
         now: allowElapsed ? undefined : (now ?? undefined),
+        minimumLeadMs,
         pending: pendingRanges?.filter(
           (item) => now !== null && item.startAt > now
         ),
       }),
-    [date, busy, now, allowElapsed, pendingRanges]
+    [date, busy, now, allowElapsed, pendingRanges, minimumLeadMs]
   )
   const buttons = useRef<(HTMLButtonElement | null)[]>([])
   const [hover, setHover] = useState<number | null>(null)
@@ -102,18 +105,25 @@ export function TimeSlotPicker({
     startIndex === endIndex &&
     hover !== null &&
     hover > startIndex &&
-    !slots.slice(startIndex, hover + 1).some((slot) => slot.taken || slot.past)
+    !slots
+      .slice(startIndex, hover + 1)
+      .some((slot) => slot.taken || slot.past || slot.tooSoon)
       ? hover
       : -1
   const minutes = hasRange
     ? (toTimestamp(date, end) - toTimestamp(date, start)) / 60000
     : 0
-  const free = slots.filter((slot) => !slot.taken && !slot.past).length
+  const free = slots.filter(
+    (slot) => !slot.taken && !slot.past && !slot.tooSoon
+  ).length
   const focusIndex = Math.max(
     0,
-    hasRange && !slots[startIndex]?.past && !slots[startIndex]?.taken
+    hasRange &&
+      !slots[startIndex]?.past &&
+      !slots[startIndex]?.taken &&
+      !slots[startIndex]?.tooSoon
       ? startIndex
-      : slots.findIndex((slot) => !slot.taken && !slot.past)
+      : slots.findIndex((slot) => !slot.taken && !slot.past && !slot.tooSoon)
   )
 
   function choose(index: number) {
@@ -149,7 +159,7 @@ export function TimeSlotPicker({
     while (
       target >= 0 &&
       target < slots.length &&
-      (slots[target]?.taken || slots[target]?.past)
+      (slots[target]?.taken || slots[target]?.past || slots[target]?.tooSoon)
     )
       target += direction
     buttons.current[target]?.focus()
@@ -194,7 +204,7 @@ export function TimeSlotPicker({
                     "transition-colors",
                     inRange(index)
                       ? "bg-pink-500"
-                      : slot.taken || slot.past
+                      : slot.taken || slot.past || slot.tooSoon
                         ? "bg-muted-foreground/25"
                         : slot.pending
                           ? "bg-amber-400/70"
@@ -239,20 +249,23 @@ export function TimeSlotPicker({
                         disabled ||
                         (!allowElapsed && now === null) ||
                         slot.taken ||
-                        slot.past
+                        slot.past ||
+                        slot.tooSoon
                       }
                       tabIndex={index === focusIndex ? 0 : -1}
                       aria-pressed={selected}
                       aria-label={`${displayTime(slot.start)} · ${
                         slot.past
                           ? "Sudah lewat"
-                          : slot.taken
-                            ? "Terisi"
-                            : slot.pending
-                              ? "Ada pengajuan, tetap dapat diajukan"
-                              : selected
-                                ? "Dipilih"
-                                : "Tersedia"
+                          : slot.tooSoon
+                            ? "Belum memenuhi batas 48 jam"
+                            : slot.taken
+                              ? "Terisi"
+                              : slot.pending
+                                ? "Ada pengajuan, tetap dapat diajukan"
+                                : selected
+                                  ? "Dipilih"
+                                  : "Tersedia"
                       }`}
                       onClick={() => choose(index)}
                       onKeyDown={(event) => onKeyDown(event, index)}
@@ -270,7 +283,10 @@ export function TimeSlotPicker({
                       }
                       transition={{ duration: 0.35 }}
                       className={slotClass({
-                        taken: slot.taken || Boolean(slot.past),
+                        taken:
+                          slot.taken ||
+                          Boolean(slot.past) ||
+                          Boolean(slot.tooSoon),
                         pending: Boolean(slot.pending),
                         selected,
                         edge,
@@ -289,6 +305,7 @@ export function TimeSlotPicker({
         <p className="text-xs text-muted-foreground">
           Klik jam mulai, lalu klik slot terakhir yang ingin dipakai. Tiap slot
           30 menit.
+          {minimumLeadMs > 0 && " Pengajuan minimal 48 jam sebelum mulai."}
         </p>
         {pendingRanges && (
           <p className="text-xs text-muted-foreground">

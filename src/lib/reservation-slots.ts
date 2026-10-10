@@ -39,6 +39,7 @@ export type Slot = {
   end: string
   taken: boolean
   past?: boolean
+  tooSoon?: boolean
   pending?: boolean
 }
 
@@ -46,7 +47,11 @@ export type Slot = {
 export function daySlots(
   date: string,
   busy: readonly BusyRange[],
-  options?: { now?: number; pending?: readonly BusyRange[] }
+  options?: {
+    now?: number
+    pending?: readonly BusyRange[]
+    minimumLeadMs?: number
+  }
 ): Slot[] {
   return reservationTimes.slice(0, -1).map((start, index) => {
     const end = reservationTimes[index + 1] ?? start
@@ -59,6 +64,10 @@ export function daySlots(
             past:
               options.now !== undefined &&
               toTimestamp(date, start) <= options.now,
+            tooSoon:
+              options.now !== undefined &&
+              toTimestamp(date, start) - options.now <
+                (options.minimumLeadMs ?? 0),
             pending: rangeIsBusy(date, start, end, options.pending ?? []),
           }
         : {}),
@@ -77,7 +86,8 @@ export function selectSlot(
   index: number
 ): { start: string; end: string; blocked: boolean } {
   const slot = slots[index]
-  if (!slot || slot.taken || slot.past) return { ...current, blocked: true }
+  if (!slot || slot.taken || slot.past || slot.tooSoon)
+    return { ...current, blocked: true }
   const startIndex = slots.findIndex((item) => item.start === current.start)
   const endIndex = slots.findIndex((item) => item.end === current.end)
   const hasRange = startIndex >= 0 && endIndex >= startIndex
@@ -86,7 +96,7 @@ export function selectSlot(
     return { start: slot.start, end: slot.end, blocked: false }
   }
   const between = slots.slice(startIndex, index + 1)
-  if (between.some((item) => item.taken || item.past)) {
+  if (between.some((item) => item.taken || item.past || item.tooSoon)) {
     return { ...current, blocked: true }
   }
   return { start: current.start, end: slot.end, blocked: false }

@@ -68,6 +68,7 @@ import { useAuthenticatedQuery } from "@/lib/use-authenticated-query"
 import { facilityIllustration } from "@/lib/facility-illustrations"
 import { cn } from "@/lib/utils"
 import { displayDuration } from "@/lib/reservation-slots"
+import { useScheduleClock } from "@/hooks/use-schedule-clock"
 
 const statusLabel: Record<string, string> = {
   pending: "Menunggu",
@@ -195,6 +196,7 @@ function AdminExportMenu() {
 }
 
 export function AdminDashboard() {
+  const now = useScheduleClock()
   const analytics = useAuthenticatedQuery(api.admin.analytics, {})
   const maximumUsage =
     analytics?.facilityUsage.reduce(
@@ -213,7 +215,7 @@ export function AdminDashboard() {
       >
         <AdminExportMenu />
       </PortalPageHeader>
-      <MaintenanceReminderSection now={Date.now()} />
+      {now !== null && <MaintenanceReminderSection now={now} />}
       <div
         className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 pb-5 text-sm"
         aria-live="polite"
@@ -481,7 +483,7 @@ function FacilityForm({
             disabled={pending}
             className="sm:mr-auto"
           >
-            <IconTrash aria-hidden="true" /> Hapus ruangan
+            <IconTrash aria-hidden="true" /> Arsipkan ruangan
           </Button>
         )}
         <Button
@@ -609,10 +611,10 @@ export function AdminFacilities() {
       setDeleteTarget(null)
       setEditDraft(null)
       setEditMessage("")
-      setSuccessMessage(`Fasilitas ${deleteTarget.name} berhasil dihapus.`)
-      toast.success("Fasilitas dihapus")
+      setSuccessMessage(`Fasilitas ${deleteTarget.name} berhasil diarsipkan.`)
+      toast.success("Fasilitas diarsipkan")
     } catch (error) {
-      setDeleteMessage(toastError("Fasilitas gagal dihapus", error))
+      setDeleteMessage(toastError("Fasilitas gagal diarsipkan", error))
     } finally {
       setDeleting(false)
     }
@@ -796,11 +798,11 @@ export function AdminFacilities() {
                 id="delete-facility-title"
                 className="text-xl font-bold"
               >
-                Hapus ruangan ini?
+                Arsipkan ruangan ini?
               </DialogTitle>
               <DialogDescription className="leading-relaxed">
                 {deleteTarget
-                  ? `Fasilitas ${deleteTarget.name} akan dihapus permanen dari katalog. Tindakan ini tidak dapat dibatalkan.`
+                  ? `Fasilitas ${deleteTarget.name} akan dinonaktifkan. Riwayat tetap tersimpan dan fasilitas dapat diaktifkan kembali.`
                   : ""}
               </DialogDescription>
             </div>
@@ -827,7 +829,7 @@ export function AdminFacilities() {
             onClick={submitDelete}
             disabled={deleting}
           >
-            {deleting ? "Menghapus…" : "Ya, hapus"}
+            {deleting ? "Mengarsipkan…" : "Ya, arsipkan"}
           </Button>
         </DialogFooter>
       </Dialog>

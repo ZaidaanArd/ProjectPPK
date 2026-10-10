@@ -244,7 +244,8 @@ export function SlotGridModal({
             )}
           </p>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            Maks {maxDate} (H+30) · tanggal lewat nonaktif otomatis.
+            Kalender hingga {maxDate} (30 hari). Pengajuan minimal 48 jam
+            sebelum mulai.
           </p>
         </section>
 
@@ -306,13 +307,15 @@ export function SlotGridModal({
                       title={
                         slot.status === "pengajuan"
                           ? "Ada pengajuan, belum disetujui. Tetap dapat diajukan."
-                          : slot.status === "lewat"
-                            ? "Waktu mulai sudah lewat"
-                            : bisaKlik
-                              ? `Slot ${slot.mulai}–${slot.selesai} tanggal ${tanggalLabel} tersedia`
-                              : slot.status === "terkunci"
-                                ? "Terkunci: jadwal perbaikan"
-                                : "Tidak tersedia"
+                          : slot.status === "batas_pengajuan"
+                            ? "Pengajuan minimal 48 jam sebelum mulai"
+                            : slot.status === "lewat"
+                              ? "Waktu mulai sudah lewat"
+                              : bisaKlik
+                                ? `Slot ${slot.mulai}–${slot.selesai} tanggal ${tanggalLabel} tersedia`
+                                : slot.status === "terkunci"
+                                  ? "Terkunci: jadwal perbaikan"
+                                  : "Tidak tersedia"
                       }
                       className={cn(
                         "h-9 rounded-xl border text-[11px] font-semibold tabular-nums transition-all",
@@ -333,7 +336,8 @@ export function SlotGridModal({
 
               <p className="mt-2 text-[11px] text-muted-foreground">
                 Tiap slot 30 menit · hijau/kuning dapat diajukan. Kuning: ada
-                pengajuan, belum disetujui. Abu-abu: terisi atau sudah lewat.
+                pengajuan, belum disetujui. Pengajuan minimal 48 jam sebelum
+                mulai.
               </p>
               <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
                 <span className="inline-flex items-center gap-1">

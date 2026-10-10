@@ -62,12 +62,20 @@ import { ShareDialog } from "@/components/share/share-dialog"
 import type { ShareSubject } from "@/components/share/share-card"
 import { SthaniFace } from "@/components/sthani-face"
 import { TimeSlotPicker } from "@/components/time-slot-picker"
+import {
+  meetsReservationLeadTime,
+  RESERVATION_LEAD_MS,
+  RESERVATION_LEAD_MESSAGE,
+} from "../../convex/lib/reservationPolicy"
 import { useScheduleClock } from "@/hooks/use-schedule-clock"
 import {
   ScheduleChangeDialog,
   type ChangeReservation,
 } from "@/components/schedule-change-dialog"
-import { reservationDisplayStatus } from "../../convex/lib/reservationState"
+import {
+  reservationDisplayStatus,
+  jakartaDate,
+} from "../../convex/lib/reservationState"
 import { ReservationDisruptionActions } from "@/components/reservation-disruption-actions"
 import { ScheduleChangePanel } from "@/components/schedule-change-panel"
 import {
@@ -178,12 +186,6 @@ const summaryDate = new Intl.DateTimeFormat("id-ID", {
 
 function formatDate(value: number) {
   return jakartaDateTime.format(value)
-}
-
-function tomorrow() {
-  const date = new Date(Date.now() + 7 * 60 * 60 * 1000)
-  date.setUTCDate(date.getUTCDate() + 1)
-  return date.toISOString().slice(0, 10)
 }
 
 function FormStepBadge({ number }: { number: number }) {
@@ -728,7 +730,9 @@ export function UserDashboard() {
   )
 }
 
-export function ReservationList() {
+export function ReservationList({
+  initialItem,
+}: { initialItem?: string } = {}) {
   const [shareSubject, setShareSubject] = useState<ShareSubject | null>(null)
   const rows = useAuthenticatedQuery(api.reservations.listMine, {})
   const changes = useAuthenticatedQuery(
@@ -748,7 +752,29 @@ export function ReservationList() {
   const [changing, setChanging] = useState<ChangeReservation | null>(null)
   const cancel = useMutation(api.reservations.cancelMine)
   const [message, setMessage] = useState("")
-  const [activeTab, setActiveTab] = useState<ReservationTab>("menunggu")
+  const [chosenTab, setActiveTab] = useState<ReservationTab | null>(null)
+  const initialTarget = reservations?.find((item) => item.id === initialItem)
+  const activeTab: ReservationTab =
+    chosenTab ??
+    (initialTarget?.status === "approved"
+      ? "disetujui"
+      : initialTarget && initialTarget.status !== "pending"
+        ? "riwayat"
+        : "menunggu")
+  const focusedItem = useRef<string | null>(null)
+  useEffect(() => {
+    if (!initialItem || !reservations || focusedItem.current === initialItem)
+      return
+    const target = reservations.find((item) => item.id === initialItem)
+    if (!target) return
+    if (!reservationMatchesTab(target.status, activeTab)) return
+    focusedItem.current = initialItem
+    requestAnimationFrame(() => {
+      const element = document.getElementById(`reservation-${initialItem}`)
+      element?.scrollIntoView({ block: "center", behavior: "smooth" })
+      element?.focus({ preventScroll: true })
+    })
+  }, [initialItem, reservations, activeTab])
 
   const tabCounts = useMemo(() => {
     const counts: Record<ReservationTab, number> = {
@@ -865,81 +891,88 @@ export function ReservationList() {
             {visibleReservations && visibleReservations.length > 0 ? (
               <div className="grid gap-4 lg:grid-cols-2">
                 {visibleReservations.map((item) => (
-                  <ReservationTicket
+                  <section
+                    id={`reservation-${item.id}`}
                     key={item.id}
-                    facilityName={item.facilityName}
-                    location={item.facilityLocation}
-                    startAt={item.startAt}
-                    endAt={item.endAt}
-                    status={item.status}
-                    statusLabel={statusLabel[item.status] ?? item.status}
-                    purpose={item.purpose}
-                    decisionNote={item.decisionNote}
-                    createdAt={item.createdAt}
-                    updatedAt={item.updatedAt}
+                    tabIndex={-1}
+                    className="rounded-2xl focus-visible:outline-2 focus-visible:outline-primary"
                   >
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() =>
-                          setShareSubject({
-                            kind: "reservation",
-                            facilityName: item.facilityName,
-                            location: item.facilityLocation,
-                            startAt: item.startAt,
-                            endAt: item.endAt,
-                            status: item.status,
-                            statusLabel:
-                              statusLabel[item.status] ?? item.status,
-                            purpose: item.purpose,
-                            createdAt: item.createdAt,
-                            updatedAt: item.updatedAt,
-                          })
-                        }
-                      >
-                        <IconShare aria-hidden="true" />
-                        Bagikan
-                      </Button>
-                      {item.status === "approved" &&
-                        now !== null &&
-                        item.startAt > now && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={
-                              !changes ||
-                              changes.some(
-                                (change) =>
-                                  change.reservationId === item.id &&
-                                  change.status === "pending"
-                              )
-                            }
-                            onClick={() => setChanging(item)}
-                          >
-                            Ubah jadwal
-                          </Button>
-                        )}
-                      {["pending", "approved"].includes(item.status) &&
-                      now !== null &&
-                      item.startAt - now >= 3600000 ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => cancelReservation(item.id)}
-                        >
-                          Batalkan
-                        </Button>
-                      ) : null}
-                    </div>
-                    <ReservationDisruptionActions
-                      reservationId={item.id}
-                      facilityId={item.facilityId}
-                      status={item.status}
+                    <ReservationTicket
+                      key={item.id}
+                      facilityName={item.facilityName}
+                      location={item.facilityLocation}
                       startAt={item.startAt}
                       endAt={item.endAt}
-                    />
-                  </ReservationTicket>
+                      status={item.status}
+                      statusLabel={statusLabel[item.status] ?? item.status}
+                      purpose={item.purpose}
+                      decisionNote={item.decisionNote}
+                      createdAt={item.createdAt}
+                      updatedAt={item.updatedAt}
+                    >
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() =>
+                            setShareSubject({
+                              kind: "reservation",
+                              facilityName: item.facilityName,
+                              location: item.facilityLocation,
+                              startAt: item.startAt,
+                              endAt: item.endAt,
+                              status: item.status,
+                              statusLabel:
+                                statusLabel[item.status] ?? item.status,
+                              purpose: item.purpose,
+                              createdAt: item.createdAt,
+                              updatedAt: item.updatedAt,
+                            })
+                          }
+                        >
+                          <IconShare aria-hidden="true" />
+                          Bagikan
+                        </Button>
+                        {item.status === "approved" &&
+                          now !== null &&
+                          item.startAt > now && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={
+                                !changes ||
+                                changes.some(
+                                  (change) =>
+                                    change.reservationId === item.id &&
+                                    change.status === "pending"
+                                )
+                              }
+                              onClick={() => setChanging(item)}
+                            >
+                              Ubah jadwal
+                            </Button>
+                          )}
+                        {["pending", "approved"].includes(item.status) &&
+                        now !== null &&
+                        item.startAt - now >= 3600000 ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => cancelReservation(item.id)}
+                          >
+                            Batalkan
+                          </Button>
+                        ) : null}
+                      </div>
+                      <ReservationDisruptionActions
+                        reservationId={item.id}
+                        facilityId={item.facilityId}
+                        status={item.status}
+                        startAt={item.startAt}
+                        endAt={item.endAt}
+                      />
+                    </ReservationTicket>
+                  </section>
                 ))}
               </div>
             ) : (
@@ -970,7 +1003,10 @@ export function ReservationForm({
   const now = useScheduleClock()
   const [facilityId, setFacilityId] = useState(initialFacilityId ?? "")
   const [facilitySearch, setFacilitySearch] = useState("")
-  const [date, setDate] = useState(initialDate ?? tomorrow)
+  const [date, setDate] = useState(
+    initialDate ??
+      (() => jakartaDate(Date.now() + RESERVATION_LEAD_MS + 86400000))
+  )
   const [startTime, setStartTime] = useState(initialStartTime ?? "07:00")
   const [endTime, setEndTime] = useState(initialEndTime ?? "08:00")
   const [purpose, setPurpose] = useState("")
@@ -1018,7 +1054,9 @@ export function ReservationForm({
   )
   const conflict = busy ? rangeIsBusy(date, startTime, endTime, busy) : false
   const elapsed =
-    now === null || !startTime || toTimestamp(date, startTime) <= now
+    now === null ||
+    !startTime ||
+    !meetsReservationLeadTime(toTimestamp(date, startTime), now)
   const durationMinutes =
     startTime && endTime
       ? (toTimestamp(date, endTime) - toTimestamp(date, startTime)) / 60000
@@ -1053,8 +1091,11 @@ export function ReservationForm({
 
   async function executeSubmit() {
     if (!selectedFacility || pending) return
-    if (now === null || toTimestamp(date, startTime) <= now) {
-      setMessage("Jam mulai sudah lewat. Pilih jadwal baru.")
+    if (
+      now === null ||
+      !meetsReservationLeadTime(toTimestamp(date, startTime), now)
+    ) {
+      setMessage(RESERVATION_LEAD_MESSAGE)
       return
     }
     setPending(true)
@@ -1075,7 +1116,7 @@ export function ReservationForm({
       })
       setFacilityId("")
       setFacilitySearch("")
-      setDate(tomorrow())
+      setDate(jakartaDate(now + RESERVATION_LEAD_MS + 86400000))
       setStartTime("07:00")
       setEndTime("08:00")
       setPurpose("")
@@ -1188,9 +1229,16 @@ export function ReservationForm({
           </div>
           <div className="max-w-xs space-y-1.5">
             <Label htmlFor="reservation-date">Tanggal</Label>
-            <ReservationDatePicker value={date} onChange={setDate} />
+            <ReservationDatePicker
+              value={date}
+              onChange={setDate}
+              minDate={
+                now === null ? date : jakartaDate(now + RESERVATION_LEAD_MS)
+              }
+            />
           </div>
           <TimeSlotPicker
+            minimumLeadMs={RESERVATION_LEAD_MS}
             date={date}
             busy={busy}
             pendingRanges={availability?.pending}
@@ -1229,7 +1277,7 @@ export function ReservationForm({
                   : conflict
                     ? "Rentang waktu ini sudah dipakai. Pilih jam lain."
                     : elapsed
-                      ? "Jam mulai sudah lewat. Pilih jam lain."
+                      ? RESERVATION_LEAD_MESSAGE
                       : !endTime
                         ? "Pilih rentang waktu yang tersedia."
                         : "Rentang waktu tersedia untuk diajukan."}

@@ -11,6 +11,7 @@ import {
   SLOT_MS,
   overlaps,
   validateReservationWindow,
+  validateReservationLeadTime,
 } from "../../convex/lib/reservationTime"
 import {
   assertFacilityCanApprove,
@@ -142,6 +143,8 @@ type FacilityIssue = {
   updatedAt: number
 }
 type EmergencyClosure = {
+  mode?: "safety" | "long_repair"
+  source?: "manual" | "handling"
   id: string
   facilityId: string
   reportId?: string
@@ -173,7 +176,7 @@ const roleCookie = "sthana_demo_role"
 const listeners = new Set<() => void>()
 const seedTime = Date.now()
 const tomorrow = new Date(seedTime + 7 * 60 * 60 * 1000)
-tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
+tomorrow.setUTCDate(tomorrow.getUTCDate() + 3)
 const date = tomorrow.toISOString().slice(0, 10)
 const slot = (time: string) => Date.parse(`${date}T${time}:00+07:00`)
 const todayDate = new Date(seedTime + 7 * 60 * 60 * 1000)
@@ -409,6 +412,52 @@ function replace(next: StaticData) {
       return item
     }),
   }
+  const notifications = [...(next.notifications ?? [])]
+  function notifyExpiry(
+    event: Omit<Notification, "id" | "createdAt" | "readAt">
+  ) {
+    if (notifications.some((n) => n.dedupKey === event.dedupKey)) return
+    notifications.unshift({
+      ...event,
+      id: `demo-notification-${crypto.randomUUID()}`,
+      createdAt: now,
+    })
+  }
+  for (const reservation of next.reservations) {
+    if (
+      reservation.status === "expired" &&
+      state.reservations.some(
+        (r) => r.id === reservation.id && r.status === "pending"
+      )
+    )
+      notifyExpiry({
+        userId: reservation.userId,
+        type: "reservation.expired",
+        title: "Pengajuan kedaluwarsa",
+        body: `${EXPIRATION_NOTE} Silakan ajukan ulang dengan jadwal baru bila masih diperlukan.`,
+        reservationId: reservation.id,
+        dedupKey: `reservation:${reservation.id}:expired`,
+      })
+  }
+  for (const proposal of next.reservationChanges ?? []) {
+    if (
+      proposal.status === "expired" &&
+      state.reservationChanges?.some(
+        (r) => r.id === proposal.id && r.status === "pending"
+      )
+    )
+      notifyExpiry({
+        userId: proposal.userId,
+        type: "reservation.change_decided",
+        title: "Perubahan jadwal kedaluwarsa",
+        body: `${EXPIRATION_NOTE} Jadwal lama tetap berlaku pada ${jakartaRange(proposal.originalStartAt, proposal.originalEndAt)}.`,
+        reservationId: proposal.reservationId,
+        facilityId: proposal.facilityId,
+        changeId: proposal.id,
+        dedupKey: `reservationChange:${proposal.id}:expired`,
+      })
+  }
+  next = { ...next, notifications }
   state = next
   try {
     localStorage.setItem(storageKey, JSON.stringify(next))
@@ -428,35 +477,8 @@ export function subscribeStaticData(listener: () => void) {
 }
 export function useStaticData() {
   useEffect(() => {
-    void hydrateStaticData()
-    const tick = () => {
-      const now = Date.now()
-      const reservations = state.reservations.map((r) =>
-        r.status === "pending" && r.startAt <= now
-          ? {
-              ...r,
-              status: "expired" as const,
-              decisionNote: EXPIRATION_NOTE,
-              updatedAt: now,
-            }
-          : r
-      )
-      const reservationChanges = (state.reservationChanges ?? []).map((r) =>
-        r.status === "pending" && changeDeadline(r) <= now
-          ? {
-              ...r,
-              status: "expired" as const,
-              decisionNote: EXPIRATION_NOTE,
-              updatedAt: now,
-            }
-          : r
-      )
-      if (
-        reservations.some((r, i) => r !== state.reservations[i]) ||
-        reservationChanges.some((r, i) => r !== state.reservationChanges?.[i])
-      )
-        replace({ ...state, reservations, reservationChanges })
-    }
+    const tick = () => expireStaticData()
+    void hydrateStaticData().then(tick)
     const timer = window.setInterval(tick, 1000)
     window.addEventListener("focus", tick)
     return () => {
@@ -469,6 +491,35 @@ export function useStaticData() {
     getStaticData,
     () => initialStaticData
   )
+}
+
+/** Browser-clock equivalent of the backend expiry job; safe to retry. */
+export function expireStaticData(now = Date.now()) {
+  const reservations = state.reservations.map((r) =>
+    r.status === "pending" && r.startAt <= now
+      ? {
+          ...r,
+          status: "expired" as const,
+          decisionNote: EXPIRATION_NOTE,
+          updatedAt: now,
+        }
+      : r
+  )
+  const reservationChanges = (state.reservationChanges ?? []).map((r) =>
+    r.status === "pending" && changeDeadline(r) <= now
+      ? {
+          ...r,
+          status: "expired" as const,
+          decisionNote: EXPIRATION_NOTE,
+          updatedAt: now,
+        }
+      : r
+  )
+  if (
+    reservations.some((r, i) => r !== state.reservations[i]) ||
+    reservationChanges.some((r, i) => r !== state.reservationChanges?.[i])
+  )
+    replace({ ...state, reservations, reservationChanges })
 }
 
 function conflicts(first: Reservation, second: Reservation) {
@@ -525,6 +576,7 @@ function reservationsIn(
     (item) =>
       item.facilityId === facilityId &&
       item.status === status &&
+      effectiveReservationStatus(item, Date.now()) === status &&
       overlaps(item.startAt, item.endAt, startAt, endAt)
   )
 }
@@ -712,6 +764,8 @@ function reportItem(report: Report) {
 }
 function facilityHandling(id: string) {
   const facility = state.facilities.find((item) => item.id === id)
+  if (facility?.status === "inactive")
+    return { status: "inactive" as const, handlingNotice: undefined }
   const closure = (state.emergencyClosures ?? []).find(
     (c) => c.facilityId === id && c.status === "closed"
   )
@@ -728,7 +782,11 @@ function facilityHandling(id: string) {
   )
   if (base.status !== "active") return base
   const issues = (state.facilityIssues ?? []).filter(
-    (issue) => issue.facilityId === id && issue.status === "open"
+    (issue) =>
+      issue.facilityId === id &&
+      issue.status === "open" &&
+      issue.startAt <= Date.now() &&
+      (issue.endAt ?? Infinity) > Date.now()
   )
   if (issues.length === 0) return base
   const first = issues[0]
@@ -765,6 +823,28 @@ function notifyDemo(
     },
     ...items,
   ])
+}
+
+function notifyDemoReservationIssues(reservationId: string, now: number) {
+  const r = required(state.reservations, reservationId)
+  for (const issue of state.facilityIssues ?? []) {
+    if (
+      issue.status !== "open" ||
+      issue.facilityId !== r.facilityId ||
+      !overlaps(r.startAt, r.endAt, issue.startAt, issue.endAt ?? Infinity)
+    )
+      continue
+    notifyDemo(now, {
+      userId: r.userId,
+      type: "disruption.created",
+      title: "Ada gangguan fasilitas",
+      body: `${facilityName(r.facilityId)}: ${issue.description} Fasilitas masih dapat digunakan. Jadwal tetap berlaku; Anda dapat meminta perubahan atau membatalkan sebelum kegiatan dimulai.`,
+      dedupKey: `disruption:${issue.id}:rev${issue.revision}:reservation:${r.id}:created`,
+      facilityId: r.facilityId,
+      issueId: issue.id,
+      reservationId: r.id,
+    })
+  }
 }
 
 export function staticQuery(name: string, args: unknown): unknown {
@@ -950,6 +1030,22 @@ export function staticQuery(name: string, args: unknown): unknown {
           readAt: notification.readAt,
           createdAt: notification.createdAt,
         }))
+    case "notifications:listPage": {
+      const opts = field(args, "paginationOpts") as {
+        cursor: string | null
+        numItems: number
+      }
+      const rows = (state.notifications ?? [])
+        .filter((n) => n.userId === account().id)
+        .sort((a, b) => b.createdAt - a.createdAt)
+      const offset = opts.cursor ? Number(opts.cursor) : 0
+      const page = rows.slice(offset, offset + opts.numItems)
+      return {
+        page,
+        isDone: offset + page.length >= rows.length,
+        continueCursor: String(offset + page.length),
+      }
+    }
     case "notifications:unreadCount":
       return (state.notifications ?? []).filter(
         (notification) =>
@@ -994,20 +1090,35 @@ export function staticQuery(name: string, args: unknown): unknown {
     case "facilityIssues:previewImpact": {
       const id = value(args, "facilityId")
       const s = Number(field(args, "startAt"))
-      const e = field(args, "endAt") ? Number(field(args, "endAt")) : Number.MAX_SAFE_INTEGER
+      const e = field(args, "endAt")
+        ? Number(field(args, "endAt"))
+        : Number.MAX_SAFE_INTEGER
       const at = Date.now()
       const inRange = (r: Reservation) =>
-        r.facilityId === id && r.endAt > at && r.endAt > s && overlaps(r.startAt, r.endAt, s, e)
+        r.facilityId === id &&
+        r.endAt > at &&
+        r.endAt > s &&
+        overlaps(r.startAt, r.endAt, s, e)
       return {
-        approved: state.reservations.filter((r) => r.status === "approved" && inRange(r)).length,
-        pending: state.reservations.filter((r) => r.status === "pending" && inRange(r)).length,
+        approved: state.reservations.filter(
+          (r) => r.status === "approved" && inRange(r)
+        ).length,
+        pending: state.reservations.filter(
+          (r) => r.status === "pending" && inRange(r)
+        ).length,
       }
     }
     case "emergencyClosures:listActiveForFacility": {
       const id = value(args, "facilityId")
       return (state.emergencyClosures ?? [])
         .filter((c) => c.facilityId === id && c.status === "closed")
-        .map((c) => ({ id: c.id, facilityId: c.facilityId, reason: c.reason, estimatedEndAt: c.estimatedEndAt, closedAt: c.closedAt }))
+        .map((c) => ({
+          id: c.id,
+          facilityId: c.facilityId,
+          reason: c.reason,
+          estimatedEndAt: c.estimatedEndAt,
+          closedAt: c.closedAt,
+        }))
     }
     case "emergencyClosures:listManaged":
       return (state.emergencyClosures ?? [])
@@ -1018,7 +1129,8 @@ export function staticQuery(name: string, args: unknown): unknown {
           reason: c.reason,
           estimatedEndAt: c.estimatedEndAt,
           status: c.status,
-          closedByName: state.accounts.find((a) => a.id === c.closedBy)?.name ?? "Petugas",
+          closedByName:
+            state.accounts.find((a) => a.id === c.closedBy)?.name ?? "Petugas",
           closedAt: c.closedAt,
           reopenedAt: c.reopenedAt,
           createdAt: c.createdAt,
@@ -1028,11 +1140,15 @@ export function staticQuery(name: string, args: unknown): unknown {
       const id = value(args, "facilityId")
       const at = Date.now()
       const pending: { id: string; startAt: number; endAt: number }[] = []
-      const approvedFuture: { id: string; startAt: number; endAt: number }[] = []
+      const approvedFuture: { id: string; startAt: number; endAt: number }[] =
+        []
       const ongoing: { id: string; startAt: number; endAt: number }[] = []
       for (const r of state.reservations) {
         if (r.facilityId !== id || r.endAt <= at) continue
-        if (!["pending", "approved"].includes(r.status)) continue
+        if (
+          !["pending", "approved"].includes(effectiveReservationStatus(r, at))
+        )
+          continue
         const item = { id: r.id, startAt: r.startAt, endAt: r.endAt }
         if (r.startAt <= at) ongoing.push(item)
         else if (r.status === "pending") pending.push(item)
@@ -1134,8 +1250,6 @@ export async function staticMutation(
       const startAt = Number(field(args, "startAt")),
         endAt = Number(field(args, "endAt"))
       validateReservationWindow(startAt, endAt)
-      if (startAt <= now)
-        throw new Error("Waktu reservasi harus berada di masa mendatang")
       requireText(value(args, "purpose"))
       const duplicate = state.reservations.find(
         (r) =>
@@ -1146,6 +1260,7 @@ export async function staticMutation(
           ["pending", "approved"].includes(r.status)
       )
       if (duplicate) return duplicate.id
+      validateReservationLeadTime(startAt, now)
       if (
         state.reservations.some(
           (item) =>
@@ -1174,6 +1289,7 @@ export async function staticMutation(
           updatedAt: now,
         },
       ])
+      notifyDemoReservationIssues(id, now)
       return id
     }
     case "reservations:requestScheduleChange": {
@@ -1351,6 +1467,7 @@ export async function staticMutation(
           facilityId: item.facilityId,
           changeId: item.id,
         })
+        notifyDemoReservationIssues(original.id, now)
         for (const r of state.reservations) {
           if (
             r.id !== original.id &&
@@ -1389,7 +1506,7 @@ export async function staticMutation(
         item = required(state.reservations, id)
       if (
         item.userId !== account().id ||
-        !["pending", "approved"].includes(item.status)
+        !["pending", "approved"].includes(effectiveReservationStatus(item, now))
       )
         throw new Error("Reservasi tidak dapat dibatalkan")
       if (item.startAt - now < 3600000)
@@ -1408,6 +1525,9 @@ export async function staticMutation(
       const id = value(args, "reservationId"),
         item = required(state.reservations, id),
         decision = value(args, "decision") as "approved" | "rejected"
+      if (!["approved", "rejected"].includes(decision))
+        throw new Error("Keputusan tidak valid")
+      if (decision === "rejected") requireText(value(args, "note"))
       if (item.status !== "pending") throw new Error("Reservasi sudah diproses")
       if (item.startAt <= now) throw new Error(EXPIRATION_NOTE)
       if (decision === "approved") {
@@ -1453,6 +1573,7 @@ export async function staticMutation(
       const range = jakartaRange(item.startAt, item.endAt)
       const name = facilityName(item.facilityId)
       if (decision === "approved" && !alreadyBooked) {
+        notifyDemoReservationIssues(item.id, now)
         notifyDemo(now, {
           userId: item.userId,
           type: "reservation.approved",
@@ -1532,15 +1653,32 @@ export async function staticMutation(
       requireRole(["user"])
       const item = required(state.reservations, value(args, "reservationId"))
       const issue = required(state.facilityIssues ?? [], value(args, "issueId"))
-      if (item.userId !== account().id) throw new Error("Reservasi tidak ditemukan")
+      if (item.userId !== account().id)
+        throw new Error("Reservasi tidak ditemukan")
+      if (
+        !["pending", "approved"].includes(
+          effectiveReservationStatus(item, now)
+        ) ||
+        item.endAt <= now
+      )
+        throw new Error("Reservasi ini tidak dapat dibatalkan")
       if (issue.status !== "open" || issue.facilityId !== item.facilityId)
         throw new Error("Gangguan tidak berlaku untuk reservasi ini")
-      if (!overlaps(item.startAt, item.endAt, issue.startAt, issue.endAt ?? Number.MAX_SAFE_INTEGER))
+      if (
+        !overlaps(
+          item.startAt,
+          item.endAt,
+          issue.startAt,
+          issue.endAt ?? Number.MAX_SAFE_INTEGER
+        )
+      )
         throw new Error("Gangguan tidak berdampak pada jadwal ini")
       if (item.status === "approved" && item.startAt <= now)
         throw new Error("Kegiatan sudah berlangsung. Hubungi petugas.")
       change<Reservation>("reservations", (items) =>
-        items.map((r) => (r.id === item.id ? { ...r, status: "cancelled", updatedAt: now } : r))
+        items.map((r) =>
+          r.id === item.id ? { ...r, status: "cancelled", updatedAt: now } : r
+        )
       )
       return null
     }
@@ -1553,22 +1691,60 @@ export async function staticMutation(
       const id = `demo-issue-${crypto.randomUUID()}`
       const startAt = Number(field(args, "startAt"))
       const endRaw = field(args, "endAt")
-      const endAt = endRaw ? Number(endRaw) : undefined
+      const endAt = endRaw === undefined ? undefined : Number(endRaw)
+      if (
+        !Number.isFinite(startAt) ||
+        (endAt !== undefined && (!Number.isFinite(endAt) || endAt <= startAt))
+      )
+        throw new Error("Waktu gangguan tidak valid")
+      const reportId = value(args, "reportId") || undefined
+      if (
+        reportId &&
+        required(state.reports, reportId).facilityId !== facilityId
+      )
+        throw new Error("Laporan tidak cocok dengan fasilitas ini")
       change<FacilityIssue>("facilityIssues", (items) => [
         ...items,
-        { id, facilityId, category: value(args, "category").trim(), description: value(args, "description").trim(), startAt, endAt, status: "open", revision: 1, createdBy: account().id, createdAt: now, updatedAt: now },
+        {
+          id,
+          facilityId,
+          reportId,
+          category: value(args, "category").trim(),
+          description: value(args, "description").trim(),
+          startAt,
+          endAt,
+          status: "open",
+          revision: 1,
+          createdBy: account().id,
+          createdAt: now,
+          updatedAt: now,
+        },
       ])
       for (const r of state.reservations) {
-        if (r.facilityId !== facilityId || r.endAt <= now) continue
-        if (!overlaps(r.startAt, r.endAt, startAt, endAt ?? Number.MAX_SAFE_INTEGER)) continue
+        if (
+          r.facilityId !== facilityId ||
+          r.endAt <= now ||
+          !["pending", "approved"].includes(effectiveReservationStatus(r, now))
+        )
+          continue
+        if (
+          !overlaps(
+            r.startAt,
+            r.endAt,
+            startAt,
+            endAt ?? Number.MAX_SAFE_INTEGER
+          )
+        )
+          continue
         notifyDemo(now, {
           userId: r.userId,
           type: "disruption.created",
           title: `Gangguan di ${facilityName(facilityId)}`,
           body: `${value(args, "category").trim()} masih dapat digunakan.`,
-          dedupKey: `disruption:${id}:rev1:user:${r.userId}:created`,
+          dedupKey: `disruption:${id}:rev1:reservation:${r.id}:created`,
           facilityId,
           issueId: id,
+          reservationId: r.id,
         })
       }
       return id
@@ -1576,19 +1752,33 @@ export async function staticMutation(
     case "facilityIssues:resolve": {
       requireRole(["officer", "admin"])
       const issue = required(state.facilityIssues ?? [], value(args, "issueId"))
+      if (issue.status !== "open") throw new Error("Gangguan tidak aktif")
       change<FacilityIssue>("facilityIssues", (items) =>
-        items.map((i) => (i.id === issue.id ? { ...i, status: "closed", closedAt: now, updatedAt: now } : i))
+        items.map((i) =>
+          i.id === issue.id
+            ? { ...i, status: "closed", closedAt: now, updatedAt: now }
+            : i
+        )
       )
       for (const r of state.reservations) {
-        if (r.facilityId !== issue.facilityId || r.endAt <= now) continue
+        if (
+          r.facilityId !== issue.facilityId ||
+          r.endAt <= now ||
+          !["pending", "approved"].includes(
+            effectiveReservationStatus(r, now)
+          ) ||
+          !overlaps(r.startAt, r.endAt, issue.startAt, issue.endAt ?? Infinity)
+        )
+          continue
         notifyDemo(now, {
           userId: r.userId,
           type: "disruption.resolved",
           title: `Gangguan selesai di ${facilityName(issue.facilityId)}`,
           body: `${issue.category} telah selesai ditangani.`,
-          dedupKey: `disruption:${issue.id}:rev${issue.revision}:user:${r.userId}:resolved`,
+          dedupKey: `disruption:${issue.id}:rev${issue.revision}:reservation:${r.id}:resolved`,
           facilityId: issue.facilityId,
           issueId: issue.id,
+          reservationId: r.id,
         })
       }
       return null
@@ -1596,35 +1786,144 @@ export async function staticMutation(
     case "facilityIssues:update": {
       requireRole(["officer", "admin"])
       const issue = required(state.facilityIssues ?? [], value(args, "issueId"))
-      const category = field(args, "category") ? value(args, "category").trim() : issue.category
-      const description = field(args, "description") ? value(args, "description").trim() : issue.description
+      if (issue.status !== "open") throw new Error("Gangguan tidak aktif")
+      const category =
+        field(args, "category") !== undefined
+          ? value(args, "category").trim()
+          : issue.category
+      const description =
+        field(args, "description") !== undefined
+          ? value(args, "description").trim()
+          : issue.description
+      const endAt = field(args, "clearEndAt")
+        ? undefined
+        : field(args, "endAt") !== undefined
+          ? Number(field(args, "endAt"))
+          : issue.endAt
+      requireText(category)
+      requireText(description)
+      if (
+        endAt !== undefined &&
+        (!Number.isFinite(endAt) || endAt <= issue.startAt)
+      )
+        throw new Error("Waktu selesai harus setelah waktu mulai")
       change<FacilityIssue>("facilityIssues", (items) =>
         items.map((i) =>
-          i.id === issue.id ? { ...i, category, description, revision: i.revision + 1, updatedAt: now } : i
+          i.id === issue.id
+            ? {
+                ...i,
+                category,
+                description,
+                endAt,
+                revision: i.revision + 1,
+                updatedAt: now,
+              }
+            : i
         )
       )
+      for (const r of state.reservations) {
+        if (
+          r.facilityId !== issue.facilityId ||
+          r.endAt <= now ||
+          !["pending", "approved"].includes(
+            effectiveReservationStatus(r, now)
+          ) ||
+          !overlaps(r.startAt, r.endAt, issue.startAt, endAt ?? Infinity)
+        )
+          continue
+        notifyDemo(now, {
+          userId: r.userId,
+          type: "disruption.updated",
+          title: `Gangguan diperbarui di ${facilityName(issue.facilityId)}`,
+          body: `${category}. Fasilitas masih dapat digunakan.`,
+          facilityId: issue.facilityId,
+          issueId: issue.id,
+          reservationId: r.id,
+          dedupKey: `disruption:${issue.id}:rev${issue.revision + 1}:reservation:${r.id}:updated`,
+        })
+      }
       return null
     }
     case "emergencyClosures:close": {
       requireRole(["officer", "admin"])
       const facilityId = value(args, "facilityId")
-      required(state.facilities, facilityId)
+      const facility = required(state.facilities, facilityId)
+      if (facility.status === "inactive")
+        throw new Error("Fasilitas tidak ditemukan atau nonaktif")
+      if (
+        (state.emergencyClosures ?? []).some(
+          (c) => c.facilityId === facilityId && c.status === "closed"
+        )
+      )
+        throw new Error("Fasilitas ini sudah ditutup darurat")
       requireText(value(args, "reason"))
       const mode = value(args, "mode") as "safety" | "long_repair"
+      if (mode !== "safety" && mode !== "long_repair")
+        throw new Error("Mode penutupan tidak valid")
+      const estimatedEndAt =
+        field(args, "estimatedEndAt") === undefined
+          ? undefined
+          : Number(field(args, "estimatedEndAt"))
+      if (
+        estimatedEndAt !== undefined &&
+        (!Number.isFinite(estimatedEndAt) || estimatedEndAt <= now)
+      )
+        throw new Error("Estimasi selesai harus di masa mendatang")
+      const reportId = value(args, "reportId") || undefined
+      if (
+        reportId &&
+        required(state.reports, reportId).facilityId !== facilityId
+      )
+        throw new Error("Laporan tidak cocok dengan fasilitas ini")
       const id = `demo-closure-${crypto.randomUUID()}`
       change<EmergencyClosure>("emergencyClosures", (items) => [
         ...items,
-        { id, facilityId, reason: value(args, "reason").trim(), status: "closed", closedBy: account().id, closedAt: now, createdAt: now, updatedAt: now },
+        {
+          id,
+          facilityId,
+          reportId,
+          mode,
+          source: value(args, "source") === "handling" ? "handling" : "manual",
+          estimatedEndAt,
+          reason: value(args, "reason").trim(),
+          status: "closed",
+          closedBy: account().id,
+          closedAt: now,
+          createdAt: now,
+          updatedAt: now,
+        },
       ])
       const affected = state.reservations.filter(
-        (r) => r.facilityId === facilityId && r.endAt > now && ["pending", "approved"].includes(r.status)
+        (r) =>
+          r.facilityId === facilityId &&
+          r.endAt > now &&
+          ["pending", "approved"].includes(effectiveReservationStatus(r, now))
       )
       if (mode === "safety") {
         change<Reservation>("reservations", (items) =>
           items.map((r) =>
             affected.some((a) => a.id === r.id)
-              ? { ...r, status: "cancelled", decisionNote: `Dibatalkan pengelola karena penutupan darurat: ${value(args, "reason").trim()}`, updatedAt: now }
+              ? {
+                  ...r,
+                  status: "cancelled",
+                  decisionNote: `Dibatalkan pengelola karena penutupan darurat: ${value(args, "reason").trim()}`,
+                  updatedAt: now,
+                }
               : r
+          )
+        )
+        change<ScheduleChange>("reservationChanges", (items) =>
+          items.map((c) =>
+            c.status === "pending" &&
+            affected.some((r) => r.id === c.reservationId)
+              ? {
+                  ...c,
+                  status: "cancelled",
+                  decisionNote:
+                    "Reservasi asal dibatalkan karena penutupan darurat.",
+                  updatedAt: now,
+                }
+              : c
           )
         )
       }
@@ -1632,9 +1931,15 @@ export async function staticMutation(
         notifyDemo(now, {
           userId: r.userId,
           type: "emergency.closed",
-          title: mode === "safety" ? `Reservasi dibatalkan: ${facilityName(facilityId)} ditutup darurat` : `Perbaikan besar di ${facilityName(facilityId)}`,
-          body: mode === "safety" ? `Reservasi pada ${jakartaRange(r.startAt, r.endAt)} dibatalkan pengelola.` : `Perbaikan sampai pemberitahuan lebih lanjut. Dapat dibatalkan atau tetap menunggu.`,
-          dedupKey: mode === "safety" ? `closure:${id}:reservation:${r.id}` : `closure:${id}:notice:user:${r.userId}`,
+          title:
+            mode === "safety"
+              ? `Reservasi dibatalkan: ${facilityName(facilityId)} ditutup darurat`
+              : `Perbaikan besar di ${facilityName(facilityId)}`,
+          body:
+            mode === "safety"
+              ? `Reservasi pada ${jakartaRange(r.startAt, r.endAt)} dibatalkan pengelola.`
+              : `Perbaikan sampai pemberitahuan lebih lanjut. Dapat dibatalkan atau tetap menunggu.`,
+          dedupKey: `closure:${id}:reservation:${r.id}`,
           reservationId: r.id,
           facilityId,
           closureId: id,
@@ -1644,21 +1949,78 @@ export async function staticMutation(
     }
     case "emergencyClosures:reopen": {
       requireRole(["officer", "admin"])
-      const closure = required(state.emergencyClosures ?? [], value(args, "closureId"))
-      change<EmergencyClosure>("emergencyClosures", (items) =>
-        items.map((c) => (c.id === closure.id ? { ...c, status: "reopened", reopenedAt: now, updatedAt: now } : c))
+      const closure = required(
+        state.emergencyClosures ?? [],
+        value(args, "closureId")
       )
+      if (closure.status !== "closed") throw new Error("Penutupan tidak aktif")
+      if (field(args, "confirmSafe") !== true)
+        throw new Error("Konfirmasi bahwa fasilitas aman wajib dicentang")
+      if (
+        state.reports.some(
+          (r) =>
+            r.facilityId === closure.facilityId &&
+            r.status === "in_progress" &&
+            r.handlingImpact === "closed"
+        )
+      )
+        throw new Error(
+          "Selesaikan penanganan yang masih menutup fasilitas sebelum membuka kembali"
+        )
+      change<EmergencyClosure>("emergencyClosures", (items) =>
+        items.map((c) =>
+          c.id === closure.id
+            ? { ...c, status: "reopened", reopenedAt: now, updatedAt: now }
+            : c
+        )
+      )
+      for (const recipient of state.notifications ?? [])
+        if (
+          recipient.closureId === closure.id &&
+          recipient.type === "emergency.closed"
+        )
+          notifyDemo(now, {
+            userId: recipient.userId,
+            type: "emergency.reopened",
+            title: "Fasilitas dibuka kembali",
+            body: "Fasilitas dinyatakan aman. Reservasi yang dibatalkan tidak dipulihkan.",
+            facilityId: closure.facilityId,
+            closureId: closure.id,
+            dedupKey: `closure:${closure.id}:reopened:user:${recipient.userId}`,
+          })
       return null
     }
     case "emergencyClosures:cancelMineForClosure": {
       requireRole(["user"])
       const item = required(state.reservations, value(args, "reservationId"))
-      const closure = required(state.emergencyClosures ?? [], value(args, "closureId"))
-      if (item.userId !== account().id) throw new Error("Reservasi tidak ditemukan")
+      const closure = required(
+        state.emergencyClosures ?? [],
+        value(args, "closureId")
+      )
+      if (item.userId !== account().id)
+        throw new Error("Reservasi tidak ditemukan")
+      if (
+        !["pending", "approved"].includes(
+          effectiveReservationStatus(item, now)
+        ) ||
+        item.endAt <= now
+      )
+        throw new Error("Reservasi ini tidak dapat dibatalkan")
       if (closure.status !== "closed" || closure.facilityId !== item.facilityId)
         throw new Error("Penutupan tidak berlaku untuk reservasi ini")
+      if (item.status === "approved" && item.startAt <= now)
+        throw new Error("Kegiatan sudah berlangsung. Hubungi petugas.")
       change<Reservation>("reservations", (items) =>
-        items.map((r) => (r.id === item.id ? { ...r, status: "cancelled", updatedAt: now } : r))
+        items.map((r) =>
+          r.id === item.id ? { ...r, status: "cancelled", updatedAt: now } : r
+        )
+      )
+      change<ScheduleChange>("reservationChanges", (items) =>
+        items.map((c) =>
+          c.reservationId === item.id && c.status === "pending"
+            ? { ...c, status: "cancelled", updatedAt: now }
+            : c
+        )
       )
       return null
     }
@@ -1721,11 +2083,52 @@ export async function staticMutation(
       const id = value(args, "reportId"),
         item = required(state.reports, id)
       const status = value(args, "status") as ReportStatus
+      if (
+        item.status === status &&
+        (status !== "in_progress" ||
+          item.handlingImpact === field(args, "handlingImpact"))
+      )
+        return null
       assertReportTransition(item.status, status)
       const note = value(args, "note").trim()
       if (status !== "in_progress" && !note)
         throw new Error(
           "Catatan wajib diisi untuk menyelesaikan atau menolak laporan"
+        )
+      const impact = field(args, "handlingImpact") as HandlingImpact | undefined
+      if (status === "in_progress") {
+        if (impact !== "usable" && impact !== "closed")
+          throw new Error("Pilih dampak penanganan terlebih dahulu")
+        if (!value(args, "publicNotice").trim())
+          throw new Error("Keterangan publik wajib diisi tanpa data pribadi")
+        if (value(args, "publicNotice").trim().length > 500)
+          throw new Error("Keterangan publik maksimal 500 karakter")
+        if (impact === "usable")
+          await staticMutation("facilityIssues:create", {
+            facilityId: item.facilityId,
+            reportId: item.id,
+            category: item.category,
+            description: value(args, "publicNotice"),
+            startAt: now,
+          })
+        else if (
+          !(state.emergencyClosures ?? []).some(
+            (c) => c.facilityId === item.facilityId && c.status === "closed"
+          )
+        )
+          await staticMutation("emergencyClosures:close", {
+            facilityId: item.facilityId,
+            reportId: item.id,
+            reason: value(args, "publicNotice"),
+            mode: "safety",
+            source: "handling",
+          })
+      } else if (
+        item.handlingImpact === "closed" &&
+        field(args, "confirmSafe") !== true
+      )
+        throw new Error(
+          "Pastikan penanganan selesai dan fasilitas aman sebelum menutup laporan"
         )
       change<Report>("reports", (items) =>
         items.map((r) =>
@@ -1733,12 +2136,41 @@ export async function staticMutation(
             ? {
                 ...r,
                 status,
+                handlingImpact:
+                  status === "in_progress" ? impact : r.handlingImpact,
                 resolutionNote: note || r.resolutionNote,
                 updatedAt: now,
               }
             : r
         )
       )
+      if (status === "resolved" || status === "rejected") {
+        for (const issue of state.facilityIssues ?? [])
+          if (issue.reportId === id && issue.status === "open")
+            await staticMutation("facilityIssues:resolve", {
+              issueId: issue.id,
+            })
+        if (
+          item.handlingImpact === "closed" &&
+          !state.reports.some(
+            (r) =>
+              r.facilityId === item.facilityId &&
+              r.status === "in_progress" &&
+              r.handlingImpact === "closed"
+          )
+        ) {
+          for (const closure of state.emergencyClosures ?? [])
+            if (
+              closure.facilityId === item.facilityId &&
+              closure.source === "handling" &&
+              closure.status === "closed"
+            )
+              await staticMutation("emergencyClosures:reopen", {
+                closureId: closure.id,
+                confirmSafe: true,
+              })
+        }
+      }
       // Closing a report ends its repairs, like the server.
       if (status === "resolved" || status === "rejected")
         setMaintenance((items) =>
@@ -1883,6 +2315,18 @@ export async function staticMutation(
         throw new Error(
           "Gunakan Jadwal perbaikan untuk menutup fasilitas selama perbaikan"
         )
+      if (
+        value(args, "status") === "inactive" &&
+        state.reservations.some(
+          (r) =>
+            r.facilityId === id &&
+            r.endAt > now &&
+            ["pending", "approved"].includes(effectiveReservationStatus(r, now))
+        )
+      )
+        throw new Error(
+          "Masih ada reservasi aktif. Gunakan Penutupan fasilitas agar dampak dan notifikasi ditangani."
+        )
       change<Facility>("facilities", (items) =>
         items.map((f) =>
           f.id === id
@@ -1904,7 +2348,8 @@ export async function staticMutation(
         state.reservations.some(
           (r) =>
             r.facilityId === id &&
-            (r.status === "pending" || r.status === "approved")
+            r.endAt > now &&
+            ["pending", "approved"].includes(effectiveReservationStatus(r, now))
         ) ||
         state.reports.some(
           (r) =>
@@ -1917,7 +2362,9 @@ export async function staticMutation(
         )
       }
       change<Facility>("facilities", (items) =>
-        items.filter((f) => f.id !== id)
+        items.map((f) =>
+          f.id === id ? { ...f, status: "inactive", updatedAt: now } : f
+        )
       )
       return null
     }

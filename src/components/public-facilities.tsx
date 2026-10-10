@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useScheduleClock } from "@/hooks/use-schedule-clock"
+import { meetsReservationLeadTime } from "../../convex/lib/reservationPolicy"
 import { IconSearch, IconX } from "@tabler/icons-react"
 import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
@@ -159,27 +160,36 @@ function PublicSlotDialog({
                     (item) => item.startAt < endAt && startAt < item.endAt
                   )
                 ? "terisi"
-                : availability.pending.some(
-                      (item) =>
-                        item.startAt > now &&
-                        item.startAt < endAt &&
-                        startAt < item.endAt
-                    )
-                  ? "pengajuan"
-                  : "tersedia",
+                : !meetsReservationLeadTime(startAt, now)
+                  ? "batas_pengajuan"
+                  : availability.pending.some(
+                        (item) =>
+                          item.startAt > now &&
+                          item.startAt < endAt &&
+                          startAt < item.endAt
+                      )
+                    ? "pengajuan"
+                    : "tersedia",
       }
     })
   }, [availability, range, selectedDate, now])
   return (
     <div className="contents">
-      {(issues ?? []).map((issue) => (
-        <DisruptionBanner
-          key={issue.id}
-          category={issue.category}
-          description={issue.description}
-          className="mx-6 mt-4"
-        />
-      ))}
+      {(issues ?? [])
+        .filter(
+          (issue) =>
+            range &&
+            issue.startAt < range.end &&
+            (issue.endAt ?? Infinity) > range.start
+        )
+        .map((issue) => (
+          <DisruptionBanner
+            key={issue.id}
+            category={issue.category}
+            description={issue.description}
+            className="mx-6 mt-4"
+          />
+        ))}
       {(closures ?? []).map((closure) => (
         <ClosureBanner
           key={closure.id}

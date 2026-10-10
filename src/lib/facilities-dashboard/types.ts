@@ -40,6 +40,7 @@ export type FacilityItem = {
 }
 
 export type SlotStatus =
+  | "batas_pengajuan"
   | "tersedia"
   | "terisi"
   | "terkunci"

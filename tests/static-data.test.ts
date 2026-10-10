@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { AUTO_REJECTION_NOTE } from "../convex/lib/reservationTime"
 import {
   getStaticData,
+  expireStaticData,
   resetStaticData,
   staticCsv,
   staticMutation,
@@ -18,6 +19,92 @@ beforeEach(async () => {
 })
 
 describe("static data mode", () => {
+  it("expires a pending demo booking and sends one notification across clock retries", () => {
+    const reservation = getStaticData().reservations.find(
+      (r) => r.status === "pending"
+    )!
+    expireStaticData(reservation.startAt)
+    expireStaticData(reservation.startAt + 1000)
+    expect(
+      getStaticData().reservations.find((r) => r.id === reservation.id)?.status
+    ).toBe("expired")
+    expect(
+      getStaticData().notifications?.filter(
+        (n) =>
+          n.reservationId === reservation.id && n.type === "reservation.expired"
+      )
+    ).toHaveLength(1)
+  })
+  it("notifies a new applicant about an existing usable repair only once", async () => {
+    role("officer")
+    await staticMutation("facilityIssues:create", {
+      facilityId: "demo-aula",
+      category: "AC",
+      description: "Masih aman",
+      startAt: Date.now(),
+    })
+    role("user")
+    const startAt = Date.parse("2027-10-01T11:00:00+07:00")
+    const args = {
+      facilityId: "demo-aula",
+      purpose: "QA",
+      startAt,
+      endAt: startAt + 1800000,
+    }
+    const id = await staticMutation("reservations:create", args)
+    expect(await staticMutation("reservations:create", args)).toBe(id)
+    expect(
+      getStaticData().notifications?.filter(
+        (n) => n.reservationId === id && n.type === "disruption.created"
+      )
+    ).toHaveLength(1)
+  })
+  it("requires impact, closes immediately, and requires safety before completion", async () => {
+    role("officer")
+    await expect(
+      staticMutation("reports:updateStatus", {
+        reportId: "demo-report",
+        status: "in_progress",
+        note: "",
+      })
+    ).rejects.toThrow("dampak")
+    await staticMutation("reports:updateStatus", {
+      reportId: "demo-report",
+      status: "in_progress",
+      note: "",
+      handlingImpact: "closed",
+      publicNotice: "Tidak aman",
+    })
+    const closure = getStaticData().emergencyClosures?.find(
+      (c) => c.source === "handling"
+    )
+    expect(closure?.status).toBe("closed")
+    await expect(
+      staticMutation("reports:updateStatus", {
+        reportId: "demo-report",
+        status: "resolved",
+        note: "Selesai",
+      })
+    ).rejects.toThrow("aman")
+    await staticMutation("reports:updateStatus", {
+      reportId: "demo-report",
+      status: "resolved",
+      note: "Selesai",
+      confirmSafe: true,
+    })
+    expect(
+      getStaticData().emergencyClosures?.find((c) => c.id === closure?.id)
+        ?.status
+    ).toBe("reopened")
+  })
+  it("archives a facility instead of deleting historical references", async () => {
+    role("admin")
+    const id = "demo-basket"
+    await staticMutation("facilities:remove", { facilityId: id })
+    expect(getStaticData().facilities.find((f) => f.id === id)?.status).toBe(
+      "inactive"
+    )
+  })
   it("retains the approved booking until a schedule replacement is approved", async () => {
     const original = getStaticData().reservations.find(
       (r) => r.id === "demo-reservation-approved"
@@ -258,6 +345,8 @@ describe("static data mode", () => {
     await staticMutation("reports:updateStatus", {
       reportId: id,
       status: "in_progress",
+      handlingImpact: "usable",
+      publicNotice: "AC sedang diperbaiki",
       note: "",
       facilityMaintenance: true,
     })
