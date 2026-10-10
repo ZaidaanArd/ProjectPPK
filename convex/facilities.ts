@@ -5,6 +5,7 @@ import type { QueryCtx } from "./_generated/server"
 import type { Id } from "./_generated/dataModel"
 import { recordAuditEvent } from "./lib/audit"
 import { requireRole } from "./lib/authz"
+import { changeDeadline } from "./lib/reservationState"
 import {
   facilityStatusValidator,
   reservationStatusValidator,
@@ -123,6 +124,15 @@ export const getPublicAvailability = query({
       )
       .collect()
 
+    const changes = await ctx.db
+      .query("reservationChanges")
+      .withIndex("by_facility_status_start", (q) =>
+        q
+          .eq("facilityId", args.facilityId)
+          .eq("status", "pending")
+          .lt("startAt", args.rangeEnd)
+      )
+      .collect()
     const reservations = await ctx.db
       .query("reservations")
       .withIndex("by_facility_status_start", (q) =>
@@ -145,7 +155,10 @@ export const getPublicAvailability = query({
 
     return {
       facilityStatus: facility.status,
-      pending: pending
+      pending: [
+        ...pending,
+        ...changes.filter((item) => changeDeadline(item) > Date.now()),
+      ]
         .filter(
           (item) => item.startAt > Date.now() && item.endAt > args.rangeStart
         )

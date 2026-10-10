@@ -63,6 +63,46 @@ async function approvedConflict(
   )
 }
 
+async function rejectChangeConflicts(
+  ctx: MutationCtx,
+  facilityId: Id<"facilities">,
+  startAt: number,
+  endAt: number,
+  now: number,
+  excludeId?: Id<"reservationChanges">
+) {
+  const changes = await ctx.db
+    .query("reservationChanges")
+    .withIndex("by_facility_status_start", (q) =>
+      q
+        .eq("facilityId", facilityId)
+        .eq("status", "pending")
+        .lt("startAt", endAt)
+    )
+    .collect()
+  for (const change of changes) {
+    if (
+      change._id === excludeId ||
+      changeDeadline(change) <= now ||
+      !overlaps(change.startAt, change.endAt, startAt, endAt)
+    )
+      continue
+    await ctx.db.patch("reservationChanges", change._id, {
+      status: "rejected",
+      decisionNote:
+        "Jadwal baru sudah disetujui untuk reservasi lain. Jadwal lama tetap berlaku.",
+      updatedAt: now,
+    })
+    await recordAuditEvent(ctx, {
+      entityType: "reservation",
+      entityId: change.reservationId,
+      action: "reservation.change_rejected_conflict",
+      actorRole: "system",
+      note: change._id,
+    })
+  }
+}
+
 async function cancelPendingChanges(
   ctx: MutationCtx,
   reservationId: Id<"reservations">,
@@ -449,6 +489,13 @@ export const decide = mutation({
           await autoReject(ctx, item._id, now)
         }
       }
+      await rejectChangeConflicts(
+        ctx,
+        reservation.facilityId,
+        reservation.startAt,
+        reservation.endAt,
+        now
+      )
     }
 
     return null
@@ -745,6 +792,14 @@ export const decideScheduleChange = mutation({
         endAt: change.endAt,
         updatedAt: now,
       })
+      await rejectChangeConflicts(
+        ctx,
+        change.facilityId,
+        change.startAt,
+        change.endAt,
+        now,
+        change._id
+      )
       const pending = await ctx.db
         .query("reservations")
         .withIndex("by_facility_status_start", (q) =>
