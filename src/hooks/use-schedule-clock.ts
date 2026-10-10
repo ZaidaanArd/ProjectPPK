@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react"
 
 const listeners = new Set<() => void>()
 let snapshot: number | null = null
-let timer: ReturnType<typeof setInterval> | undefined
+let timer: number | undefined
 function update() {
   snapshot = Date.now()
   for (const listener of listeners) listener()
