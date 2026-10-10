@@ -1,5 +1,5 @@
 import { convexTest } from "convex-test"
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { api, internal } from "./_generated/api"
 import { AUTO_REJECTION_NOTE } from "./lib/reservationTime"
@@ -39,6 +39,7 @@ async function setup() {
         updatedAt: now,
       })
     const user = await profile("user-auth", "user")
+    await profile("other-user-auth", "user")
     const officer = await profile("officer-auth", "officer")
     const facility = await ctx.db.insert("facilities", {
       name: "Aula",
@@ -67,6 +68,93 @@ async function setup() {
   return { t, ...ids }
 }
 
+afterEach(() => vi.useRealTimers())
+
+describe("reservation deadline and retry rules", () => {
+  it("deduplicates exact retries but permits another user's pending request", async () => {
+    const { t, facility } = await setup()
+    const args = {
+      facilityId: facility,
+      purpose: "Rapat",
+      startAt,
+      endAt: startAt + 3600000,
+    }
+    const user = t.withIdentity({ subject: "user-auth" })
+    const first = await user.mutation(api.reservations.create, args)
+    expect(await user.mutation(api.reservations.create, args)).toBe(first)
+    const other = await t
+      .withIdentity({ subject: "other-user-auth" })
+      .mutation(api.reservations.create, args)
+    expect(other).not.toBe(first)
+  })
+  it("refuses elapsed approval even when the scheduler has not run", async () => {
+    const { t, facility } = await setup()
+    const id = await t
+      .withIdentity({ subject: "user-auth" })
+      .mutation(api.reservations.create, {
+        facilityId: facility,
+        purpose: "Rapat",
+        startAt,
+        endAt: startAt + 3600000,
+      })
+    vi.useFakeTimers()
+    vi.setSystemTime(startAt)
+    await expect(
+      t
+        .withIdentity({ subject: "officer-auth" })
+        .mutation(api.reservations.decide, {
+          reservationId: id,
+          decision: "approved",
+        })
+    ).rejects.toThrow("kedaluwarsa")
+    expect(
+      (
+        await t
+          .withIdentity({ subject: "user-auth" })
+          .query(api.reservations.listMine, {})
+      )[0]?.status
+    ).toBe("expired")
+    expect(
+      (await t.query(internal.reservations.previewExpiredPending, {}))
+        .affectedIds
+    ).toEqual([id])
+    await t.mutation(internal.reservations.expire, { reservationId: id })
+    await t.mutation(internal.reservations.expire, { reservationId: id })
+    expect(
+      await t.run((ctx) => ctx.db.query("auditEvents").collect())
+    ).toHaveLength(2)
+  })
+  it("serializes competing approvals to a single winner", async () => {
+    const { t, facility } = await setup()
+    const args = {
+      facilityId: facility,
+      purpose: "Rapat",
+      startAt,
+      endAt: startAt + 3600000,
+    }
+    const a = await t
+      .withIdentity({ subject: "user-auth" })
+      .mutation(api.reservations.create, args)
+    const b = await t
+      .withIdentity({ subject: "other-user-auth" })
+      .mutation(api.reservations.create, args)
+    const officer = t.withIdentity({ subject: "officer-auth" })
+    await Promise.allSettled(
+      [a, b].map((reservationId) =>
+        officer.mutation(api.reservations.decide, {
+          reservationId,
+          decision: "approved",
+        })
+      )
+    )
+    expect(
+      (await officer.query(api.reservations.listQueue, {})).filter(
+        (item) => item.status === "approved"
+      )
+    ).toHaveLength(1)
+  })
+})
+
 describe("reservation conflict rules", () => {
   it("approves one request, rejects overlapping pending requests, and blocks later submissions", async () => {
     const { t, facility, otherFacility } = await setup()
@@ -80,7 +168,14 @@ describe("reservation conflict rules", () => {
         endAt: end,
       })
     const winner = await request(facility, startAt, startAt + 3600000)
-    const sameTime = await request(facility, startAt, startAt + 3600000)
+    const sameTime = await t
+      .withIdentity({ subject: "other-user-auth" })
+      .mutation(api.reservations.create, {
+        facilityId: facility,
+        purpose: "Rapat lain",
+        startAt,
+        endAt: startAt + 3600000,
+      })
     const partial = await request(
       facility,
       startAt + 1800000,
