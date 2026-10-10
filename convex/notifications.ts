@@ -71,7 +71,7 @@ export const markRead = mutation({
       throw new ConvexError("Notifikasi tidak ditemukan")
     }
     if (row.readAt === undefined) {
-      await ctx.db.patch(row._id, { readAt: Date.now() })
+      await ctx.db.patch("notifications", row._id, { readAt: Date.now() })
     }
     return null
   },
@@ -90,7 +90,7 @@ export const markAllRead = mutation({
     const now = Date.now()
     for (const row of rows) {
       if (row.readAt === undefined) {
-        await ctx.db.patch(row._id, { readAt: now })
+        await ctx.db.patch("notifications", row._id, { readAt: now })
       }
     }
     return null
