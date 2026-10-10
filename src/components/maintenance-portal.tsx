@@ -306,6 +306,7 @@ export function ScheduleMaintenanceDialog({
         </div>
 
         <TimeSlotPicker
+          allowElapsed
           date={date}
           busy={busy}
           disabled={!facilityId || !busy}

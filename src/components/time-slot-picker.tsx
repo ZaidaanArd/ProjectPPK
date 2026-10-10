@@ -12,6 +12,7 @@ import {
   type BusyRange,
 } from "@/lib/reservation-slots"
 import { cn } from "@/lib/utils"
+import { useScheduleClock } from "@/hooks/use-schedule-clock"
 
 const groups = [
   { label: "Pagi", from: "07:00", to: "12:00" },
@@ -24,6 +25,7 @@ function slotClass(state: {
   selected: boolean
   edge: boolean
   preview: boolean
+  pending: boolean
 }) {
   const base =
     "relative h-10 rounded-xl border text-sm font-semibold tabular-nums transition-colors focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1 focus-visible:outline-none"
@@ -43,6 +45,11 @@ function slotClass(state: {
       base,
       "border-pink-300 bg-pink-100 text-pink-800 dark:border-pink-400/40 dark:bg-pink-400/15 dark:text-pink-200"
     )
+  if (state.pending)
+    return cn(
+      base,
+      "border-amber-400/60 bg-amber-50 text-amber-900 hover:bg-amber-100 dark:bg-amber-400/10 dark:text-amber-200"
+    )
   return cn(
     base,
     "border-emerald-300/70 bg-emerald-50 text-emerald-800 hover:border-emerald-500 hover:bg-emerald-100 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-200 dark:hover:bg-emerald-400/20"
@@ -56,6 +63,8 @@ export function TimeSlotPicker({
   start,
   end,
   onChange,
+  pendingRanges,
+  allowElapsed = false,
 }: {
   date: string
   busy: readonly BusyRange[] | undefined
@@ -63,9 +72,21 @@ export function TimeSlotPicker({
   start: string
   end: string
   onChange: (range: { start: string; end: string }) => void
+  pendingRanges?: readonly BusyRange[]
+  allowElapsed?: boolean
 }) {
   const reduced = Boolean(useReducedMotion())
-  const slots = useMemo(() => daySlots(date, busy ?? []), [date, busy])
+  const now = useScheduleClock()
+  const slots = useMemo(
+    () =>
+      daySlots(date, busy ?? [], {
+        now: allowElapsed ? undefined : (now ?? undefined),
+        pending: pendingRanges?.filter(
+          (item) => now !== null && item.startAt > now
+        ),
+      }),
+    [date, busy, now, allowElapsed, pendingRanges]
+  )
   const buttons = useRef<(HTMLButtonElement | null)[]>([])
   const [hover, setHover] = useState<number | null>(null)
   const [shake, setShake] = useState({ index: -1, count: 0 })
@@ -81,16 +102,18 @@ export function TimeSlotPicker({
     startIndex === endIndex &&
     hover !== null &&
     hover > startIndex &&
-    !slots.slice(startIndex, hover + 1).some((slot) => slot.taken)
+    !slots.slice(startIndex, hover + 1).some((slot) => slot.taken || slot.past)
       ? hover
       : -1
   const minutes = hasRange
     ? (toTimestamp(date, end) - toTimestamp(date, start)) / 60000
     : 0
-  const free = slots.filter((slot) => !slot.taken).length
+  const free = slots.filter((slot) => !slot.taken && !slot.past).length
   const focusIndex = Math.max(
     0,
-    hasRange ? startIndex : slots.findIndex((slot) => !slot.taken)
+    hasRange && !slots[startIndex]?.past && !slots[startIndex]?.taken
+      ? startIndex
+      : slots.findIndex((slot) => !slot.taken && !slot.past)
   )
 
   function choose(index: number) {
@@ -121,7 +144,15 @@ export function TimeSlotPicker({
     if (event.key === "End") target = slots.length - 1
     if (target === undefined) return
     event.preventDefault()
-    buttons.current[Math.min(Math.max(target, 0), slots.length - 1)]?.focus()
+    const direction =
+      event.key === "End" || (moves[event.key] ?? 1) < 0 ? -1 : 1
+    while (
+      target >= 0 &&
+      target < slots.length &&
+      (slots[target]?.taken || slots[target]?.past)
+    )
+      target += direction
+    buttons.current[target]?.focus()
   }
 
   return (
@@ -163,9 +194,11 @@ export function TimeSlotPicker({
                     "transition-colors",
                     inRange(index)
                       ? "bg-pink-500"
-                      : slot.taken
+                      : slot.taken || slot.past
                         ? "bg-muted-foreground/25"
-                        : "bg-emerald-400/70"
+                        : slot.pending
+                          ? "bg-amber-400/70"
+                          : "bg-emerald-400/70"
                   )}
                 />
               ))}
@@ -202,15 +235,24 @@ export function TimeSlotPicker({
                         buttons.current[index] = node
                       }}
                       type="button"
-                      disabled={disabled || slot.taken}
+                      disabled={
+                        disabled ||
+                        (!allowElapsed && now === null) ||
+                        slot.taken ||
+                        slot.past
+                      }
                       tabIndex={index === focusIndex ? 0 : -1}
                       aria-pressed={selected}
                       aria-label={`${displayTime(slot.start)} · ${
-                        slot.taken
-                          ? "Terisi"
-                          : selected
-                            ? "Dipilih"
-                            : "Tersedia"
+                        slot.past
+                          ? "Sudah lewat"
+                          : slot.taken
+                            ? "Terisi"
+                            : slot.pending
+                              ? "Ada pengajuan, tetap dapat diajukan"
+                              : selected
+                                ? "Dipilih"
+                                : "Tersedia"
                       }`}
                       onClick={() => choose(index)}
                       onKeyDown={(event) => onKeyDown(event, index)}
@@ -228,7 +270,8 @@ export function TimeSlotPicker({
                       }
                       transition={{ duration: 0.35 }}
                       className={slotClass({
-                        taken: slot.taken,
+                        taken: slot.taken || Boolean(slot.past),
+                        pending: Boolean(slot.pending),
                         selected,
                         edge,
                         preview,
@@ -247,6 +290,12 @@ export function TimeSlotPicker({
           Klik jam mulai, lalu klik slot terakhir yang ingin dipakai. Tiap slot
           30 menit.
         </p>
+        {pendingRanges && (
+          <p className="text-xs text-muted-foreground">
+            Kuning: ada pengajuan, belum disetujui. Tetap bisa diajukan.
+            Abu-abu: terisi atau sudah lewat.
+          </p>
+        )}
         {hint && (
           <p role="alert" className="text-sm text-destructive">
             {hint}
