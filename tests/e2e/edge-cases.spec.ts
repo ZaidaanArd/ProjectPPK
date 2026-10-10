@@ -8,7 +8,7 @@ test.skip(
     !process.env.PLAYWRIGHT_BASE_URL?.startsWith("http://localhost:"),
   "Local static demo only"
 )
-const shots = path.join(process.cwd(), "public/docs-assets")
+const shots = path.join(process.cwd(), "test-results/docs-demo")
 const capture = process.env.PLAYWRIGHT_DOC_SCREENSHOTS === "1"
 test.use({ timezoneId: "Asia/Jakarta", viewport: { width: 1280, height: 900 } })
 
