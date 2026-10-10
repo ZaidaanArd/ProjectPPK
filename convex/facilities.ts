@@ -96,6 +96,8 @@ export const getPublicAvailability = query({
       })
     ),
     maintenance: v.array(timeRangeValidator),
+    // Anonymous schedule hints only. No applicant identity, purpose or IDs.
+    pending: v.array(timeRangeValidator),
   }),
   handler: async (ctx, args) => {
     const facility = await ctx.db.get("facilities", args.facilityId)
@@ -103,6 +105,23 @@ export const getPublicAvailability = query({
     if (!facility || facility.status === "inactive") {
       throw new ConvexError("Fasilitas tidak ditemukan")
     }
+    if (
+      !Number.isFinite(args.rangeStart) ||
+      !Number.isFinite(args.rangeEnd) ||
+      args.rangeEnd <= args.rangeStart ||
+      args.rangeEnd - args.rangeStart > 31 * 86400000
+    ) {
+      throw new ConvexError("Rentang jadwal tidak valid (maksimal 31 hari)")
+    }
+    const pending = await ctx.db
+      .query("reservations")
+      .withIndex("by_facility_status_start", (q) =>
+        q
+          .eq("facilityId", args.facilityId)
+          .eq("status", "pending")
+          .lt("startAt", args.rangeEnd)
+      )
+      .collect()
 
     const reservations = await ctx.db
       .query("reservations")
@@ -126,6 +145,11 @@ export const getPublicAvailability = query({
 
     return {
       facilityStatus: facility.status,
+      pending: pending
+        .filter(
+          (item) => item.startAt > Date.now() && item.endAt > args.rangeStart
+        )
+        .map((item) => ({ startAt: item.startAt, endAt: item.endAt })),
       maintenance: maintenance
         .filter((window) => window.endAt > args.rangeStart)
         .map((window) => ({ startAt: window.startAt, endAt: window.endAt })),
