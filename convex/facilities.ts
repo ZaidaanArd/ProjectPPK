@@ -6,6 +6,7 @@ import type { Id } from "./_generated/dataModel"
 import { recordAuditEvent } from "./lib/audit"
 import { requireRole } from "./lib/authz"
 import { changeDeadline } from "./lib/reservationState"
+import { facilityHandling } from "./lib/facilityHandling"
 import {
   facilityStatusValidator,
   reservationStatusValidator,
@@ -21,6 +22,7 @@ const publicFacilityValidator = v.object({
   capacity: v.number(),
   description: v.string(),
   status: facilityStatusValidator,
+  handlingNotice: v.optional(v.string()),
   // The earliest scheduled repair: ongoing if it has started, else upcoming.
   nextMaintenance: v.union(timeRangeValidator, v.null()),
   createdAt: v.number(),
@@ -73,7 +75,7 @@ export const listPublic = query({
           location: facility.location,
           capacity: facility.capacity,
           description: facility.description,
-          status: facility.status,
+          ...(await facilityHandling(ctx, facility)),
           nextMaintenance: await nextMaintenance(ctx, facility._id),
           createdAt: facility.createdAt,
         }))
@@ -89,6 +91,7 @@ export const getPublicAvailability = query({
   },
   returns: v.object({
     facilityStatus: facilityStatusValidator,
+    handlingNotice: v.optional(v.string()),
     reservations: v.array(
       v.object({
         startAt: v.number(),
@@ -153,8 +156,10 @@ export const getPublicAvailability = query({
       )
       .collect()
 
+    const handling = await facilityHandling(ctx, facility)
     return {
-      facilityStatus: facility.status,
+      facilityStatus: handling.status,
+      handlingNotice: handling.handlingNotice,
       pending: [
         ...pending,
         ...changes.filter((item) => changeDeadline(item) > Date.now()),

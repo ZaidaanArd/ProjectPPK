@@ -23,6 +23,10 @@ import {
   EXPIRATION_NOTE,
   type ReservationStatus,
 } from "../../convex/lib/reservationState"
+import {
+  reportHandlingState,
+  type HandlingImpact,
+} from "../../convex/lib/reportHandling"
 
 type Role = "user" | "officer" | "admin"
 type AccountStatus = "pending" | "active" | "rejected" | "disabled"
@@ -88,6 +92,7 @@ type Report = {
   photoStorageId?: string
   photoName?: string
   status: ReportStatus
+  handlingImpact?: HandlingImpact
   resolutionNote?: string
   createdAt: number
   updatedAt: number
@@ -659,6 +664,13 @@ function reportItem(report: Report) {
       : null,
   }
 }
+function facilityHandling(id: string) {
+  const facility = state.facilities.find((item) => item.id === id)
+  return reportHandlingState(
+    facility?.status ?? "inactive",
+    state.reports.filter((report) => report.facilityId === id)
+  )
+}
 
 export function staticQuery(name: string, args: unknown): unknown {
   switch (name) {
@@ -668,16 +680,7 @@ export function staticQuery(name: string, args: unknown): unknown {
       return state.facilities
         .filter((f) => f.status !== "inactive")
         .map(
-          ({
-            id,
-            name,
-            type,
-            location,
-            capacity,
-            description,
-            status,
-            createdAt,
-          }) => {
+          ({ id, name, type, location, capacity, description, createdAt }) => {
             const next = maintenanceWindows()
               .filter(
                 (item) =>
@@ -691,7 +694,7 @@ export function staticQuery(name: string, args: unknown): unknown {
               location,
               capacity,
               description,
-              status,
+              ...facilityHandling(id),
               nextMaintenance: next
                 ? { startAt: next.startAt, endAt: next.endAt }
                 : null,
@@ -704,8 +707,8 @@ export function staticQuery(name: string, args: unknown): unknown {
       const start = Number(field(args, "rangeStart"))
       const end = Number(field(args, "rangeEnd"))
       return {
-        facilityStatus:
-          state.facilities.find((f) => f.id === id)?.status ?? "inactive",
+        facilityStatus: facilityHandling(id).status,
+        handlingNotice: facilityHandling(id).handlingNotice,
         reservations: state.reservations
           .filter(
             (r) =>
@@ -747,6 +750,10 @@ export function staticQuery(name: string, args: unknown): unknown {
           facilityLocation:
             state.facilities.find((f) => f.id === r.facilityId)?.location ??
             "-",
+          facilityHandlingNotice:
+            r.endAt > Date.now()
+              ? facilityHandling(r.facilityId).handlingNotice
+              : undefined,
         }))
         .reverse()
     case "reservations:listQueue":
@@ -917,7 +924,7 @@ export async function staticMutation(
       requireRole(["user"])
       const facilityId = value(args, "facilityId")
       const facility = required(state.facilities, facilityId)
-      if (facility.status !== "active")
+      if (facilityHandling(facility.id).status !== "active")
         throw new Error("Fasilitas tidak tersedia")
       const startAt = Number(field(args, "startAt")),
         endAt = Number(field(args, "endAt"))
@@ -996,7 +1003,8 @@ export async function staticMutation(
       )
         throw new Error("Masih ada perubahan jadwal menunggu")
       assertFacilityCanApprove(
-        required(state.facilities, original.facilityId).status
+        facilityHandling(required(state.facilities, original.facilityId).id)
+          .status
       )
       assertNoMaintenanceOverlap(
         { startAt, endAt },
@@ -1071,7 +1079,8 @@ export async function staticMutation(
       if (decision === "rejected") requireText(value(args, "note"))
       if (decision === "approved") {
         assertFacilityCanApprove(
-          required(state.facilities, item.facilityId).status
+          facilityHandling(required(state.facilities, item.facilityId).id)
+            .status
         )
         assertNoMaintenanceOverlap(
           item,
@@ -1157,7 +1166,8 @@ export async function staticMutation(
       if (item.startAt <= now) throw new Error(EXPIRATION_NOTE)
       if (decision === "approved") {
         assertFacilityCanApprove(
-          required(state.facilities, item.facilityId).status
+          facilityHandling(required(state.facilities, item.facilityId).id)
+            .status
         )
         assertNoMaintenanceOverlap(
           item,

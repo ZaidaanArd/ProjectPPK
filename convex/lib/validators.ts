@@ -34,6 +34,11 @@ export const reportStatusValidator = v.union(
   v.literal("rejected")
 )
 
+export const handlingImpactValidator = v.union(
+  v.literal("usable"),
+  v.literal("closed")
+)
+
 export const maintenanceStatusValidator = v.union(
   v.literal("scheduled"),
   v.literal("completed"),

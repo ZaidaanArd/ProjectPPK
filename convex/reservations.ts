@@ -12,6 +12,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server"
 import { maintenanceIn } from "./maintenance"
 import { recordAuditEvent } from "./lib/audit"
 import { requireActiveProfile, requireRole } from "./lib/authz"
+import { facilityHandling } from "./lib/facilityHandling"
 import {
   AUTO_REJECTION_NOTE,
   overlaps,
@@ -31,6 +32,7 @@ const reservationListItemValidator = v.object({
   facilityId: v.id("facilities"),
   facilityName: v.string(),
   facilityLocation: v.string(),
+  facilityHandlingNotice: v.optional(v.string()),
   purpose: v.string(),
   startAt: v.number(),
   endAt: v.number(),
@@ -164,6 +166,10 @@ export const listMine = query({
           facilityId: reservation.facilityId,
           facilityName: facility?.name ?? "Fasilitas dihapus",
           facilityLocation: facility?.location ?? "-",
+          facilityHandlingNotice:
+            facility && reservation.endAt > Date.now()
+              ? (await facilityHandling(ctx, facility)).handlingNotice
+              : undefined,
           purpose: reservation.purpose,
           startAt: reservation.startAt,
           endAt: reservation.endAt,
@@ -236,7 +242,10 @@ export const create = mutation({
     const profile = await requireRole(ctx, ["user"])
     const facility = await ctx.db.get("facilities", args.facilityId)
 
-    if (!facility || facility.status !== "active") {
+    if (
+      !facility ||
+      (await facilityHandling(ctx, facility)).status !== "active"
+    ) {
       throw new ConvexError("Fasilitas sedang tidak dapat dipesan")
     }
 
@@ -422,7 +431,7 @@ export const decide = mutation({
         throw new ConvexError("Fasilitas reservasi tidak ditemukan")
       }
 
-      assertFacilityCanApprove(facility.status)
+      assertFacilityCanApprove((await facilityHandling(ctx, facility)).status)
       assertNoMaintenanceOverlap(
         reservation,
         await maintenanceIn(
@@ -665,7 +674,7 @@ export const requestScheduleChange = mutation({
       )
     const facility = await ctx.db.get("facilities", original.facilityId)
     if (!facility) throw new ConvexError("Fasilitas tidak ditemukan")
-    assertFacilityCanApprove(facility.status)
+    assertFacilityCanApprove((await facilityHandling(ctx, facility)).status)
     assertNoMaintenanceOverlap(
       args,
       await maintenanceIn(ctx, original.facilityId, args.startAt, args.endAt)
@@ -764,7 +773,7 @@ export const decideScheduleChange = mutation({
     if (args.decision === "approved") {
       const facility = await ctx.db.get("facilities", change.facilityId)
       if (!facility) throw new ConvexError("Fasilitas tidak ditemukan")
-      assertFacilityCanApprove(facility.status)
+      assertFacilityCanApprove((await facilityHandling(ctx, facility)).status)
       validateReservationWindow(change.startAt, change.endAt)
       assertNoMaintenanceOverlap(
         change,

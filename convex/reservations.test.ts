@@ -181,6 +181,45 @@ describe("schedule changes", () => {
     endAt: startAt + 10800000,
     reason: "Perubahan kegiatan",
   }
+  it("blocks new changes and approvals during closure without releasing the original booking", async () => {
+    const { t, user, officer, id, facility } = await approved()
+    const changeId = await user.mutation(
+      api.reservations.requestScheduleChange,
+      {
+        reservationId: id,
+        ...proposed,
+      }
+    )
+    await t.run(async (ctx) =>
+      ctx.db.insert("reports", {
+        reporterId: (await ctx.db.get("reservations", id))!.userId,
+        facilityId: facility,
+        category: "Perbaikan",
+        description: "Fasilitas ditutup",
+        status: "in_progress",
+        handlingImpact: "closed",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+    )
+    await expect(
+      officer.mutation(api.reservations.decideScheduleChange, {
+        changeId,
+        decision: "approved",
+      })
+    ).rejects.toThrow("fasilitas sedang tidak aktif")
+    await user.mutation(api.reservations.cancelScheduleChange, { changeId })
+    await expect(
+      user.mutation(api.reservations.requestScheduleChange, {
+        reservationId: id,
+        ...proposed,
+      })
+    ).rejects.toThrow("fasilitas sedang tidak aktif")
+    expect((await user.query(api.reservations.listMine, {}))[0]).toMatchObject({
+      status: "approved",
+      startAt,
+    })
+  })
   it("keeps old booking locked, publishes private pending hints, then replaces atomically", async () => {
     const { t, user, officer, id, facility } = await approved()
     const changeId = await user.mutation(

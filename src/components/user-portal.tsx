@@ -1016,7 +1016,11 @@ export function ReservationForm({
       ? (toTimestamp(date, endTime) - toTimestamp(date, startTime)) / 60000
       : 0
   const scheduleReady = Boolean(
-    selectedFacility && availability && endTime && !conflict && !elapsed
+    selectedFacility &&
+    availability?.facilityStatus === "active" &&
+    endTime &&
+    !conflict &&
+    !elapsed
   )
 
   function requestSubmit(event: FormEvent) {
@@ -1025,7 +1029,13 @@ export function ReservationForm({
       setMessage("Pilih fasilitas terlebih dahulu.")
       return
     }
-    if (!availability || !endTime || conflict || elapsed) {
+    if (
+      !availability ||
+      availability.facilityStatus !== "active" ||
+      !endTime ||
+      conflict ||
+      elapsed
+    ) {
       setMessage("Pilih rentang waktu yang tersedia terlebih dahulu.")
       return
     }
