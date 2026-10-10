@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { MaintenanceReminderBanner } from "@/components/disruption-banner"
-import { useAppMutation } from "@/lib/data-hooks"
+import { useAppMutation, useAppQuery } from "@/lib/data-hooks"
 import { reservationTimes, toTimestamp } from "@/lib/reservation-slots"
 import { toastError } from "@/lib/toast"
 import { useAuthenticatedQuery } from "@/lib/use-authenticated-query"
@@ -65,7 +65,6 @@ function MaintenanceReminderSectionItem({
 export function StaffDisruptionPanel() {
   const facilities = useAuthenticatedQuery(api.facilities.listPublic, {})
   const issues = useAuthenticatedQuery(api.facilityIssues.listManaged, {})
-  const preview = useAppMutation(api.facilityIssues.previewImpact)
   const createIssue = useAppMutation(api.facilityIssues.create)
   const resolveIssue = useAppMutation(api.facilityIssues.resolve)
   const [facilityId, setFacilityId] = useState("")
@@ -74,21 +73,18 @@ export function StaffDisruptionPanel() {
   const [date, setDate] = useState(todayJakarta())
   const [start, setStart] = useState("09:00")
   const [end, setEnd] = useState("")
-  const [impact, setImpact] = useState<{ approved: number; pending: number } | null>(null)
   const [message, setMessage] = useState("")
   const [busy, setBusy] = useState(false)
-
-  async function checkImpact() {
-    if (!facilityId) return setMessage("Pilih fasilitas dulu.")
-    setMessage("")
-    try {
-      const startAt = toTimestamp(date, start)
-      const endAt = end ? toTimestamp(date, end) : undefined
-      setImpact(await preview({ facilityId: facilityId as Id<"facilities">, startAt, endAt }))
-    } catch (error) {
-      setMessage(toastError("Gagal menghitung dampak", error))
-    }
-  }
+  const impact = useAppQuery(
+    api.facilityIssues.previewImpact,
+    facilityId
+      ? {
+          facilityId: facilityId as Id<"facilities">,
+          startAt: toTimestamp(date, start),
+          endAt: end ? toTimestamp(date, end) : undefined,
+        }
+      : "skip"
+  )
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -109,7 +105,6 @@ export function StaffDisruptionPanel() {
       setCategory("")
       setDescription("")
       setEnd("")
-      setImpact(null)
     } catch (error) {
       setMessage(toastError("Gagal mencatat gangguan", error))
     } finally {
@@ -126,7 +121,7 @@ export function StaffDisruptionPanel() {
         <form onSubmit={submit} className="grid gap-3">
           <div className="grid gap-1.5">
             <Label htmlFor="issue-facility">Fasilitas</Label>
-            <Select value={facilityId || null} onValueChange={setFacilityId}>
+            <Select value={facilityId || null} onValueChange={(v) => setFacilityId(v ?? "")}>
               <SelectTrigger id="issue-facility" className="w-full">
                 <SelectValue>{(v: string | null) => v ?? "Pilih fasilitas"}</SelectValue>
               </SelectTrigger>
@@ -166,7 +161,7 @@ export function StaffDisruptionPanel() {
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
               <Label htmlFor="issue-start">Mulai</Label>
-              <Select value={start} onValueChange={setStart}>
+              <Select value={start} onValueChange={(v) => setStart(v ?? "09:00")}>
                 <SelectTrigger id="issue-start"><SelectValue>{(v: string | null) => v ?? "Pilih"}</SelectValue></SelectTrigger>
                 <SelectContent>
                   {reservationTimes.map((t) => (
@@ -194,9 +189,6 @@ export function StaffDisruptionPanel() {
           )}
           {message && <p role="alert" className="text-sm text-destructive">{message}</p>}
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" onClick={() => void checkImpact()}>
-              Cek dampak
-            </Button>
             <Button type="submit" disabled={busy}>
               {busy ? "Mempublikasikan…" : "Catat & publikasikan"}
             </Button>
@@ -234,7 +226,6 @@ export function StaffDisruptionPanel() {
 export function StaffClosurePanel() {
   const facilities = useAuthenticatedQuery(api.facilities.listPublic, {})
   const closures = useAuthenticatedQuery(api.emergencyClosures.listManaged, {})
-  const preview = useAppMutation(api.emergencyClosures.previewImpact)
   const closeFacility = useAppMutation(api.emergencyClosures.close)
   const reopen = useAppMutation(api.emergencyClosures.reopen)
   const [facilityId, setFacilityId] = useState("")
@@ -242,19 +233,12 @@ export function StaffClosurePanel() {
   const [mode, setMode] = useState<"safety" | "long_repair">("safety")
   const [confirmScope, setConfirmScope] = useState(false)
   const [confirmSafe, setConfirmSafe] = useState(false)
-  const [impact, setImpact] = useState<{ pending: unknown[]; approvedFuture: unknown[]; ongoing: unknown[] } | null>(null)
   const [message, setMessage] = useState("")
   const [busy, setBusy] = useState(false)
-
-  async function check() {
-    if (!facilityId) return setMessage("Pilih fasilitas dulu.")
-    try {
-      setImpact(await preview({ facilityId: facilityId as Id<"facilities"> }) as typeof impact)
-      setMessage("")
-    } catch (error) {
-      setMessage(toastError("Gagal menghitung dampak", error))
-    }
-  }
+  const impact = useAppQuery(
+    api.emergencyClosures.previewImpact,
+    facilityId ? { facilityId: facilityId as Id<"facilities"> } : "skip"
+  )
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -273,7 +257,6 @@ export function StaffClosurePanel() {
       setReason("")
       setConfirmScope(false)
       setConfirmSafe(false)
-      setImpact(null)
     } catch (error) {
       setMessage(toastError("Gagal menutup darurat", error))
     } finally {
@@ -290,7 +273,7 @@ export function StaffClosurePanel() {
         <form onSubmit={submit} className="grid gap-3">
           <div className="grid gap-1.5">
             <Label htmlFor="closure-facility">Fasilitas</Label>
-            <Select value={facilityId || null} onValueChange={setFacilityId}>
+            <Select value={facilityId || null} onValueChange={(v) => setFacilityId(v ?? "")}>
               <SelectTrigger id="closure-facility" className="w-full">
                 <SelectValue>{(v: string | null) => v ?? "Pilih fasilitas"}</SelectValue>
               </SelectTrigger>
@@ -333,7 +316,6 @@ export function StaffClosurePanel() {
           )}
           {message && <p role="alert" className="text-sm text-destructive">{message}</p>}
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" onClick={() => void check()}>Preview dampak</Button>
             <Button type="submit" variant="destructive" disabled={busy}>{busy ? "Menutup…" : "Tutup darurat"}</Button>
           </div>
         </form>
