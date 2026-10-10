@@ -1,5 +1,5 @@
 import { convexTest } from "convex-test"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { api, internal } from "./_generated/api"
 import { AUTO_REJECTION_NOTE } from "./lib/reservationTime"
@@ -68,6 +68,10 @@ async function setup() {
   return { t, ...ids }
 }
 
+beforeEach(() => {
+  vi.useFakeTimers()
+  vi.setSystemTime(startAt - 86400000)
+})
 afterEach(() => vi.useRealTimers())
 
 describe("reservation deadline and retry rules", () => {
@@ -152,6 +156,156 @@ describe("reservation deadline and retry rules", () => {
         (item) => item.status === "approved"
       )
     ).toHaveLength(1)
+  })
+})
+
+describe("schedule changes", () => {
+  async function approved() {
+    const context = await setup()
+    const user = context.t.withIdentity({ subject: "user-auth" })
+    const officer = context.t.withIdentity({ subject: "officer-auth" })
+    const id = await user.mutation(api.reservations.create, {
+      facilityId: context.facility,
+      purpose: "Rapat",
+      startAt,
+      endAt: startAt + 3600000,
+    })
+    await officer.mutation(api.reservations.decide, {
+      reservationId: id,
+      decision: "approved",
+    })
+    return { ...context, user, officer, id }
+  }
+  const proposed = {
+    startAt: startAt + 7200000,
+    endAt: startAt + 10800000,
+    reason: "Perubahan kegiatan",
+  }
+  it("keeps old booking locked, publishes private pending hints, then replaces atomically", async () => {
+    const { t, user, officer, id, facility } = await approved()
+    const changeId = await user.mutation(
+      api.reservations.requestScheduleChange,
+      { reservationId: id, ...proposed }
+    )
+    expect((await user.query(api.reservations.listMine, {}))[0]?.startAt).toBe(
+      startAt
+    )
+    const availability = await t.query(api.facilities.getPublicAvailability, {
+      facilityId: facility,
+      rangeStart: startAt,
+      rangeEnd: startAt + 86400000,
+    })
+    expect(availability.pending).toEqual([
+      { startAt: proposed.startAt, endAt: proposed.endAt },
+    ])
+    expect(Object.keys(availability.pending[0] ?? {}).sort()).toEqual([
+      "endAt",
+      "startAt",
+    ])
+    await officer.mutation(api.reservations.decideScheduleChange, {
+      changeId,
+      decision: "approved",
+    })
+    expect((await user.query(api.reservations.listMine, {}))[0]).toMatchObject({
+      status: "approved",
+      startAt: proposed.startAt,
+      endAt: proposed.endAt,
+    })
+  })
+  it("limits to one request and prevents a different user cancelling or creating changes", async () => {
+    const { t, user, id } = await approved()
+    const args = { reservationId: id, ...proposed }
+    const changeId = await user.mutation(
+      api.reservations.requestScheduleChange,
+      args
+    )
+    await expect(
+      user.mutation(api.reservations.requestScheduleChange, args)
+    ).rejects.toThrow("Masih ada perubahan")
+    const other = t.withIdentity({ subject: "other-user-auth" })
+    expect(await other.query(api.reservations.listScheduleChanges, {})).toEqual(
+      []
+    )
+    await expect(
+      other.mutation(api.reservations.cancelScheduleChange, { changeId })
+    ).rejects.toThrow("tidak ditemukan")
+    await expect(
+      other.mutation(api.reservations.requestScheduleChange, args)
+    ).rejects.toThrow("Hanya reservasi")
+  })
+  it("retains original after rejection, cancellation and expiration", async () => {
+    const { t, user, officer, id } = await approved()
+    let changeId = await user.mutation(api.reservations.requestScheduleChange, {
+      reservationId: id,
+      ...proposed,
+    })
+    await expect(
+      officer.mutation(api.reservations.decideScheduleChange, {
+        changeId,
+        decision: "rejected",
+      })
+    ).rejects.toThrow("Alasan")
+    await officer.mutation(api.reservations.decideScheduleChange, {
+      changeId,
+      decision: "rejected",
+      note: "Jadwal tidak sesuai",
+    })
+    changeId = await user.mutation(api.reservations.requestScheduleChange, {
+      reservationId: id,
+      ...proposed,
+    })
+    await user.mutation(api.reservations.cancelScheduleChange, { changeId })
+    changeId = await user.mutation(api.reservations.requestScheduleChange, {
+      reservationId: id,
+      ...proposed,
+    })
+    vi.setSystemTime(startAt)
+    await expect(
+      officer.mutation(api.reservations.decideScheduleChange, {
+        changeId,
+        decision: "approved",
+      })
+    ).rejects.toThrow("kedaluwarsa")
+    await t.mutation(internal.reservations.expireScheduleChange, { changeId })
+    expect((await user.query(api.reservations.listMine, {}))[0]?.startAt).toBe(
+      startAt
+    )
+  })
+  it("rejects a proposal when another booking wins, without cancelling the old booking", async () => {
+    const { t, user, officer, id, facility } = await approved()
+    const changeId = await user.mutation(
+      api.reservations.requestScheduleChange,
+      { reservationId: id, ...proposed }
+    )
+    const competing = await t
+      .withIdentity({ subject: "other-user-auth" })
+      .mutation(api.reservations.create, {
+        facilityId: facility,
+        purpose: "Rapat",
+        startAt: proposed.startAt,
+        endAt: proposed.endAt,
+      })
+    await officer.mutation(api.reservations.decide, {
+      reservationId: competing,
+      decision: "approved",
+    })
+    expect(
+      (await user.query(api.reservations.listScheduleChanges, {}))[0]
+    ).toMatchObject({ id: changeId, status: "rejected" })
+    expect((await user.query(api.reservations.listMine, {}))[0]?.startAt).toBe(
+      startAt
+    )
+  })
+  it("cancels pending proposals when the original is cancelled", async () => {
+    const { user, id } = await approved()
+    await user.mutation(api.reservations.requestScheduleChange, {
+      reservationId: id,
+      ...proposed,
+    })
+    await user.mutation(api.reservations.cancelMine, { reservationId: id })
+    expect(
+      (await user.query(api.reservations.listScheduleChanges, {}))[0]?.status
+    ).toBe("cancelled")
   })
 })
 
