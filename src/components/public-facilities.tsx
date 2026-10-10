@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useAppQuery as useQuery } from "@/lib/data-hooks"
+import { ClosureBanner, DisruptionBanner } from "@/components/disruption-banner"
 import { facilityIllustration } from "@/lib/facility-illustrations"
 import { isOngoing } from "@/lib/maintenance-display"
 import {
@@ -122,6 +123,14 @@ function PublicSlotDialog({
         }
       : "skip"
   )
+  const issues = useQuery(
+    api.facilityIssues.listOpen,
+    facility ? { facilityId: facility.id as Id<"facilities"> } : "skip"
+  )
+  const closures = useQuery(
+    api.emergencyClosures.listActiveForFacility,
+    facility ? { facilityId: facility.id as Id<"facilities"> } : "skip"
+  )
   const liveSlots = useMemo<TimeSlot[] | null | undefined>(() => {
     if (!selectedDate || !range) return undefined
     if (!availability || now === null) return null
@@ -162,23 +171,40 @@ function PublicSlotDialog({
     })
   }, [availability, range, selectedDate, now])
   return (
-    <SlotGridModal
-      facility={facility}
-      bookedIds={[]}
-      slotsOverride={liveSlots}
-      illustrated
-      selectedDate={selectedDate}
-      onSelectDate={onSelectDate}
-      onClose={onClose}
-      onPilihSlot={(item, slot, date) => {
-        const params = new URLSearchParams({
-          facility: item.id,
-          date,
-          slot: slot.id,
-        })
-        router.push(`/app/reservations/new?${params.toString()}`)
-      }}
-    />
+    <div className="contents">
+      {(issues ?? []).map((issue) => (
+        <DisruptionBanner
+          key={issue.id}
+          category={issue.category}
+          description={issue.description}
+          className="mx-6 mt-4"
+        />
+      ))}
+      {(closures ?? []).map((closure) => (
+        <ClosureBanner
+          key={closure.id}
+          reason={closure.reason}
+          className="mx-6 mt-4"
+        />
+      ))}
+      <SlotGridModal
+        facility={facility}
+        bookedIds={[]}
+        slotsOverride={liveSlots}
+        illustrated
+        selectedDate={selectedDate}
+        onSelectDate={onSelectDate}
+        onClose={onClose}
+        onPilihSlot={(item, slot, date) => {
+          const params = new URLSearchParams({
+            facility: item.id,
+            date,
+            slot: slot.id,
+          })
+          router.push(`/app/reservations/new?${params.toString()}`)
+        }}
+      />
+    </div>
   )
 }
 
