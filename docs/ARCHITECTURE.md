@@ -61,9 +61,28 @@ Server layouts memakai token dari cookie untuk guard `/app`, `/staff`, dan `/adm
 3. Hanya reservasi `approved` yang memblokir slot. Approval membaca slot yang sama dalam mutation atomik sehingga concurrent approval akan conflict/retry.
 4. Reservasi hanya dapat disetujui ketika fasilitas masih berstatus `active`.
 5. Laporan mengikuti lifecycle `pending → in_progress → resolved`, dengan penolakan hanya dari status nonterminal.
-6. Waktu disimpan sebagai Unix milliseconds dan divalidasi terhadap 07.00–20.00 WIB, satu hari, kelipatan 30 menit.
+6. Waktu disimpan sebagai Unix milliseconds dan divalidasi terhadap 07.00–20.00 WIB, satu hari, kelipatan 30 menit; pengajuan baru minimal 48 jam sebelum mulai.
 7. Foto maksimum 5 MB dan hanya JPEG, PNG, atau WebP; signed URL dibuat setelah authorization.
 8. Data historis tidak dihapus secara destruktif. Akun/fasilitas dinonaktifkan dan aksi penting masuk `auditEvents`.
+
+## Keputusan pekerjaan dan transaksi
+
+```mermaid
+flowchart TD
+  A[Mulai tangani] --> B{Dampak pekerjaan}
+  B -->|Masih bisa digunakan| C[Gangguan publik + notifikasi]
+  C --> D[Booking tetap berlaku]
+  B -->|Harus ditutup| E[Penutupan keselamatan sekarang]
+  E --> F[Batalkan booking dan proposal terdampak]
+  F --> G[Notifikasi + audit]
+  G --> H[Catatan selesai + konfirmasi aman]
+  H --> I{Masih ada laporan menutup?}
+  I -->|Ya| E
+  I -->|Tidak| J[Buka closure penanganan]
+  J --> K[Booking lama tidak dipulihkan]
+```
+
+Laporan, issue/closure, pembatalan, notifikasi, dan audit disimpan dalam satu mutation atomik. Preview UI read-only; transaksi memeriksa ulang keadaan terbaru. Closure manual tidak ikut dibuka oleh completion laporan. [ERD](./DATA-AND-API.md), [aturan](./BUSINESS-RULES.md), dan [ADR-0004](./adr/0004-reservation-and-handling-policy.md) menjelaskan detail.
 
 ## Deployment
 

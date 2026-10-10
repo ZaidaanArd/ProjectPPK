@@ -187,27 +187,30 @@ stateDiagram-v2
 
 ### Dari laporan ke perbaikan
 
-Laporan tidak lagi mematikan fasilitas seharian. Petugas menjadwalkan perbaikan di waktu yang kosong, langsung dari kartu laporan.
+Klik Mulai tangani berarti pekerjaan mulai sekarang. Dialog meminta dampak dan keterangan publik; pekerjaan berbahaya tidak harus menunggu slot kosong.
 
 ```mermaid
 flowchart LR
     A[Laporan masuk] --> B[Petugas: Mulai tangani]
     B --> C{Perlu menutup ruang?}
-    C -- Tidak --> E[Perbaiki tanpa menutup slot]
-    C -- Ya --> D[Jadwalkan perbaikan di slot kosong]
-    D --> F[Slot rentang itu tertutup]
+    C -- Tidak --> E[Gangguan + notifikasi, slot tetap terbuka]
+    C -- Ya --> D[Penutupan keselamatan sekarang]
+    D --> F[Batalkan booking terdampak + notifikasi]
     E --> G[Selesaikan laporan + catatan]
     F --> G
-    G --> H[Perbaikan terkait diakhiri, slot terbuka lagi]
+    G --> H{Semua pekerjaan tertutup selesai dan aman?}
+    H -- Ya --> I[Buka closure penanganan, booking lama tetap batal]
+    H -- Tidak --> F
 ```
 
 - Perbaikan yang sudah berjalan diakhiri saat itu juga; yang belum mulai dibatalkan.
+- Closure manual memerlukan reopen tersendiri. Estimasi tidak otomatis membuka closure.
 
 ## Jadwal perbaikan
 
 ### Aturan utama
 
-Perbaikan dan reservasi tidak boleh tumpang tindih, dan perbaikan yang mengalah: perbaikan hanya boleh mengambil waktu yang benar-benar kosong.
+Untuk **jadwal perbaikan terencana**, perbaikan hanya mengambil waktu kosong. Ini berbeda dari penutupan keselamatan pada pekerjaan yang tidak aman.
 
 ```mermaid
 flowchart TD
@@ -244,7 +247,7 @@ stateDiagram-v2
 ```
 
 - Status "Berlangsung" atau "Terjadwal" dihitung dari jam sekarang terhadap rentang `startAt`–`endAt`.
-- Satu jadwal maksimal 7 hari; penutupan lebih lama memakai status Nonaktif milik admin.
+- Satu jadwal maksimal 7 hari; pekerjaan yang memerlukan penutupan tanpa kepastian selesai memakai Penutupan fasilitas, bukan memaksakan estimasi.
 
 ### Contoh kasus: kelas sudah direservasi lalu perlu diperbaiki
 

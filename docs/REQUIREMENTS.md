@@ -30,9 +30,11 @@ target dicatat. Merge ke main saja tidak mengubah status menjadi ✅.
 ## Batas operasional reservasi
 
 - Jam operasional: 07.00–20.00 WIB.
+- Pengajuan baru minimal 48 jam sebelum waktu mulai (selisih waktu server, tepat batas diterima).
 - Slot waktu selalu kelipatan 30 menit.
 - `start_time` dan `end_time` harus berada di hari yang sama dan dalam jam operasional.
 - Validasi aturan waktu dilakukan di server; validasi client hanya membantu pengalaman pengguna.
+- Ketentuan operasional tambahan dan kebijakan yang belum ditetapkan: [Aturan bisnis](./BUSINESS-RULES.md); skenario batas: [Edge case](./EDGE-CASES.md).
 
 ## Aktor
 

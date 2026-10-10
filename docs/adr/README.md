@@ -1,5 +1,7 @@
 # Architecture Decision Records
 
+- [ADR-0004: Batas 48 jam dan dampak penanganan](./0004-reservation-and-handling-policy.md)
+
 ADR mencatat keputusan yang tampak dalam implementasi saat ini. Status **Accepted** berarti keputusan arsitektur dipakai di kode, bukan bahwa seluruh fitur sudah lulus UAT atau production smoke test.
 
 1. [ADR-0001 — Convex untuk data operasional](./0001-convex-backend.md)

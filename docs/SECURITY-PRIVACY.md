@@ -1,5 +1,13 @@
 # Security & Privacy Notes
 
+## Pembaruan penanganan dan histori — 11 Oktober 2026
+
+- Keterangan publik pekerjaan terpisah dari deskripsi laporan privat; banner/notification tidak menyalin identitas pelapor. Petugas wajib mengisi keterangan aman untuk dibagikan.
+- Backend memvalidasi impact, transisi, catatan completion, dan konfirmasi aman. Preview UI tidak memberikan izin; mutation memeriksa ulang data terdampak.
+- Fasilitas diarsipkan, tidak dihapus secara destruktif; referensi dan audit tetap. Nonaktifkan booking aktif ditolak agar tidak melewati notifikasi penutupan.
+- Riwayat notifikasi memakai cursor dan identity pemilik; tidak menerima userId bebas dari browser.
+- Demo statis di browser bukan batas keamanan produksi. Screenshot laporan hanya memakai data demo.
+
 Catatan ini mendeskripsikan kontrol yang ada di kode, bukan audit keamanan, kebijakan privasi formal, atau jaminan kepatuhan hukum.
 
 ## Data yang diproses

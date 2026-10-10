@@ -1,6 +1,16 @@
 # Release Notes / Changelog
 
-Repository ini belum memakai tag versi semantik. Catatan berikut diringkas dari riwayat Git di main sampai commit 17f02f9; **merge ke main tidak membuktikan bahwa deployment production telah diperbarui**. Untuk status production, catat SHA Vercel dan Convex saat rilis.
+Repository ini belum memakai tag versi semantik. Catatan historis di bawah dipisahkan dari pekerjaan lokal terbaru; **merge ke main tidak membuktikan bahwa deployment production telah diperbarui**. Untuk status production, catat SHA Vercel dan Convex saat rilis.
+
+## 11 Oktober 2026 — lokal, belum dirilis
+
+- Pengajuan baru minimal 48 jam di form, slot publik, backend, dan demo; retry identik tetap mengembalikan booking yang sama.
+- Dialog Mulai tangani memilih masih layak digunakan atau harus ditutup, dengan keterangan publik terpisah dari laporan privat.
+- Penutupan keselamatan segera membatalkan booking/pengajuan/proposal terdampak; tidak auto-open berdasarkan estimasi. Penyelesaian wajib memastikan aman dan menghormati pekerjaan lain serta closure manual.
+- Pemohon baru ikut menerima informasi gangguan; notifikasi buka kembali tidak menghidupkan booking batal. Riwayat notifikasi berpaginasi dan memiliki tautan reservasi.
+- Fasilitas diarsipkan tanpa memutus histori; booking aktif harus ditangani lewat penutupan, bukan dinonaktifkan diam-diam.
+- Aturan bisnis, EC-01–EC-30, ADR-0004, laporan bergambar, ERD, dan laporan Google Docs diperbarui. UAT tetap belum disetujui.
+- Verifikasi lokal: 112 test Vitest dan 11 alur browser terarah; rincian pemeriksaan akhir di [Test Report](./TEST-REPORT.md). Tidak push/deploy.
 
 ## 10 Oktober 2026 — belum dirilis
 

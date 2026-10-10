@@ -12,6 +12,13 @@ erDiagram
   FACILITY ||--o{ REPORT : receives
   FACILITY ||--o{ MAINTENANCE_WINDOW : closes
   REPORT |o--o{ MAINTENANCE_WINDOW : triggers
+  RESERVATION ||--o{ RESERVATION_CHANGE : proposes
+  FACILITY ||--o{ FACILITY_ISSUE : has
+  FACILITY ||--o{ EMERGENCY_CLOSURE : has
+  REPORT |o--o{ FACILITY_ISSUE : triggers
+  REPORT |o--o{ EMERGENCY_CLOSURE : triggers
+  PROFILE ||--o{ NOTIFICATION : receives
+  RESERVATION |o--o{ NOTIFICATION : references
 
   PROFILE {
     string authUserId
@@ -25,6 +32,38 @@ erDiagram
     string location
     number capacity
     string status
+  }
+  RESERVATION_CHANGE {
+    id reservationId
+    number originalStartAt
+    number startAt
+    number endAt
+    string status
+  }
+  FACILITY_ISSUE {
+    id facilityId
+    id reportId
+    string description
+    number startAt
+    number endAt
+    string status
+    number revision
+  }
+  EMERGENCY_CLOSURE {
+    id facilityId
+    id reportId
+    string reason
+    string mode
+    string source
+    string status
+    number estimatedEndAt
+  }
+  NOTIFICATION {
+    id userId
+    id reservationId
+    string type
+    string dedupKey
+    number readAt
   }
   RESERVATION {
     id userId
@@ -52,32 +91,32 @@ Schema aktual ada di `convex/schema.ts`. Better Auth menyimpan user, credential,
 
 ## Status
 
-| Domain      | Nilai                                            |
-| ----------- | ------------------------------------------------ |
-| Role        | `user`, `officer`, `admin`                       |
-| Account     | `pending`, `active`, `rejected`, `disabled`      |
-| Facility    | `active`, `maintenance`, `inactive`              |
-| Reservation | `pending`, `approved`, `rejected`, `cancelled`   |
-| Report      | `pending`, `in_progress`, `resolved`, `rejected` |
-| Maintenance | `scheduled`, `completed`, `cancelled`            |
+| Domain      | Nilai                                                     |
+| ----------- | --------------------------------------------------------- |
+| Role        | `user`, `officer`, `admin`                                |
+| Account     | `pending`, `active`, `rejected`, `disabled`               |
+| Facility    | `active`, `maintenance`, `inactive`                       |
+| Reservation | `pending`, `approved`, `rejected`, `cancelled`, `expired` |
+| Report      | `pending`, `in_progress`, `resolved`, `rejected`          |
+| Maintenance | `scheduled`, `completed`, `cancelled`                     |
 
-Status fasilitas `maintenance` adalah bentuk lama yang menutup seluruh fasilitas. Status ini tidak bisa dipasang lagi; perbaikan kini memakai jadwal perbaikan per rentang waktu.
+Status fasilitas `maintenance` dapat tampil sebagai status efektif karena penutupan atau laporan berdampak tertutup. Status master lama tidak dipasang kembali. Perbaikan terencana memakai `maintenanceWindows`; gangguan masih layak memakai `facilityIssues`; penutupan keselamatan memakai `emergencyClosures`, tanpa auto-open dari estimasi.
 
 ## Public functions
 
-| Module         | Function                                       | Access         | Purpose                    |
-| -------------- | ---------------------------------------------- | -------------- | -------------------------- |
-| `profiles`     | `current`, `register`, `changePassword`        | Public/Session | Profile dan password       |
-| `facilities`   | `listPublic`, `getPublicAvailability`          | Public         | Katalog dan blocked slots  |
-| `facilities`   | `listManaged`, `create`, `update`, `setStatus` | Admin          | Master fasilitas           |
-| `facilities`   | `remove`                                       | Admin          | Hapus fasilitas            |
-| `reservations` | `listMine`, `create`, `cancelMine`             | User           | Reservasi milik sendiri    |
-| `reservations` | `listQueue`, `decide`, `cancelByStaff`         | Officer/admin  | Antrean dan keputusan      |
-| `reports`      | `generateUploadUrl`, `create`, `listMine`      | User           | Upload dan laporan sendiri |
-| `reports`      | `listQueue`, `updateStatus`                    | Officer/admin  | Penanganan laporan         |
-| `maintenance`  | `listManaged`, `agenda`                        | Officer/admin  | Jadwal dan slot terisi     |
-| `maintenance`  | `schedule`, `extend`, `close`                  | Officer/admin  | Jadwal perbaikan           |
-| `admin`        | account functions, `analytics`, `exportData`   | Admin          | Administrasi dan rekap     |
+| Module         | Function                                       | Access         | Purpose                              |
+| -------------- | ---------------------------------------------- | -------------- | ------------------------------------ |
+| `profiles`     | `current`, `register`, `changePassword`        | Public/Session | Profile dan password                 |
+| `facilities`   | `listPublic`, `getPublicAvailability`          | Public         | Katalog dan blocked slots            |
+| `facilities`   | `listManaged`, `create`, `update`, `setStatus` | Admin          | Master fasilitas                     |
+| `facilities`   | `remove`                                       | Admin          | Arsip fasilitas, pertahankan histori |
+| `reservations` | `listMine`, `create`, `cancelMine`             | User           | Reservasi milik sendiri              |
+| `reservations` | `listQueue`, `decide`, `cancelByStaff`         | Officer/admin  | Antrean dan keputusan                |
+| `reports`      | `generateUploadUrl`, `create`, `listMine`      | User           | Upload dan laporan sendiri           |
+| `reports`      | `listQueue`, `updateStatus`                    | Officer/admin  | Penanganan laporan                   |
+| `maintenance`  | `listManaged`, `agenda`                        | Officer/admin  | Jadwal dan slot terisi               |
+| `maintenance`  | `schedule`, `extend`, `close`                  | Officer/admin  | Jadwal perbaikan                     |
+| `admin`        | account functions, `analytics`, `exportData`   | Admin          | Administrasi dan rekap               |
 
 Next.js Route Handlers hanya dipakai untuk:
 
@@ -95,6 +134,7 @@ Next.js Route Handlers hanya dipakai untuk:
 ## Aturan reservasi
 
 - 07.00–20.00 WIB, satu hari, slot 30 menit.
+- Pengajuan baru minimal 48 jam sebelum mulai. Pending lewat mulai efektif expired; tidak boleh disetujui meski cron belum berjalan.
 - Pengguna dapat membatalkan minimal 1 jam sebelum mulai.
 - Pengajuan baru berstatus `pending`; belum memblokir slot.
 - Mutation approval mengecek overlap terhadap reservasi approved pada index `by_facility_status_start`.
@@ -107,6 +147,10 @@ Next.js Route Handlers hanya dipakai untuk:
 - Jam selesai wajib; scheduled function `maintenance.expire` menutup jadwal di `endAt`. `close` mengakhiri jadwal yang sedang berjalan atau membatalkan yang belum dimulai. `extend` hanya memeriksa waktu tambahan.
 - Menyelesaikan atau menolak laporan menutup jadwal perbaikan yang terhubung dengannya.
 - Diagram lengkap ada di [Alur dan logika sistem](./FLOWS.md).
+
+## Interface gangguan, penutupan, dan notifikasi
+
+`facilityIssues.listOpen` serta `emergencyClosures.listActiveForFacility` hanya mengirim keterangan publik. Create/update/resolve issue dan preview/close/reopen closure wajib peran officer/admin. `reports.updateStatus` memulai dengan `handlingImpact` dan `publicNotice`; completion dampak closed perlu `confirmSafe`. `notifications.listPage` memakai cursor Convex dan identity pemilik, bukan userId browser. [Aturan lengkap](./BUSINESS-RULES.md).
 
 ## Upload
 

@@ -8,13 +8,15 @@ Peminjaman ruang dan pelaporan kerusakan kampus melibatkan pengunjung, pemohon, 
 
 Tim memisahkan halaman publik dari portal berbasis peran. Next.js menangani halaman dan proxy auth; Convex menyimpan data, menjalankan validasi/transaksi, dan mendorong pembaruan real-time; Better Auth mengelola identitas serta sesi. Keputusan dan trade-off dicatat di [ADR](./adr/README.md).
 
-Reservasi dibuat sebagai ajuan Menunggu. Hanya reservasi Disetujui memblokir slot; keputusan petugas memeriksa bentrok dalam mutation backend agar dua persetujuan serentak tidak menghasilkan dua pemakaian pada waktu yang sama. Waktu dibatasi 07.00–20.00 WIB, kelipatan 30 menit, satu hari. Laporan kerusakan memiliki antrean dan catatan resolusi; petugas dapat menandai fasilitas dalam perbaikan hingga aktif kembali.
+Reservasi dibuat sebagai ajuan Menunggu, minimal 48 jam sebelum mulai. Hanya Disetujui memblokir slot; mutation memeriksa waktu, akun, fasilitas, dan bentrok pada keputusan terbaru. Waktu 07.00–20.00 WIB, kelipatan 30 menit, satu hari. Pending kedaluwarsa tidak dapat disetujui meski cron terlambat; perubahan jadwal mempertahankan slot asal sampai approval.
+
+Mulai tangani memisahkan pekerjaan usable dari penutupan keselamatan. Usable mempertahankan booking dan memberi informasi gangguan. Closed menutup tanpa auto-open, membatalkan booking terdampak, dan wajib konfirmasi aman pada completion. Dua laporan tidak saling membuka penutupan; closure manual tetap perlu keputusan terpisah. Long repair yang awalnya mempertahankan booking dieskalasi bila pekerjaan kemudian dinyatakan berbahaya.
 
 ## Implementasi dan QA
 
 Schema domain dan index ada di convex/schema.ts; aturan akses di convex/lib/authz.ts; workflow reservasi/laporan di convex/reservations.ts dan convex/reports.ts. UI pengguna, petugas, dan admin berada di src/components. Halaman publik memakai katalog tanpa membocorkan detail pemohon. Demo statis lokal memungkinkan uji UI tanpa mengubah Convex, tetapi tidak menggantikan uji backend dinamis.
 
-Pada snapshot lokal 27 September 2026, pnpm test lulus **35 test di 10 file**. Playwright mendaftarkan tujuh test browser, tetapi tidak dijalankan pada snapshot tersebut. Rincian, batasan, dan cara mengulang ada di [Test Report](./TEST-REPORT.md); penerimaan pengguna dicatat terpisah di [UAT](./UAT.md).
+Snapshot lokal 11 Oktober 2026: **112 test di 23 file** Vitest dan **11 skenario browser terarah** lulus, beserta format, lint, typecheck, dan build. Ini bukan bukti deployment atau transaksi dua perangkat nyata. Rincian/perintah ada di [Test Report](./TEST-REPORT.md), screenshot/ERD di [laporan implementasi](./FINAL-REPORT.md), dan keputusan batas di [aturan bisnis](./BUSINESS-RULES.md). [UAT](./UAT.md) tetap belum disetujui.
 
 ## Trade-off dan langkah berikutnya
 

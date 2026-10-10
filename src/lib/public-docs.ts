@@ -7,6 +7,37 @@ export const qaSheetUrl =
 
 export const publicDocs = [
   {
+    slug: "final-report",
+    file: "FINAL-REPORT.md",
+    title: "Laporan implementasi",
+    summary:
+      "Arsitektur, ERD, screenshot demo, edge case, dan batas hasil uji.",
+    category: "Proyek",
+  },
+  {
+    slug: "business-rules",
+    file: "BUSINESS-RULES.md",
+    title: "Aturan bisnis dan asumsi",
+    summary:
+      "Batas 48 jam, keputusan jadwal, dampak pekerjaan, dan batas cakupan.",
+    category: "Proyek",
+  },
+  {
+    slug: "edge-cases",
+    file: "EDGE-CASES.md",
+    title: "Edge case dan regresi",
+    summary:
+      "Kondisi batas waktu, bentrok, gangguan, akses, dan bukti pengujian.",
+    category: "Pengujian",
+  },
+  {
+    slug: "adr/0004-reservation-and-handling-policy",
+    file: "adr/0004-reservation-and-handling-policy.md",
+    title: "ADR-0004: Reservasi dan penanganan",
+    summary: "Alasan aturan 48 jam dan penutupan berbasis keselamatan.",
+    category: "Teknis",
+  },
+  {
     slug: "user-guide",
     file: "USER-GUIDE.md",
     title: "Panduan pengguna",

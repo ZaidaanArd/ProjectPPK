@@ -1,5 +1,11 @@
 # Deployment / Operations Runbook
 
+## Kompatibilitas kebijakan reservasi dan penanganan
+
+Perubahan 11 Oktober 2026 menambah minimum 48 jam, required impact/publicNotice pada Mulai tangani, confirmSafe saat completion closed, closure mode/source opsional, serta indeks notification by_closure. Rilis backend kompatibel sebelum frontend; client lama yang memulai pekerjaan tanpa impact akan menerima validasi, bukan menutup diam-diam. Uji preview terlebih dahulu. Jangan rollback backend ke versi yang tidak mengenal nilai notifikasi emergency.reopened setelah data baru ditulis.
+
+Closure tidak otomatis berakhir oleh estimatedEndAt. Jika pengguna terhalang, periksa emergencyClosures dan semua report in_progress/closed, bukan hanya status master fasilitas. Membuka closure tidak menghidupkan booking batal. Scheduled maintenance memiliki timer rentang sendiri; perpanjang jika pekerjaan terencana belum selesai. Cleanup pending production tetap perlu preview read-only dan persetujuan, bukan langkah setup otomatis.
+
 Production frontend: https://sthana.myudak.com. Source of truth: ZaidaanArd/ProjectPPK; myudak/Sthana-ProjectPPK adalah mirror sumber Vercel. Backend production memakai deployment Convex terpisah dari development. Perintah di bawah adalah prosedur, **bukan** bukti bahwa deployment telah dilakukan.
 
 ## Menjalankan lokal

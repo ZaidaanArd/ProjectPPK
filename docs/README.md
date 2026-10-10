@@ -4,6 +4,9 @@ Mulai dari [panduan pengguna](./USER-GUIDE.md) untuk memakai aplikasi, atau [run
 
 | Dokumen                                            | Kegunaan                                                         |
 | -------------------------------------------------- | ---------------------------------------------------------------- |
+| [Laporan implementasi](./FINAL-REPORT.md)          | Ringkasan, ERD, screenshot demo, dan batas bukti rilis           |
+| [Aturan bisnis dan asumsi](./BUSINESS-RULES.md)    | Ketentuan 48 jam, status, dan kebijakan yang belum diputuskan    |
+| [Edge case dan regresi](./EDGE-CASES.md)           | EC-01–EC-30 terkait US-01–US-17 dan test                         |
 | [User Guide / User Manual](./USER-GUIDE.md)        | Alur pengunjung, pengguna, petugas, dan admin                    |
 | [UAT / Acceptance Report](./UAT.md)                | Skenario penerimaan US-01–US-17 dan tempat mencatat hasil        |
 | [Test Report](./TEST-REPORT.md)                    | Hasil pengujian yang benar-benar dijalankan dan gap yang tersisa |

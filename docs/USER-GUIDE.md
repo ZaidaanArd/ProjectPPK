@@ -1,5 +1,13 @@
 # Panduan pengguna Sthana Kampus
 
+Aturan rinci: [Aturan bisnis dan asumsi](./BUSINESS-RULES.md).
+
+Pengajuan baru harus minimal **48 jam sebelum mulai**. Slot lebih dekat atau sudah lewat dinonaktifkan. “Ada pengajuan” belum berarti terpesan; hanya Disetujui yang menjamin jadwal, selama fasilitas tidak ditutup karena keselamatan.
+
+Saat petugas klik **Mulai tangani**, pilih **Masih bisa digunakan** (gangguan dan notifikasi, booking tetap) atau **Harus ditutup** (penutupan langsung dan pembatalan terdampak). Isi keterangan publik tanpa identitas pelapor. Preview menunjukkan dampak; server menghitung ulang saat konfirmasi. Untuk penanganan tertutup, selesai/tolak wajib catatan dan centang aman; closure manual tetap memerlukan pembukaan terpisah. Estimasi bukan auto-open, dan booking batal tidak dipulihkan.
+
+Pengguna dapat membuka riwayat lewat lonceng → **Semua notifikasi**, lalu mengikuti tautan reservasi. Perubahan jadwal perlu persetujuan; jadwal lama tetap berlaku sampai disetujui.
+
 Situs: https://sthana.myudak.com. Versi yang berjalan dapat berbeda dari checkout lokal; bila tampilan atau alurnya berbeda, catat URL, waktu, dan langkah reproduksi.
 
 ## Pengunjung
@@ -21,13 +29,13 @@ Siapa pun dari civitas kampus dapat mendaftar sendiri cukup dengan nama, email, 
 ## Petugas
 
 - Di **Reservasi**, tinjau antrean lalu setujui atau tolak pengajuan. Persetujuan ditolak server bila fasilitas tidak aktif atau slot sudah dipakai reservasi disetujui. Pembatalan darurat memerlukan alasan.
-- Di **Laporan**, mulai penanganan tanpa catatan jika belum ada hasil; penyelesaian atau penolakan memerlukan catatan. Bila ruang perlu ditutup, tekan **Jadwalkan perbaikan** di kartu laporan. Menyelesaikan laporan ikut mengakhiri perbaikannya.
+- Di **Laporan**, mulai penanganan dengan dampak dan keterangan publik; catatan hasil boleh kosong ketika baru mulai. **Harus ditutup** menutup langsung sampai aman, bukan menunggu slot kosong. Penyelesaian atau penolakan wajib catatan; dampak closed wajib konfirmasi aman. Jadwalkan pekerjaan terencana secara terpisah di slot kosong.
 - Di **Jadwal perbaikan**, pilih fasilitas, tanggal, dan rentang jam yang kosong. Reservasi disetujui maupun menunggu menutup slot, jadi putuskan dulu pengajuan yang menunggu bila perbaikan harus di jam itu. Isi perkiraan jam selesai; **Perpanjang** bila belum beres, **Selesai sekarang** bila lebih cepat, atau **Batalkan** sebelum dimulai. Selama perbaikan, hanya rentang itu yang tidak bisa dipesan.
 
 ## Administrator
 
 - Di **Akun**, setujui/tolak pendaftaran, buat akun pengguna atau petugas, dan kelola status akun.
-- Di **Fasilitas**, tambah/ubah fasilitas, sembunyikan, atau aktifkan kembali. Penutupan sementara untuk perbaikan memakai **Jadwal perbaikan**, yang juga bisa diakses admin.
+- Di **Fasilitas**, tambah/ubah fasilitas, arsipkan, atau aktifkan kembali. Riwayat tetap tersimpan. Untuk penutupan berbahaya gunakan **Penutupan fasilitas**; untuk pekerjaan terencana gunakan **Jadwal perbaikan**. Keduanya bisa diakses admin.
 - Di dashboard, lihat rekap per fasilitas/lokasi; unduh CSV rekap, reservasi, atau laporan. Ekspor memerlukan sesi admin aktif.
 
 ## Bantuan singkat
