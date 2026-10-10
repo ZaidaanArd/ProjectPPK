@@ -18,6 +18,7 @@ import {
 } from "../../convex/lib/workflows"
 import { csvDocument } from "./csv"
 import {
+  changeDeadline,
   effectiveReservationStatus,
   EXPIRATION_NOTE,
   type ReservationStatus,
@@ -63,6 +64,21 @@ type Reservation = {
   createdAt: number
   updatedAt: number
 }
+type ScheduleChange = {
+  id: string
+  reservationId: string
+  userId: string
+  facilityId: string
+  originalStartAt: number
+  originalEndAt: number
+  startAt: number
+  endAt: number
+  reason: string
+  status: ReservationStatus
+  decisionNote?: string
+  createdAt: number
+  updatedAt: number
+}
 type Report = {
   id: string
   reporterId: string
@@ -95,6 +111,7 @@ export type StaticData = {
   accounts: Account[]
   facilities: Facility[]
   reservations: Reservation[]
+  reservationChanges?: ScheduleChange[]
   reports: Report[]
   // Missing in browser data saved before repairs were scheduled.
   maintenance?: MaintenanceWindow[]
@@ -314,6 +331,40 @@ export function subscribeStaticData(listener: () => void) {
 export function useStaticData() {
   useEffect(() => {
     void hydrateStaticData()
+    const tick = () => {
+      const now = Date.now()
+      const reservations = state.reservations.map((r) =>
+        r.status === "pending" && r.startAt <= now
+          ? {
+              ...r,
+              status: "expired" as const,
+              decisionNote: EXPIRATION_NOTE,
+              updatedAt: now,
+            }
+          : r
+      )
+      const reservationChanges = (state.reservationChanges ?? []).map((r) =>
+        r.status === "pending" && changeDeadline(r) <= now
+          ? {
+              ...r,
+              status: "expired" as const,
+              decisionNote: EXPIRATION_NOTE,
+              updatedAt: now,
+            }
+          : r
+      )
+      if (
+        reservations.some((r, i) => r !== state.reservations[i]) ||
+        reservationChanges.some((r, i) => r !== state.reservationChanges?.[i])
+      )
+        replace({ ...state, reservations, reservationChanges })
+    }
+    const timer = window.setInterval(tick, 1000)
+    window.addEventListener("focus", tick)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener("focus", tick)
+    }
   }, [])
   return useSyncExternalStore(
     subscribeStaticData,
@@ -617,7 +668,12 @@ export function staticQuery(name: string, args: unknown): unknown {
               r.endAt > start
           )
           .map(({ startAt, endAt, status }) => ({ startAt, endAt, status })),
-        pending: state.reservations
+        pending: [
+          ...state.reservations,
+          ...(state.reservationChanges ?? []).filter(
+            (r) => changeDeadline(r) > Date.now()
+          ),
+        ]
           .filter(
             (r) =>
               r.facilityId === id &&
@@ -657,6 +713,21 @@ export function staticQuery(name: string, args: unknown): unknown {
           applicantEmail:
             state.accounts.find((a) => a.id === r.userId)?.email ?? "-",
           facilityName: facilityName(r.facilityId),
+        }))
+        .reverse()
+    case "reservations:listScheduleChanges":
+      return (state.reservationChanges ?? [])
+        .filter((r) => account().role !== "user" || r.userId === account().id)
+        .map((r) => ({
+          ...r,
+          status:
+            r.status === "pending" && changeDeadline(r) <= Date.now()
+              ? "expired"
+              : r.status,
+          facilityName: facilityName(r.facilityId),
+          applicantName:
+            state.accounts.find((a) => a.id === r.userId)?.name ??
+            "Pengguna dihapus",
         }))
         .reverse()
     case "reports:listMine":
@@ -763,10 +834,15 @@ export function staticQuery(name: string, args: unknown): unknown {
 }
 
 function change<T>(
-  key: "facilities" | "reservations" | "reports" | "accounts",
+  key:
+    | "facilities"
+    | "reservations"
+    | "reports"
+    | "accounts"
+    | "reservationChanges",
   update: (items: T[]) => T[]
 ) {
-  replace({ ...state, [key]: update(state[key] as T[]) })
+  replace({ ...state, [key]: update((state[key] ?? []) as T[]) })
 }
 function required<T>(items: T[], id: string): T {
   const found = items.find((item) => (item as { id: string }).id === id)
@@ -838,6 +914,170 @@ export async function staticMutation(
         },
       ])
       return id
+    }
+    case "reservations:requestScheduleChange": {
+      requireRole(["user"])
+      const original = required(
+        state.reservations,
+        value(args, "reservationId")
+      )
+      if (
+        original.userId !== account().id ||
+        original.status !== "approved" ||
+        original.startAt <= now
+      )
+        throw new Error(
+          "Hanya reservasi disetujui yang belum dimulai dapat diubah"
+        )
+      const startAt = Number(field(args, "startAt")),
+        endAt = Number(field(args, "endAt")),
+        reason = value(args, "reason").trim()
+      validateReservationWindow(startAt, endAt)
+      if (startAt <= now) throw new Error("Jadwal baru harus di masa mendatang")
+      if (startAt === original.startAt && endAt === original.endAt)
+        throw new Error("Pilih jadwal yang berbeda")
+      requireText(reason)
+      if (
+        (state.reservationChanges ?? []).some(
+          (r) =>
+            r.reservationId === original.id &&
+            r.status === "pending" &&
+            changeDeadline(r) > now
+        )
+      )
+        throw new Error("Masih ada perubahan jadwal menunggu")
+      assertFacilityCanApprove(
+        required(state.facilities, original.facilityId).status
+      )
+      assertNoMaintenanceOverlap(
+        { startAt, endAt },
+        scheduledWindows(original.facilityId, startAt, endAt)
+      )
+      if (
+        state.reservations.some(
+          (r) =>
+            r.id !== original.id &&
+            r.facilityId === original.facilityId &&
+            r.status === "approved" &&
+            overlaps(r.startAt, r.endAt, startAt, endAt)
+        )
+      )
+        throw new Error("Slot sudah digunakan oleh reservasi lain")
+      const id = `demo-change-${crypto.randomUUID()}`
+      change<ScheduleChange>("reservationChanges", (items) => [
+        ...items,
+        {
+          id,
+          reservationId: original.id,
+          userId: account().id,
+          facilityId: original.facilityId,
+          originalStartAt: original.startAt,
+          originalEndAt: original.endAt,
+          startAt,
+          endAt,
+          reason,
+          status: "pending",
+          createdAt: now,
+          updatedAt: now,
+        },
+      ])
+      return id
+    }
+    case "reservations:cancelScheduleChange": {
+      requireRole(["user"])
+      const item = required(
+        state.reservationChanges ?? [],
+        value(args, "changeId")
+      )
+      if (item.userId !== account().id)
+        throw new Error("Perubahan jadwal tidak ditemukan")
+      if (item.status === "cancelled") return null
+      if (item.status !== "pending" || changeDeadline(item) <= now)
+        throw new Error("Perubahan jadwal sudah diproses atau kedaluwarsa")
+      change<ScheduleChange>("reservationChanges", (items) =>
+        items.map((r) =>
+          r.id === item.id ? { ...r, status: "cancelled", updatedAt: now } : r
+        )
+      )
+      return null
+    }
+    case "reservations:decideScheduleChange": {
+      requireRole(["officer", "admin"])
+      const item = required(
+        state.reservationChanges ?? [],
+        value(args, "changeId")
+      )
+      const original = required(state.reservations, item.reservationId)
+      const decision = value(args, "decision")
+      if (!["approved", "rejected"].includes(decision))
+        throw new Error("Keputusan tidak valid")
+      if (item.status !== "pending" || changeDeadline(item) <= now)
+        throw new Error("Perubahan jadwal sudah diproses atau kedaluwarsa")
+      if (
+        original.status !== "approved" ||
+        original.startAt !== item.originalStartAt ||
+        original.endAt !== item.originalEndAt
+      )
+        throw new Error("Reservasi asal telah berubah. Muat ulang antrean.")
+      if (decision === "rejected") requireText(value(args, "note"))
+      if (decision === "approved") {
+        assertFacilityCanApprove(
+          required(state.facilities, item.facilityId).status
+        )
+        assertNoMaintenanceOverlap(
+          item,
+          scheduledWindows(item.facilityId, item.startAt, item.endAt)
+        )
+        if (
+          state.reservations.some(
+            (r) =>
+              r.id !== original.id &&
+              r.facilityId === item.facilityId &&
+              r.status === "approved" &&
+              overlaps(r.startAt, r.endAt, item.startAt, item.endAt)
+          )
+        )
+          throw new Error(
+            "Jadwal baru sudah terisi. Jadwal lama tetap berlaku."
+          )
+      }
+      const reservations =
+        decision === "approved"
+          ? state.reservations.map((r) =>
+              r.id === original.id
+                ? {
+                    ...r,
+                    startAt: item.startAt,
+                    endAt: item.endAt,
+                    updatedAt: now,
+                  }
+                : r.status === "pending" &&
+                    r.facilityId === item.facilityId &&
+                    overlaps(r.startAt, r.endAt, item.startAt, item.endAt)
+                  ? {
+                      ...r,
+                      status: "rejected" as const,
+                      decisionNote: AUTO_REJECTION_NOTE,
+                      updatedAt: now,
+                    }
+                  : r
+            )
+          : state.reservations
+      replace({
+        ...state,
+        reservations,
+        reservationChanges: (state.reservationChanges ?? []).map((r) =>
+          r.id === item.id
+            ? {
+                ...r,
+                status: decision as "approved" | "rejected",
+                decisionNote: value(args, "note").trim() || undefined,
+                updatedAt: now,
+              }
+            : r
+        ),
+      })
+      return null
     }
     case "reservations:cancelMine": {
       requireRole(["user"])
