@@ -1270,6 +1270,24 @@ export async function staticMutation(
         )
       )
         throw new Error("Slot sudah digunakan oleh reservasi lain")
+      if (
+        state.reservations.some(
+          (item) =>
+            item.facilityId === facilityId &&
+            item.status === "pending" &&
+            overlaps(item.startAt, item.endAt, startAt, endAt)
+        ) ||
+        (state.reservationChanges ?? []).some(
+          (item) =>
+            item.facilityId === facilityId &&
+            item.status === "pending" &&
+            changeDeadline(item) > now &&
+            overlaps(item.startAt, item.endAt, startAt, endAt)
+        )
+      )
+        throw new Error(
+          "Slot ini sedang diajukan pengguna lain. Pilih jadwal lain atau tunggu sampai tersedia."
+        )
       assertNoMaintenanceOverlap(
         { startAt, endAt },
         scheduledWindows(facilityId, startAt, endAt)
@@ -1341,6 +1359,24 @@ export async function staticMutation(
         )
       )
         throw new Error("Slot sudah digunakan oleh reservasi lain")
+      if (
+        state.reservations.some(
+          (r) =>
+            r.facilityId === original.facilityId &&
+            r.status === "pending" &&
+            overlaps(r.startAt, r.endAt, startAt, endAt)
+        ) ||
+        (state.reservationChanges ?? []).some(
+          (r) =>
+            r.facilityId === original.facilityId &&
+            r.status === "pending" &&
+            changeDeadline(r) > now &&
+            overlaps(r.startAt, r.endAt, startAt, endAt)
+        )
+      )
+        throw new Error(
+          "Slot ini sedang diajukan pengguna lain. Pilih jadwal lain atau tunggu sampai tersedia."
+        )
       const id = `demo-change-${crypto.randomUUID()}`
       change<ScheduleChange>("reservationChanges", (items) => [
         ...items,

@@ -48,7 +48,7 @@ function slotClass(state: {
   if (state.pending)
     return cn(
       base,
-      "border-amber-400/60 bg-amber-50 text-amber-900 hover:bg-amber-100 dark:bg-amber-400/10 dark:text-amber-200"
+      "cursor-not-allowed border-amber-400/40 bg-amber-100/60 text-amber-900/50 line-through dark:bg-amber-400/10 dark:text-amber-200/50"
     )
   return cn(
     base,
@@ -107,33 +107,40 @@ export function TimeSlotPicker({
     hover > startIndex &&
     !slots
       .slice(startIndex, hover + 1)
-      .some((slot) => slot.taken || slot.past || slot.tooSoon)
+      .some((slot) => slot.taken || slot.past || slot.tooSoon || slot.pending)
       ? hover
       : -1
   const minutes = hasRange
     ? (toTimestamp(date, end) - toTimestamp(date, start)) / 60000
     : 0
   const free = slots.filter(
-    (slot) => !slot.taken && !slot.past && !slot.tooSoon
+    (slot) => !slot.taken && !slot.past && !slot.tooSoon && !slot.pending
   ).length
   const focusIndex = Math.max(
     0,
     hasRange &&
       !slots[startIndex]?.past &&
       !slots[startIndex]?.taken &&
-      !slots[startIndex]?.tooSoon
+      !slots[startIndex]?.tooSoon &&
+      !slots[startIndex]?.pending
       ? startIndex
-      : slots.findIndex((slot) => !slot.taken && !slot.past && !slot.tooSoon)
+      : slots.findIndex(
+          (slot) => !slot.taken && !slot.past && !slot.tooSoon && !slot.pending
+        )
   )
 
   function choose(index: number) {
     const next = selectSlot(slots, { start, end }, index)
     if (next.blocked) {
       setShake((current) => ({ index, count: current.count + 1 }))
+      const pendingHit =
+        next.blockedReason === "pending" || slots[index]?.pending
       setHint(
-        slots[index]?.taken
-          ? "Slot ini sudah terisi."
-          : "Rentang ini melewati slot yang terisi. Pilih jam lain."
+        pendingHit
+          ? "Slot ini sedang diajukan pengguna lain. Pilih jadwal lain atau tunggu sampai tersedia."
+          : slots[index]?.taken
+            ? "Slot ini sudah terisi."
+            : "Rentang ini melewati slot yang terisi. Pilih jam lain."
       )
       return
     }
@@ -159,7 +166,10 @@ export function TimeSlotPicker({
     while (
       target >= 0 &&
       target < slots.length &&
-      (slots[target]?.taken || slots[target]?.past || slots[target]?.tooSoon)
+      (slots[target]?.taken ||
+        slots[target]?.past ||
+        slots[target]?.tooSoon ||
+        slots[target]?.pending)
     )
       target += direction
     buttons.current[target]?.focus()
@@ -250,7 +260,8 @@ export function TimeSlotPicker({
                         (!allowElapsed && now === null) ||
                         slot.taken ||
                         slot.past ||
-                        slot.tooSoon
+                        slot.tooSoon ||
+                        slot.pending
                       }
                       tabIndex={index === focusIndex ? 0 : -1}
                       aria-pressed={selected}
@@ -262,7 +273,7 @@ export function TimeSlotPicker({
                             : slot.taken
                               ? "Terisi"
                               : slot.pending
-                                ? "Ada pengajuan, tetap dapat diajukan"
+                                ? "Menunggu persetujuan pengguna lain"
                                 : selected
                                   ? "Dipilih"
                                   : "Tersedia"
@@ -309,8 +320,9 @@ export function TimeSlotPicker({
         </p>
         {pendingRanges && (
           <p className="text-xs text-muted-foreground">
-            Kuning: ada pengajuan, belum disetujui. Tetap bisa diajukan.
-            Abu-abu: terisi atau sudah lewat.
+            Kuning: sedang diajukan pengguna lain, tidak dapat dipilih. Tunggu
+            sampai hijau (tersedia) atau abu-abu (sudah terisi). Abu-abu: terisi
+            atau sudah lewat.
           </p>
         )}
         {hint && (

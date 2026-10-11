@@ -75,7 +75,7 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers())
 
 describe("reservation deadline and retry rules", () => {
-  it("deduplicates exact retries but permits another user's pending request", async () => {
+  it("deduplicates exact retries but blocks another user's overlapping pending request", async () => {
     const { t, facility } = await setup()
     const args = {
       facilityId: facility,
@@ -86,10 +86,21 @@ describe("reservation deadline and retry rules", () => {
     const user = t.withIdentity({ subject: "user-auth" })
     const first = await user.mutation(api.reservations.create, args)
     expect(await user.mutation(api.reservations.create, args)).toBe(first)
-    const other = await t
-      .withIdentity({ subject: "other-user-auth" })
-      .mutation(api.reservations.create, args)
-    expect(other).not.toBe(first)
+    await expect(
+      t
+        .withIdentity({ subject: "other-user-auth" })
+        .mutation(api.reservations.create, args)
+    ).rejects.toThrow("sedang diajukan")
+    await expect(
+      t
+        .withIdentity({ subject: "other-user-auth" })
+        .mutation(api.reservations.create, {
+          ...args,
+          purpose: "Rapat lain",
+          startAt: startAt + 1800000,
+          endAt: startAt + 5400000,
+        })
+    ).rejects.toThrow("sedang diajukan")
   })
   it("refuses elapsed approval even when the scheduler has not run", async () => {
     const { t, facility } = await setup()
@@ -129,7 +140,7 @@ describe("reservation deadline and retry rules", () => {
     ).toHaveLength(2)
   })
   it("serializes competing approvals to a single winner", async () => {
-    const { t, facility } = await setup()
+    const { t, facility, user } = await setup()
     const args = {
       facilityId: facility,
       purpose: "Rapat",
@@ -139,9 +150,21 @@ describe("reservation deadline and retry rules", () => {
     const a = await t
       .withIdentity({ subject: "user-auth" })
       .mutation(api.reservations.create, args)
-    const b = await t
-      .withIdentity({ subject: "other-user-auth" })
-      .mutation(api.reservations.create, args)
+    // Legacy double-pending rows (inserted before the pending block) still
+    // resolve to exactly one approval via Convex OCC + auto-rejection.
+    const b = await t.run(async (ctx) => {
+      const now = Date.now()
+      return ctx.db.insert("reservations", {
+        userId: user,
+        facilityId: facility,
+        purpose: "Rapat lain",
+        startAt,
+        endAt: startAt + 3600000,
+        status: "pending",
+        createdAt: now,
+        updatedAt: now,
+      })
+    })
     const officer = t.withIdentity({ subject: "officer-auth" })
     await Promise.allSettled(
       [a, b].map((reservationId) =>
@@ -310,13 +333,9 @@ describe("schedule changes", () => {
       startAt
     )
   })
-  it("rejects a proposal when another booking wins, without cancelling the old booking", async () => {
-    const { t, user, officer, id, facility } = await approved()
-    const changeId = await user.mutation(
-      api.reservations.requestScheduleChange,
-      { reservationId: id, ...proposed }
-    )
-    const competing = await t
+  it("blocks a proposal targeting another user's pending slot", async () => {
+    const { t, user, id, facility } = await approved()
+    await t
       .withIdentity({ subject: "other-user-auth" })
       .mutation(api.reservations.create, {
         facilityId: facility,
@@ -324,13 +343,12 @@ describe("schedule changes", () => {
         startAt: proposed.startAt,
         endAt: proposed.endAt,
       })
-    await officer.mutation(api.reservations.decide, {
-      reservationId: competing,
-      decision: "approved",
-    })
-    expect(
-      (await user.query(api.reservations.listScheduleChanges, {}))[0]
-    ).toMatchObject({ id: changeId, status: "rejected" })
+    await expect(
+      user.mutation(api.reservations.requestScheduleChange, {
+        reservationId: id,
+        ...proposed,
+      })
+    ).rejects.toThrow("sedang diajukan")
     expect((await user.query(api.reservations.listMine, {}))[0]?.startAt).toBe(
       startAt
     )
@@ -349,10 +367,11 @@ describe("schedule changes", () => {
 })
 
 describe("reservation conflict rules", () => {
-  it("approves one request, rejects overlapping pending requests, and blocks later submissions", async () => {
+  it("blocks overlapping pending submissions, then blocks submissions after approval", async () => {
     const { t, facility, otherFacility } = await setup()
     const user = t.withIdentity({ subject: "user-auth" })
     const officer = t.withIdentity({ subject: "officer-auth" })
+    const other = t.withIdentity({ subject: "other-user-auth" })
     const request = (facilityId: typeof facility, start: number, end: number) =>
       user.mutation(api.reservations.create, {
         facilityId,
@@ -361,19 +380,17 @@ describe("reservation conflict rules", () => {
         endAt: end,
       })
     const winner = await request(facility, startAt, startAt + 3600000)
-    const sameTime = await t
-      .withIdentity({ subject: "other-user-auth" })
-      .mutation(api.reservations.create, {
+    await expect(
+      other.mutation(api.reservations.create, {
         facilityId: facility,
         purpose: "Rapat lain",
         startAt,
         endAt: startAt + 3600000,
       })
-    const partial = await request(
-      facility,
-      startAt + 1800000,
-      startAt + 5400000
-    )
+    ).rejects.toThrow("sedang diajukan")
+    await expect(
+      request(facility, startAt + 1800000, startAt + 5400000)
+    ).rejects.toThrow("sedang diajukan")
     const adjacent = await request(
       facility,
       startAt + 3600000,
@@ -392,19 +409,13 @@ describe("reservation conflict rules", () => {
     const byId = (id: typeof winner) =>
       state.reservations.find((item) => item._id === id)
     expect(byId(winner)?.status).toBe("approved")
-    for (const id of [sameTime, partial]) {
-      expect(byId(id)).toMatchObject({
-        status: "rejected",
-        decisionNote: AUTO_REJECTION_NOTE,
-      })
-    }
     expect(byId(adjacent)?.status).toBe("pending")
     expect(byId(separate)?.status).toBe("pending")
     expect(
       state.events.filter(
         (event) => event.action === "reservation.auto_rejected_conflict"
       )
-    ).toHaveLength(2)
+    ).toHaveLength(0)
     await expect(request(facility, startAt, startAt + 1800000)).rejects.toThrow(
       "Slot sudah digunakan"
     )
@@ -416,6 +427,47 @@ describe("reservation conflict rules", () => {
       reservationId: separate,
       decision: "approved",
     })
+  })
+
+  it("auto-rejects legacy overlapping pending rows when one is approved", async () => {
+    const { t, facility, user } = await setup()
+    const officer = t.withIdentity({ subject: "officer-auth" })
+    const now = Date.now()
+    const base = {
+      userId: user,
+      facilityId: facility,
+      purpose: "Rapat",
+      startAt,
+      endAt: startAt + 3600000,
+      createdAt: now,
+      updatedAt: now,
+    }
+    const winner = await t.run(async (ctx) =>
+      ctx.db.insert("reservations", { ...base, status: "pending" })
+    )
+    const loser = await t.run(async (ctx) =>
+      ctx.db.insert("reservations", { ...base, status: "pending" })
+    )
+    await officer.mutation(api.reservations.decide, {
+      reservationId: winner,
+      decision: "approved",
+    })
+    const state = await t.run(async (ctx) => ({
+      reservations: await ctx.db.query("reservations").collect(),
+      events: await ctx.db.query("auditEvents").collect(),
+    }))
+    const byId = (id: typeof winner) =>
+      state.reservations.find((item) => item._id === id)
+    expect(byId(winner)?.status).toBe("approved")
+    expect(byId(loser)).toMatchObject({
+      status: "rejected",
+      decisionNote: AUTO_REJECTION_NOTE,
+    })
+    expect(
+      state.events.filter(
+        (event) => event.action === "reservation.auto_rejected_conflict"
+      )
+    ).toHaveLength(1)
   })
 
   it("reconciles old pending conflicts without changing approved reservations", async () => {

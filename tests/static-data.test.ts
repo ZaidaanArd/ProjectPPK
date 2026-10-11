@@ -263,7 +263,7 @@ describe("static data mode", () => {
     expect(availability.reservations).toHaveLength(1)
   })
 
-  it("rejects overlapping pending requests when one is approved", async () => {
+  it("blocks overlapping pending requests, then blocks requests after approval", async () => {
     const startAt = Date.parse("2027-10-01T10:00:00+07:00")
     const request = (facilityId: string, start: number, end: number) =>
       staticMutation("reservations:create", {
@@ -275,11 +275,9 @@ describe("static data mode", () => {
     const winner = await request("demo-aula", startAt, startAt + 3600000)
     const sameTime = await request("demo-aula", startAt, startAt + 3600000)
     expect(sameTime).toBe(winner)
-    const partial = await request(
-      "demo-aula",
-      startAt + 1800000,
-      startAt + 5400000
-    )
+    await expect(
+      request("demo-aula", startAt + 1800000, startAt + 5400000)
+    ).rejects.toThrow("sedang diajukan")
     const adjacent = await request(
       "demo-aula",
       startAt + 3600000,
@@ -295,12 +293,6 @@ describe("static data mode", () => {
     const byId = (id: string) =>
       getStaticData().reservations.find((item) => item.id === id)
     expect(byId(winner)?.status).toBe("approved")
-    for (const id of [partial]) {
-      expect(byId(id)).toMatchObject({
-        status: "rejected",
-        decisionNote: AUTO_REJECTION_NOTE,
-      })
-    }
     expect(byId(adjacent)?.status).toBe("pending")
     expect(byId(otherFacility)?.status).toBe("pending")
     await staticMutation("reservations:decide", {
