@@ -156,3 +156,87 @@ describe("facility removal", () => {
     ).toMatchObject({ status: "inactive" })
   })
 })
+
+describe("facility photos", () => {
+  const input = {
+    name: "Ruang Foto",
+    type: "Ruang",
+    location: "Gedung Foto",
+    capacity: 12,
+    description: "Ruang dengan foto",
+  }
+  // convex-test does not record a file's content type; set it like
+  // production storage does.
+  const store = (t: TestContext, type: string, bytes = 16) =>
+    t.run(async (ctx) => {
+      const id = await ctx.storage.store(
+        new Blob([new Uint8Array(bytes)], { type })
+      )
+      await ctx.db.patch(
+        "_storage" as never,
+        id as never,
+        {
+          contentType: type,
+        } as never
+      )
+      return id
+    })
+
+  it("adds, replaces, and removes a cover photo, deleting unused files", async () => {
+    const t = convexTest(schema, modules)
+    await seedFacility(t)
+    const admin = t.withIdentity({ subject: "facility-admin" })
+    const first = await store(t, "image/png")
+    const id = await admin.mutation(api.facilities.create, {
+      ...input,
+      photoStorageId: first,
+    })
+    const listed = await t.query(api.facilities.listPublic, {})
+    expect(listed.find((item) => item.id === id)?.photoUrl).toEqual(
+      expect.any(String)
+    )
+    // Facilities without a photo fall back to an illustration in the UI.
+    expect(listed.find((item) => item.name === "Ruang Uji")?.photoUrl).toBe(
+      null
+    )
+
+    const second = await store(t, "image/webp")
+    await admin.mutation(api.facilities.update, {
+      facilityId: id,
+      ...input,
+      photo: second,
+    })
+    expect(await t.run((ctx) => ctx.storage.getUrl(first))).toBe(null)
+
+    // Omitting `photo` keeps the current one.
+    await admin.mutation(api.facilities.update, { facilityId: id, ...input })
+    expect(
+      (await t.run((ctx) => ctx.db.get("facilities", id)))?.photoStorageId
+    ).toBe(second)
+
+    await admin.mutation(api.facilities.update, {
+      facilityId: id,
+      ...input,
+      photo: null,
+    })
+    expect(
+      (await t.run((ctx) => ctx.db.get("facilities", id)))?.photoStorageId
+    ).toBeUndefined()
+    expect(await t.run((ctx) => ctx.storage.getUrl(second))).toBe(null)
+  })
+
+  it("rejects files that are not JPG, PNG, or WebP and only admins upload", async () => {
+    const t = convexTest(schema, modules)
+    await seedFacility(t)
+    const admin = t.withIdentity({ subject: "facility-admin" })
+    const gif = await store(t, "image/gif")
+    await expect(
+      admin.mutation(api.facilities.create, { ...input, photoStorageId: gif })
+    ).rejects.toThrow("Format foto harus JPG, PNG, atau WebP")
+    await expect(
+      t
+        .withIdentity({ subject: "facility-user" })
+        .mutation(api.facilities.generatePhotoUploadUrl, {})
+    ).rejects.toThrow("tidak memiliki izin")
+  })
+})

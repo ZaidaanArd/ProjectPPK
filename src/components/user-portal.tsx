@@ -10,7 +10,7 @@ import {
 import { isStaticMode } from "@/lib/data-mode"
 import { toastError } from "@/lib/toast"
 import { saveStaticPhoto } from "@/lib/static-data"
-import { facilityIllustration } from "@/lib/facility-illustrations"
+import { facilityImage } from "@/lib/facility-illustrations"
 import { formatMaintenance } from "@/lib/maintenance-display"
 import {
   displayDuration,
@@ -1308,14 +1308,7 @@ export function ReservationForm({
           </p>
         )}
         <FormSummaryBar
-          image={
-            selectedFacility
-              ? facilityIllustration(
-                  selectedFacility.name,
-                  selectedFacility.type
-                )
-              : undefined
-          }
+          image={selectedFacility ? facilityImage(selectedFacility) : undefined}
           title={selectedFacility?.name ?? "Belum memilih fasilitas"}
           detail={
             scheduleReady
@@ -1911,14 +1904,7 @@ export function ReportForm() {
           </p>
         )}
         <FormSummaryBar
-          image={
-            selectedFacility
-              ? facilityIllustration(
-                  selectedFacility.name,
-                  selectedFacility.type
-                )
-              : undefined
-          }
+          image={selectedFacility ? facilityImage(selectedFacility) : undefined}
           title={selectedFacility?.name ?? "Belum memilih fasilitas"}
           detail={
             detailsReady

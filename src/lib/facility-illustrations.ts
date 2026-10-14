@@ -58,3 +58,24 @@ export function facilityIllustration(name: string, type: string) {
     ? illustrations[category.name]
     : illustrations["Ruang Seminar 2"]
 }
+
+/**
+ * The image to show for a facility: the admin-uploaded photo when there is
+ * one, otherwise the illustration matched to its name or type. Uploaded
+ * photos are served from Convex storage, so render them unoptimized.
+ */
+export function facilityImage(facility: {
+  name: string
+  type: string
+  photoUrl?: string | null
+}) {
+  if (facility.photoUrl) {
+    return {
+      src: facility.photoUrl,
+      alt: `Foto ${facility.name}`,
+      isPhoto: true,
+    }
+  }
+  const illustration = facilityIllustration(facility.name, facility.type)
+  return { src: illustration.src, alt: illustration.alt, isPhoto: false }
+}

@@ -4,6 +4,7 @@ import { mutation, query } from "./_generated/server"
 import type { QueryCtx, MutationCtx } from "./_generated/server"
 import type { Id } from "./_generated/dataModel"
 import { recordAuditEvent } from "./lib/audit"
+import { validateUploadedPhoto } from "./lib/photos"
 import { requireRole } from "./lib/authz"
 import {
   changeDeadline,
@@ -49,6 +50,7 @@ const publicFacilityValidator = v.object({
   description: v.string(),
   status: facilityStatusValidator,
   handlingNotice: v.optional(v.string()),
+  photoUrl: v.union(v.string(), v.null()),
   // The earliest scheduled repair: ongoing if it has started, else upcoming.
   nextMaintenance: v.union(timeRangeValidator, v.null()),
   createdAt: v.number(),
@@ -72,9 +74,14 @@ const managedFacilityValidator = v.object({
   capacity: v.number(),
   description: v.string(),
   status: facilityStatusValidator,
+  photoUrl: v.union(v.string(), v.null()),
   createdAt: v.number(),
   updatedAt: v.number(),
 })
+
+function photoUrl(ctx: QueryCtx, storageId: Id<"_storage"> | undefined) {
+  return storageId ? ctx.storage.getUrl(storageId) : Promise.resolve(null)
+}
 
 export const listPublic = query({
   args: {},
@@ -105,6 +112,7 @@ export const listPublic = query({
             description: facility.description,
             status: handling.status,
             handlingNotice: handling.handlingNotice,
+            photoUrl: await photoUrl(ctx, facility.photoStorageId),
             nextMaintenance: await nextMaintenance(ctx, facility._id),
             createdAt: facility.createdAt,
           }
@@ -219,19 +227,22 @@ export const listManaged = query({
     await requireRole(ctx, ["admin"])
     const facilities = await ctx.db.query("facilities").collect()
 
-    return facilities
-      .sort((a, b) => a.name.localeCompare(b.name, "id"))
-      .map((facility) => ({
-        id: facility._id,
-        name: facility.name,
-        type: facility.type,
-        location: facility.location,
-        capacity: facility.capacity,
-        description: facility.description,
-        status: facility.status,
-        createdAt: facility.createdAt,
-        updatedAt: facility.updatedAt,
-      }))
+    return Promise.all(
+      facilities
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .map(async (facility) => ({
+          id: facility._id,
+          name: facility.name,
+          type: facility.type,
+          location: facility.location,
+          capacity: facility.capacity,
+          description: facility.description,
+          status: facility.status,
+          photoUrl: await photoUrl(ctx, facility.photoStorageId),
+          createdAt: facility.createdAt,
+          updatedAt: facility.updatedAt,
+        }))
+    )
   },
 })
 
@@ -264,12 +275,24 @@ const facilityInput = {
   description: v.string(),
 }
 
+export const generatePhotoUploadUrl = mutation({
+  args: {},
+  returns: v.string(),
+  handler: async (ctx) => {
+    await requireRole(ctx, ["admin"])
+    return ctx.storage.generateUploadUrl()
+  },
+})
+
 export const create = mutation({
-  args: facilityInput,
+  args: { ...facilityInput, photoStorageId: v.optional(v.id("_storage")) },
   returns: v.id("facilities"),
   handler: async (ctx, args) => {
     const actor = await requireRole(ctx, ["admin"])
     validateFacilityInput(args)
+    if (args.photoStorageId) {
+      await validateUploadedPhoto(ctx, args.photoStorageId, "Foto fasilitas")
+    }
     const now = Date.now()
     const id = await ctx.db.insert("facilities", {
       name: args.name.trim(),
@@ -277,6 +300,7 @@ export const create = mutation({
       location: args.location.trim(),
       capacity: args.capacity,
       description: args.description.trim(),
+      photoStorageId: args.photoStorageId,
       status: "active",
       createdBy: actor._id,
       createdAt: now,
@@ -297,7 +321,12 @@ export const create = mutation({
 })
 
 export const update = mutation({
-  args: { facilityId: v.id("facilities"), ...facilityInput },
+  args: {
+    facilityId: v.id("facilities"),
+    ...facilityInput,
+    // Omitted: keep the current photo. null: remove it. An id: replace it.
+    photo: v.optional(v.union(v.id("_storage"), v.null())),
+  },
   returns: v.null(),
   handler: async (ctx, args) => {
     const actor = await requireRole(ctx, ["admin"])
@@ -308,14 +337,28 @@ export const update = mutation({
     }
 
     validateFacilityInput(args)
+    if (args.photo) {
+      await validateUploadedPhoto(ctx, args.photo, "Foto fasilitas")
+    }
     await ctx.db.patch("facilities", facility._id, {
       name: args.name.trim(),
       type: args.type.trim(),
       location: args.location.trim(),
       capacity: args.capacity,
       description: args.description.trim(),
+      ...(args.photo !== undefined
+        ? { photoStorageId: args.photo ?? undefined }
+        : {}),
       updatedAt: Date.now(),
     })
+    // The replaced or removed photo is no longer referenced anywhere.
+    if (
+      args.photo !== undefined &&
+      facility.photoStorageId &&
+      facility.photoStorageId !== args.photo
+    ) {
+      await ctx.storage.delete(facility.photoStorageId)
+    }
 
     await recordAuditEvent(ctx, {
       entityType: "facility",

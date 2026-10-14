@@ -152,7 +152,7 @@ export function FormSummaryBar({
   detail,
   children,
 }: {
-  image?: { src: string; alt: string }
+  image?: { src: string; alt: string; isPhoto?: boolean }
   title: string
   detail: ReactNode
   children: ReactNode
@@ -167,6 +167,7 @@ export function FormSummaryBar({
               alt=""
               fill
               sizes="48px"
+              unoptimized={image.isPhoto}
               className="object-cover"
             />
           )}

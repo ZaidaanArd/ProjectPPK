@@ -29,6 +29,8 @@ export type FacilityItem = {
   fotoUrl: string
   /** Galeri foto ruangan — opsional biar mock lama tidak jebol. Maks 5 per fasilitas. */
   photos?: FacilityPhoto[]
+  /** True when the image is a real photo uploaded by an admin, not an illustration. */
+  fotoAsli?: boolean
   status: FacilityStatus
   /**
    * Jadwal perbaikan terdekat (berlangsung atau akan datang). Hanya rentang

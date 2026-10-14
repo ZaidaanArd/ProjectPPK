@@ -19,6 +19,7 @@ import type * as lib_authz from "../lib/authz.js";
 import type * as lib_facilityHandling from "../lib/facilityHandling.js";
 import type * as lib_maintenance from "../lib/maintenance.js";
 import type * as lib_notifications from "../lib/notifications.js";
+import type * as lib_photos from "../lib/photos.js";
 import type * as lib_reportHandling from "../lib/reportHandling.js";
 import type * as lib_reservationPolicy from "../lib/reservationPolicy.js";
 import type * as lib_reservationState from "../lib/reservationState.js";
@@ -50,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   "lib/facilityHandling": typeof lib_facilityHandling;
   "lib/maintenance": typeof lib_maintenance;
   "lib/notifications": typeof lib_notifications;
+  "lib/photos": typeof lib_photos;
   "lib/reportHandling": typeof lib_reportHandling;
   "lib/reservationPolicy": typeof lib_reservationPolicy;
   "lib/reservationState": typeof lib_reservationState;

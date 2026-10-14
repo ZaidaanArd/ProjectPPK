@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select"
 import { useAppQuery as useQuery } from "@/lib/data-hooks"
 import { ClosureBanner, DisruptionBanner } from "@/components/disruption-banner"
-import { facilityIllustration } from "@/lib/facility-illustrations"
+import { facilityImage } from "@/lib/facility-illustrations"
 import { isOngoing } from "@/lib/maintenance-display"
 import {
   matchKapasitas,
@@ -240,7 +240,7 @@ export function PublicFacilities() {
   const cards = useMemo<FacilityItem[]>(
     () =>
       (facilities ?? []).map((item) => {
-        const illustration = facilityIllustration(item.name, item.type)
+        const illustration = facilityImage(item)
         return {
           id: item.id,
           nama: item.name,
@@ -249,9 +249,10 @@ export function PublicFacilities() {
           kapasitas: item.capacity,
           deskripsi: item.description,
           fotoUrl: illustration.src,
+          fotoAsli: illustration.isPhoto,
           photos: [
             {
-              id: `${item.id}-illustration`,
+              id: `${item.id}-${illustration.isPhoto ? "photo" : "illustration"}`,
               url: illustration.src,
               alt: illustration.alt,
               sortOrder: 0,

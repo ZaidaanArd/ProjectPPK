@@ -88,7 +88,7 @@ export function FacilityCard({
               {maintenance ? "Dalam Perbaikan" : "Nonaktif"}
             </span>
           )}
-          {illustrated && (
+          {illustrated && !facility.fotoAsli && (
             <span className="public-catalog-illustration absolute bottom-2 left-2 rounded-full px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
               Ilustrasi
             </span>

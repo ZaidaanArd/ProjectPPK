@@ -147,7 +147,9 @@ export function SlotGridModal({
           id="slot-foto-heading"
           className="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
         >
-          {illustrated ? "Ilustrasi fasilitas" : "Foto ruangan"}
+          {illustrated && !facility.fotoAsli
+            ? "Ilustrasi fasilitas"
+            : "Foto ruangan"}
         </h3>
         <div className="mt-2">
           <PhotoGallery

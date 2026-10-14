@@ -41,6 +41,9 @@ export default defineSchema({
     location: v.string(),
     capacity: v.number(),
     description: v.string(),
+    // Cover photo uploaded by an admin; without it the UI shows an
+    // illustration matched to the facility type.
+    photoStorageId: v.optional(v.id("_storage")),
     status: facilityStatusValidator,
     createdBy: v.id("profiles"),
     createdAt: v.number(),

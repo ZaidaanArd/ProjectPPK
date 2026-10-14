@@ -5,6 +5,7 @@ import { closeWindow } from "./maintenance"
 import { closeFacility, notifyReopening } from "./emergencyClosures"
 import { createIssue, resolveReportIssues } from "./facilityIssues"
 import { recordAuditEvent } from "./lib/audit"
+import { validateUploadedPhoto } from "./lib/photos"
 import { requireRole } from "./lib/authz"
 import {
   maintenanceStatusValidator,
@@ -12,9 +13,6 @@ import {
   handlingImpactValidator,
 } from "./lib/validators"
 import { assertReportTransition } from "./lib/workflows"
-
-const MAX_PHOTO_BYTES = 5 * 1024 * 1024
-const PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
 
 const reportListItemValidator = v.object({
   id: v.id("reports"),
@@ -61,19 +59,11 @@ export const create = mutation({
 
     let photoContentType: string | undefined
     if (args.photoStorageId) {
-      const metadata = await ctx.db.system.get(args.photoStorageId)
-      if (!metadata) {
-        throw new ConvexError("Foto laporan tidak ditemukan")
-      }
-      if (metadata.size > MAX_PHOTO_BYTES) {
-        await ctx.storage.delete(args.photoStorageId)
-        throw new ConvexError("Ukuran foto maksimal 5 MB")
-      }
-      if (!metadata.contentType || !PHOTO_TYPES.has(metadata.contentType)) {
-        await ctx.storage.delete(args.photoStorageId)
-        throw new ConvexError("Format foto harus JPG, PNG, atau WebP")
-      }
-      photoContentType = metadata.contentType
+      photoContentType = await validateUploadedPhoto(
+        ctx,
+        args.photoStorageId,
+        "Foto laporan"
+      )
     }
 
     const now = Date.now()

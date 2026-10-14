@@ -53,6 +53,7 @@ type Facility = {
   location: string
   capacity: number
   description: string
+  photoStorageId?: string
   status: FacilityStatus
   createdAt: number
   updatedAt: number
@@ -682,17 +683,19 @@ async function loadPhotos() {
   if (typeof indexedDB === "undefined") return
   try {
     const db = await photoDb()
-    for (const report of state.reports) {
-      if (!report.photoStorageId) continue
+    const ids = [...state.reports, ...state.facilities]
+      .map((item) => item.photoStorageId)
+      .filter((id): id is string => Boolean(id))
+    for (const id of ids) {
       const blob = await new Promise<Blob | undefined>((resolve) => {
         const request = db
           .transaction("photos", "readonly")
           .objectStore("photos")
-          .get(report.photoStorageId!)
+          .get(id)
         request.onsuccess = () => resolve(request.result as Blob | undefined)
         request.onerror = () => resolve(undefined)
       })
-      if (blob) photoUrls.set(report.photoStorageId, URL.createObjectURL(blob))
+      if (blob) photoUrls.set(id, URL.createObjectURL(blob))
     }
     db.close()
     state = { ...state }
@@ -752,6 +755,9 @@ function facilityName(id: string) {
     state.facilities.find((facility) => facility.id === id)?.name ??
     "Fasilitas dihapus"
   )
+}
+function facilityPhotoUrl(storageId: string | undefined) {
+  return storageId ? (photoUrls.get(storageId) ?? null) : null
 }
 function reportItem(report: Report) {
   return {
@@ -855,7 +861,16 @@ export function staticQuery(name: string, args: unknown): unknown {
       return state.facilities
         .filter((f) => f.status !== "inactive")
         .map(
-          ({ id, name, type, location, capacity, description, createdAt }) => {
+          ({
+            id,
+            name,
+            type,
+            location,
+            capacity,
+            description,
+            photoStorageId,
+            createdAt,
+          }) => {
             const next = maintenanceWindows()
               .filter(
                 (item) =>
@@ -870,6 +885,7 @@ export function staticQuery(name: string, args: unknown): unknown {
               capacity,
               description,
               ...facilityHandling(id),
+              photoUrl: facilityPhotoUrl(photoStorageId),
               nextMaintenance: next
                 ? { startAt: next.startAt, endAt: next.endAt }
                 : null,
@@ -914,7 +930,12 @@ export function staticQuery(name: string, args: unknown): unknown {
       }
     }
     case "facilities:listManaged":
-      return state.facilities
+      return [...state.facilities]
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .map((facility) => ({
+          ...facility,
+          photoUrl: facilityPhotoUrl(facility.photoStorageId),
+        }))
     case "reservations:listMine":
       return state.reservations
         .filter((r) => r.userId === account().id)
@@ -2296,6 +2317,7 @@ export async function staticMutation(
           location: value(args, "location"),
           capacity: Number(field(args, "capacity")),
           description: value(args, "description"),
+          photoStorageId: value(args, "photoStorageId") || undefined,
           status: "active",
           createdAt: now,
           updatedAt: now,
@@ -2317,6 +2339,13 @@ export async function staticMutation(
                 location: value(args, "location"),
                 capacity: Number(field(args, "capacity")),
                 description: value(args, "description"),
+                // Omitted keeps the photo; null removes it; an id replaces it.
+                ...(field(args, "photo") !== undefined
+                  ? {
+                      photoStorageId:
+                        (field(args, "photo") as string | null) ?? undefined,
+                    }
+                  : {}),
                 updatedAt: now,
               }
             : f
@@ -2324,6 +2353,8 @@ export async function staticMutation(
       )
       return null
     }
+    case "facilities:generatePhotoUploadUrl":
+      throw new Error("Mode demo menyimpan foto lewat saveStaticPhoto")
     case "facilities:setStatus": {
       requireRole(["admin"])
       const id = value(args, "facilityId")

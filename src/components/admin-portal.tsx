@@ -11,12 +11,13 @@ import {
 } from "react"
 import { useAppMutation as useMutation } from "@/lib/data-hooks"
 import { isStaticMode } from "@/lib/data-mode"
-import { downloadStaticCsv } from "@/lib/static-data"
+import { downloadStaticCsv, saveStaticPhoto } from "@/lib/static-data"
 import { toast } from "sonner"
 import { runWithToast, toastError } from "@/lib/toast"
 import {
   IconBuilding,
   IconCalendar,
+  IconCalendarPlus,
   IconChevronDown,
   IconDownload,
   IconFileAlert,
@@ -34,6 +35,11 @@ import {
   DashboardMetricCard,
   DashboardMetricPanel,
 } from "@/components/dashboard-metric-card"
+import {
+  FacilityPhotoField,
+  emptyPhoto,
+  type FacilityPhotoValue,
+} from "@/components/facility-photo-field"
 import { PortalPageHeader } from "@/components/portal-page-header"
 import { MaintenanceReminderSection } from "@/components/staff-ops-panels"
 import { PortalListSkeleton } from "@/components/portal-skeletons"
@@ -65,7 +71,7 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuthenticatedQuery } from "@/lib/use-authenticated-query"
-import { facilityIllustration } from "@/lib/facility-illustrations"
+import { facilityImage } from "@/lib/facility-illustrations"
 import { cn } from "@/lib/utils"
 import { displayDuration } from "@/lib/reservation-slots"
 import { useScheduleClock } from "@/hooks/use-schedule-clock"
@@ -352,6 +358,7 @@ type FacilityDraft = {
   location: string
   capacity: string
   description: string
+  photo: FacilityPhotoValue
 }
 
 const emptyFacility: FacilityDraft = {
@@ -360,7 +367,32 @@ const emptyFacility: FacilityDraft = {
   location: "",
   capacity: "",
   description: "",
+  photo: emptyPhoto,
 }
+
+const facilitySortLabels = {
+  newest: "Terbaru ditambahkan",
+  oldest: "Terlama ditambahkan",
+  name: "Nama A–Z",
+  capacity: "Kapasitas terbesar",
+} as const
+type FacilitySort = keyof typeof facilitySortLabels
+
+const facilityAgeLabels = {
+  all: "Semua waktu",
+  "7": "7 hari terakhir",
+  "30": "30 hari terakhir",
+  "90": "3 bulan terakhir",
+} as const
+type FacilityAge = keyof typeof facilityAgeLabels
+
+const DAY_MS = 24 * 60 * 60 * 1000
+const addedDate = new Intl.DateTimeFormat("id-ID", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "Asia/Jakarta",
+})
 
 type FacilityEditDraft = FacilityDraft & {
   id: Id<"facilities">
@@ -466,6 +498,13 @@ function FacilityForm({
           required
         />
       </div>
+      <FacilityPhotoField
+        value={draft.photo}
+        onChange={(photo) => onChange({ ...draft, photo })}
+        name={draft.name}
+        type={draft.type}
+        disabled={pending}
+      />
       {message && (
         <p
           role="alert"
@@ -514,6 +553,13 @@ export function AdminFacilities() {
   const updateFacility = useMutation(api.facilities.update)
   const setStatus = useMutation(api.facilities.setStatus)
   const removeFacility = useMutation(api.facilities.remove)
+  const generatePhotoUploadUrl = useMutation(
+    api.facilities.generatePhotoUploadUrl
+  )
+  const [sort, setSort] = useState<FacilitySort>("newest")
+  const [age, setAge] = useState<FacilityAge>("all")
+  // NaN before the clock starts: age filters and the "Baru" badge stay off.
+  const now = useScheduleClock() ?? Number.NaN
   const [createDraft, setCreateDraft] = useState<FacilityDraft | null>(null)
   const [editDraft, setEditDraft] = useState<FacilityEditDraft | null>(null)
   const [createMessage, setCreateMessage] = useState("")
@@ -530,13 +576,34 @@ export function AdminFacilities() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const searchTerm = search.trim().toLowerCase()
-  const visibleFacilities = (facilities ?? []).filter(
-    (facility) =>
-      (statusFilter === "all" || facility.status === statusFilter) &&
-      `${facility.name} ${facility.type} ${facility.location}`
-        .toLowerCase()
-        .includes(searchTerm)
-  )
+  const visibleFacilities = (facilities ?? [])
+    .filter(
+      (facility) =>
+        (statusFilter === "all" || facility.status === statusFilter) &&
+        (age === "all" || now - facility.createdAt <= Number(age) * DAY_MS) &&
+        `${facility.name} ${facility.type} ${facility.location}`
+          .toLowerCase()
+          .includes(searchTerm)
+    )
+    .sort((a, b) => {
+      if (sort === "oldest") return a.createdAt - b.createdAt
+      if (sort === "name") return a.name.localeCompare(b.name, "id")
+      if (sort === "capacity") return b.capacity - a.capacity
+      return b.createdAt - a.createdAt
+    })
+
+  /** Uploads a picked photo and returns its storage id. */
+  async function uploadPhoto(file: File): Promise<Id<"_storage">> {
+    if (isStaticMode) return (await saveStaticPhoto(file)) as Id<"_storage">
+    const uploadUrl = await generatePhotoUploadUrl({})
+    const upload = await fetch(uploadUrl, {
+      method: "POST",
+      headers: { "Content-Type": file.type },
+      body: file,
+    })
+    if (!upload.ok) throw new Error("Unggah foto gagal")
+    return ((await upload.json()) as { storageId: Id<"_storage"> }).storageId
+  }
 
   function valuesFrom(draft: FacilityDraft) {
     return {
@@ -566,7 +633,10 @@ export function AdminFacilities() {
     setCreating(true)
     setCreateMessage("")
     try {
-      await createFacility(valuesFrom(createDraft))
+      const photoStorageId = createDraft.photo.file
+        ? await uploadPhoto(createDraft.photo.file)
+        : undefined
+      await createFacility({ ...valuesFrom(createDraft), photoStorageId })
       toast.success(`Fasilitas ${createDraft.name.trim()} ditambahkan`)
       setCreateDraft(null)
     } catch (error) {
@@ -583,9 +653,16 @@ export function AdminFacilities() {
     setEditMessage("")
     setSuccessMessage("")
     try {
+      // Omitted keeps the current photo; null switches back to the default.
+      const photo = editDraft.photo.file
+        ? await uploadPhoto(editDraft.photo.file)
+        : editDraft.photo.remove
+          ? null
+          : undefined
       await updateFacility({
         facilityId: editDraft.id,
         ...valuesFrom(editDraft),
+        photo,
       })
       toast.success("Perubahan fasilitas disimpan")
       setEditDraft(null)
@@ -633,7 +710,7 @@ export function AdminFacilities() {
             setEditDraft(null)
             setCreateMessage("")
             setSuccessMessage("")
-            setCreateDraft({ ...emptyFacility })
+            setCreateDraft({ ...emptyFacility, photo: { ...emptyPhoto } })
           }}
         >
           <IconPlus aria-hidden="true" /> Tambah fasilitas
@@ -684,6 +761,58 @@ export function AdminFacilities() {
               <SelectItem value="active">Aktif</SelectItem>
               <SelectItem value="maintenance">Perawatan</SelectItem>
               <SelectItem value="inactive">Disembunyikan</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-1.5">
+          <Label id="facility-age-filter-label">Ditambahkan</Label>
+          <Select
+            value={age}
+            onValueChange={(value) => value && setAge(value as FacilityAge)}
+          >
+            <SelectTrigger
+              aria-labelledby="facility-age-filter-label"
+              className="w-44"
+            >
+              <SelectValue>
+                {(value: string | null) =>
+                  facilityAgeLabels[value as FacilityAge] ?? "Semua waktu"
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(facilityAgeLabels) as FacilityAge[]).map((key) => (
+                <SelectItem key={key} value={key}>
+                  {facilityAgeLabels[key]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-1.5">
+          <Label id="facility-sort-label">Urutkan</Label>
+          <Select
+            value={sort}
+            onValueChange={(value) => value && setSort(value as FacilitySort)}
+          >
+            <SelectTrigger
+              aria-labelledby="facility-sort-label"
+              className="w-48"
+            >
+              <SelectValue>
+                {(value: string | null) =>
+                  facilitySortLabels[value as FacilitySort] ?? "Urutkan"
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(facilitySortLabels) as FacilitySort[]).map(
+                (key) => (
+                  <SelectItem key={key} value={key}>
+                    {facilitySortLabels[key]}
+                  </SelectItem>
+                )
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -845,140 +974,165 @@ export function AdminFacilities() {
           Tidak ada fasilitas yang cocok dengan pencarian atau filter.
         </Card>
       ) : (
-        <div className="columns-1 gap-4 sm:columns-2 xl:columns-3">
+        <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {visibleFacilities.map((facility) => {
-            const illustration = facilityIllustration(
-              facility.name,
-              facility.type
-            )
+            const image = facilityImage(facility)
+            const isNew = now - facility.createdAt <= 7 * DAY_MS
+            const openEdit = () => {
+              setCreateDraft(null)
+              setEditMessage("")
+              setSuccessMessage("")
+              setEditDraft({
+                id: facility.id,
+                originalName: facility.name,
+                name: facility.name,
+                type: facility.type,
+                location: facility.location,
+                capacity: String(facility.capacity),
+                description: facility.description,
+                photo: { ...emptyPhoto, currentUrl: facility.photoUrl },
+              })
+            }
             return (
-              <Card
-                key={facility.id}
-                className="mb-4 break-inside-avoid gap-0 overflow-hidden p-0 transition-shadow duration-200 hover:shadow-lg"
-              >
-                <div className="relative aspect-[2/1] overflow-hidden bg-muted/30">
-                  <Image
-                    src={illustration.src}
-                    alt={illustration.alt}
-                    fill
-                    sizes="(max-width: 639px) 100vw, (max-width: 1279px) 50vw, 33vw"
-                    className="object-cover object-top"
-                  />
-                  <Badge
-                    variant="secondary"
-                    className={cn(
-                      "absolute top-3 right-3 border border-background/70 bg-background/90 shadow-sm backdrop-blur",
-                      facility.status === "active" &&
-                        "text-emerald-800 dark:text-emerald-300",
-                      facility.status === "maintenance" &&
-                        "text-amber-800 dark:text-amber-300"
-                    )}
+              <li key={facility.id}>
+                <Card
+                  className={cn(
+                    "group h-full gap-0 overflow-hidden p-0 transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-lg",
+                    facility.status === "inactive" && "opacity-75"
+                  )}
+                >
+                  <button
+                    type="button"
+                    onClick={openEdit}
+                    aria-label={`Ubah ${facility.name}`}
+                    className="relative block aspect-[16/9] overflow-hidden bg-muted/30 text-left focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:outline-none focus-visible:ring-inset"
                   >
-                    {statusLabel[facility.status]}
-                  </Badge>
-                </div>
-                <div className="flex flex-1 flex-col p-4 sm:p-5">
-                  <div className="flex items-start justify-between gap-3">
+                    <Image
+                      src={image.src}
+                      alt={image.alt}
+                      fill
+                      unoptimized={image.isPhoto}
+                      sizes="(max-width: 639px) 100vw, (max-width: 1279px) 50vw, 33vw"
+                      className={cn(
+                        "object-cover transition-transform duration-500 group-hover:scale-[1.03]",
+                        !image.isPhoto && "object-top"
+                      )}
+                    />
+                    <span className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/10" />
+                    <span className="absolute top-3 left-3 flex flex-wrap gap-1.5">
+                      <Badge
+                        variant="secondary"
+                        className={cn(
+                          "border border-background/70 bg-background/90 shadow-sm backdrop-blur",
+                          facility.status === "active" &&
+                            "text-emerald-800 dark:text-emerald-300",
+                          facility.status === "maintenance" &&
+                            "text-amber-800 dark:text-amber-300"
+                        )}
+                      >
+                        {statusLabel[facility.status]}
+                      </Badge>
+                      {isNew && (
+                        <Badge className="bg-pink-600 text-white shadow-sm">
+                          Baru
+                        </Badge>
+                      )}
+                    </span>
+                    {!image.isPhoto && (
+                      <span className="absolute right-3 bottom-3 rounded-full bg-black/45 px-2.5 py-0.5 text-[11px] font-medium text-white backdrop-blur">
+                        Ilustrasi · belum ada foto
+                      </span>
+                    )}
+                    <span className="absolute top-3 right-3 grid size-8 place-items-center rounded-full bg-background/90 text-foreground opacity-0 shadow-sm backdrop-blur transition-opacity group-hover:opacity-100">
+                      <IconPencil size={15} aria-hidden="true" />
+                    </span>
+                  </button>
+                  <div className="flex flex-1 flex-col p-4 sm:p-5">
                     <h2 className="font-heading text-base font-semibold break-words">
                       {facility.name}
                     </h2>
-                    <Button
-                      type="button"
-                      size="icon-sm"
-                      variant="outline"
-                      aria-label={`Ubah ${facility.name}`}
-                      title={`Ubah ${facility.name}`}
-                      onClick={() => {
-                        setCreateDraft(null)
-                        setEditMessage("")
-                        setSuccessMessage("")
-                        setEditDraft({
-                          id: facility.id,
-                          originalName: facility.name,
-                          name: facility.name,
-                          type: facility.type,
-                          location: facility.location,
-                          capacity: String(facility.capacity),
-                          description: facility.description,
-                        })
-                      }}
-                    >
-                      <IconPencil aria-hidden="true" />
-                    </Button>
-                  </div>
-                  <p className="mt-1 flex items-start gap-1.5 text-sm break-words text-muted-foreground">
-                    <IconMapPin
-                      size={16}
-                      className="mt-0.5 shrink-0"
-                      aria-hidden="true"
-                    />
-                    {facility.location}
-                  </p>
-                  <p className="mt-3 flex items-center gap-1.5 text-sm font-medium">
-                    <IconUsers
-                      size={16}
-                      className="shrink-0 text-muted-foreground"
-                      aria-hidden="true"
-                    />
-                    {facility.type} · {facility.capacity} orang
-                  </p>
-                  <p className="mt-2 text-sm leading-relaxed break-words text-muted-foreground">
-                    {facility.description}
-                  </p>
-                  <div className="mt-4 flex flex-wrap gap-2 border-t border-border/70 pt-3">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        void runWithToast(
-                          () =>
-                            setStatus({
-                              facilityId: facility.id,
-                              status:
-                                facility.status === "active"
-                                  ? "inactive"
-                                  : "active",
-                            }),
-                          {
-                            success:
-                              facility.status === "active"
-                                ? `${facility.name} disembunyikan`
-                                : `${facility.name} diaktifkan`,
-                            error: "Status fasilitas gagal diubah",
-                          }
-                        )
-                      }
-                    >
-                      {facility.status === "active"
-                        ? "Sembunyikan"
-                        : "Aktifkan"}
-                    </Button>
-                    {facility.status === "inactive" ? (
+                    <p className="mt-1 flex items-start gap-1.5 text-sm break-words text-muted-foreground">
+                      <IconMapPin
+                        size={16}
+                        className="mt-0.5 shrink-0"
+                        aria-hidden="true"
+                      />
+                      {facility.location}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      <Badge variant="secondary">{facility.type}</Badge>
+                      <Badge variant="secondary" className="gap-1">
+                        <IconUsers size={13} aria-hidden="true" />
+                        {facility.capacity} orang
+                      </Badge>
+                    </div>
+                    <p className="mt-3 line-clamp-2 text-sm leading-relaxed break-words text-muted-foreground">
+                      {facility.description}
+                    </p>
+                    <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <IconCalendarPlus size={14} aria-hidden="true" />
+                      Ditambahkan {addedDate.format(facility.createdAt)}
+                      {facility.updatedAt - facility.createdAt > 60_000 &&
+                        ` · diubah ${addedDate.format(facility.updatedAt)}`}
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2 border-t border-border/70 pt-3">
+                      <Button size="sm" variant="outline" onClick={openEdit}>
+                        <IconPencil aria-hidden="true" /> Ubah
+                      </Button>
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled
-                        title="Aktifkan fasilitas untuk menjadwalkan perbaikan"
+                        onClick={() =>
+                          void runWithToast(
+                            () =>
+                              setStatus({
+                                facilityId: facility.id,
+                                status:
+                                  facility.status === "active"
+                                    ? "inactive"
+                                    : "active",
+                              }),
+                            {
+                              success:
+                                facility.status === "active"
+                                  ? `${facility.name} disembunyikan`
+                                  : `${facility.name} diaktifkan`,
+                              error: "Status fasilitas gagal diubah",
+                            }
+                          )
+                        }
                       >
-                        Jadwal perbaikan
+                        {facility.status === "active"
+                          ? "Sembunyikan"
+                          : "Aktifkan"}
                       </Button>
-                    ) : (
-                      <Link
-                        href={`/staff/maintenance?facility=${encodeURIComponent(facility.id)}&schedule=1`}
-                        className={buttonVariants({
-                          size: "sm",
-                          variant: "outline",
-                        })}
-                      >
-                        Jadwal perbaikan
-                      </Link>
-                    )}
+                      {facility.status === "inactive" ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled
+                          title="Aktifkan fasilitas untuk menjadwalkan perbaikan"
+                        >
+                          Jadwal perbaikan
+                        </Button>
+                      ) : (
+                        <Link
+                          href={`/staff/maintenance?facility=${encodeURIComponent(facility.id)}&schedule=1`}
+                          className={buttonVariants({
+                            size: "sm",
+                            variant: "outline",
+                          })}
+                        >
+                          Jadwal perbaikan
+                        </Link>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </Card>
+                </Card>
+              </li>
             )
           })}
-        </div>
+        </ul>
       )}
     </div>
   )

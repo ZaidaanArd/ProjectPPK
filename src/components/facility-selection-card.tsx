@@ -3,7 +3,7 @@
 import Image from "next/image"
 import { IconCheck, IconMapPin, IconUsers } from "@tabler/icons-react"
 
-import { facilityIllustration } from "@/lib/facility-illustrations"
+import { facilityImage } from "@/lib/facility-illustrations"
 import { cn } from "@/lib/utils"
 
 type FacilityOption = {
@@ -13,6 +13,7 @@ type FacilityOption = {
   location: string
   capacity: number
   description: string
+  photoUrl?: string | null
 }
 
 export function FacilitySelectionCard({
@@ -26,7 +27,7 @@ export function FacilitySelectionCard({
   selected: boolean
   onSelect: (id: string) => void
 }) {
-  const illustration = facilityIllustration(facility.name, facility.type)
+  const illustration = facilityImage(facility)
 
   return (
     <label
@@ -52,6 +53,7 @@ export function FacilitySelectionCard({
           alt={illustration.alt}
           fill
           sizes="112px"
+          unoptimized={illustration.isPhoto}
           className="object-cover transition-transform duration-300 group-hover:scale-105"
         />
         {selected && (
