@@ -2,6 +2,14 @@
 
 Repository ini belum memakai tag versi semantik. Catatan historis di bawah dipisahkan dari pekerjaan lokal terbaru; **merge ke main tidak membuktikan bahwa deployment production telah diperbarui**. Untuk status production, catat SHA Vercel dan Convex saat rilis.
 
+## 14 Oktober 2026
+
+- Klik notifikasi membuka detail: isi lengkap, waktu, tiket reservasi terkait, dan tombol menuju halamannya. Riwayat notifikasi juga bisa diklik.
+- Halaman Jadwal perbaikan dirapikan: tombol Jadwalkan perbaikan / Catat gangguan / Tutup darurat di header, penjelasan singkat ketiganya, bagian "Perlu perhatian", dan tab Perbaikan / Gangguan / Penutupan / Riwayat. Formulir pindah ke dialog; pilihan fasilitas menampilkan nama; penutupan menampilkan jenisnya; buka kembali memakai dialog konfirmasi. Gangguan aktif bisa diperbarui.
+- Antrean reservasi petugas menyebut pengajuan mana yang bentrok (nama, jam, tujuan) dengan tombol Lihat, dan dialog Setujui mendaftar pengajuan yang otomatis ditolak. Bentrok dihitung server per fasilitas, termasuk usulan ubah jadwal.
+- Pengguna yang memilih jam berisi pengajuan menunggu mendapat penjelasan bahwa petugas memilih salah satu.
+- Admin dapat mengunggah foto fasilitas; daftar fasilitas admin bisa diurutkan dan difilter menurut tanggal ditambahkan.
+
 ## 11 Oktober 2026 — production defd77d
 
 - Pengajuan baru minimal 48 jam di form, slot publik, backend, dan demo; retry identik tetap mengembalikan booking yang sama.

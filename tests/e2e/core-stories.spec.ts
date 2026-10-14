@@ -5,6 +5,7 @@ import {
   chooseCalendarDate,
   expectScrollUnlocked,
   scheduleRepair,
+  seedDateInJakarta,
   tomorrowInJakarta,
   startUsableReport,
 } from "./helpers"
@@ -367,7 +368,7 @@ test("Halaman fasilitas publik: chips, filter aktif, urutkan, dan status perawat
 test("US-12: perbaikan hanya di slot kosong dan menutup slot itu bagi pengguna", async ({
   page,
 }) => {
-  const date = tomorrowInJakarta()
+  const date = seedDateInJakarta()
   await enterDemo(page, "Petugas")
   await page.goto("/staff/maintenance")
   await page.getByRole("button", { name: "Jadwalkan perbaikan" }).click()

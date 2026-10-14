@@ -952,19 +952,82 @@ export function staticQuery(name: string, args: unknown): unknown {
               : undefined,
         }))
         .reverse()
-    case "reservations:listQueue":
+    case "reservations:listQueue": {
+      const at = Date.now()
+      const name = (userId: string) =>
+        state.accounts.find((a) => a.id === userId)?.name ?? "Pengguna dihapus"
+      const pending = state.reservations.filter(
+        (r) => effectiveReservationStatus(r, at) === "pending"
+      )
+      const changes = (state.reservationChanges ?? []).filter(
+        (c) => c.status === "pending" && changeDeadline(c) > at
+      )
+      // Mirrors the server: the requests approving this one would auto-reject.
+      const conflictsFor = (r: Reservation) => {
+        const clash = (o: {
+          facilityId: string
+          startAt: number
+          endAt: number
+        }) =>
+          o.facilityId === r.facilityId &&
+          overlaps(o.startAt, o.endAt, r.startAt, r.endAt)
+        return [
+          ...pending
+            .filter((o) => o.id !== r.id && clash(o))
+            .map((o) => ({
+              id: o.id,
+              kind: "reservation" as const,
+              applicantName: name(o.userId),
+              startAt: o.startAt,
+              endAt: o.endAt,
+              purpose: o.purpose,
+            })),
+          ...changes
+            .filter((c) => c.reservationId !== r.id && clash(c))
+            .map((c) => ({
+              id: c.id,
+              kind: "change" as const,
+              applicantName: name(c.userId),
+              startAt: c.startAt,
+              endAt: c.endAt,
+              purpose: c.reason,
+            })),
+        ]
+      }
       return state.reservations
-        .map((r) => ({
-          ...r,
-          status: effectiveReservationStatus(r, Date.now()),
-          applicantName:
-            state.accounts.find((a) => a.id === r.userId)?.name ??
-            "Pengguna dihapus",
-          applicantEmail:
-            state.accounts.find((a) => a.id === r.userId)?.email ?? "-",
-          facilityName: facilityName(r.facilityId),
-        }))
+        .map((r) => {
+          const status = effectiveReservationStatus(r, at)
+          return {
+            ...r,
+            status,
+            applicantName: name(r.userId),
+            applicantEmail:
+              state.accounts.find((a) => a.id === r.userId)?.email ?? "-",
+            facilityName: facilityName(r.facilityId),
+            conflicts: status === "pending" ? conflictsFor(r) : [],
+          }
+        })
         .reverse()
+    }
+    case "reservations:getMine": {
+      const r = state.reservations.find(
+        (item) =>
+          item.id === value(args, "reservationId") &&
+          item.userId === account().id
+      )
+      if (!r) return null
+      return {
+        ...r,
+        status: effectiveReservationStatus(r, Date.now()),
+        facilityName: facilityName(r.facilityId),
+        facilityLocation:
+          state.facilities.find((f) => f.id === r.facilityId)?.location ?? "-",
+        facilityHandlingNotice:
+          r.endAt > Date.now()
+            ? facilityHandling(r.facilityId).handlingNotice
+            : undefined,
+      }
+    }
     case "reservations:listScheduleChanges":
       return (state.reservationChanges ?? [])
         .filter((r) => account().role !== "user" || r.userId === account().id)
@@ -1150,6 +1213,8 @@ export function staticQuery(name: string, args: unknown): unknown {
           reason: c.reason,
           estimatedEndAt: c.estimatedEndAt,
           status: c.status,
+          mode: c.mode ?? "safety",
+          source: c.source ?? "manual",
           closedByName:
             state.accounts.find((a) => a.id === c.closedBy)?.name ?? "Petugas",
           closedAt: c.closedAt,
@@ -1160,17 +1225,29 @@ export function staticQuery(name: string, args: unknown): unknown {
     case "emergencyClosures:previewImpact": {
       const id = value(args, "facilityId")
       const at = Date.now()
-      const pending: { id: string; startAt: number; endAt: number }[] = []
-      const approvedFuture: { id: string; startAt: number; endAt: number }[] =
-        []
-      const ongoing: { id: string; startAt: number; endAt: number }[] = []
+      type Item = {
+        id: string
+        startAt: number
+        endAt: number
+        applicantName: string
+      }
+      const pending: Item[] = []
+      const approvedFuture: Item[] = []
+      const ongoing: Item[] = []
       for (const r of state.reservations) {
         if (r.facilityId !== id || r.endAt <= at) continue
         if (
           !["pending", "approved"].includes(effectiveReservationStatus(r, at))
         )
           continue
-        const item = { id: r.id, startAt: r.startAt, endAt: r.endAt }
+        const item = {
+          id: r.id,
+          startAt: r.startAt,
+          endAt: r.endAt,
+          applicantName:
+            state.accounts.find((a) => a.id === r.userId)?.name ??
+            "Pengguna dihapus",
+        }
         if (r.startAt <= at) ongoing.push(item)
         else if (r.status === "pending") pending.push(item)
         else approvedFuture.push(item)

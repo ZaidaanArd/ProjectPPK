@@ -44,6 +44,13 @@ export async function expectScrollUnlocked(page: Page) {
     .toBe(false)
 }
 
+/** The date the static demo seeds its bookings on (3 days ahead, WIB). */
+export function seedDateInJakarta() {
+  return new Date(Date.now() + (7 + 72) * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10)
+}
+
 /** Tomorrow's date in WIB as YYYY-MM-DD. */
 export function tomorrowInJakarta() {
   return new Date(Date.now() + (7 + 24) * 60 * 60 * 1000)

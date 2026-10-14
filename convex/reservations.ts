@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values"
 
 import { internal } from "./_generated/api"
-import type { Id } from "./_generated/dataModel"
+import type { Doc, Id } from "./_generated/dataModel"
 import {
   internalMutation,
   internalQuery,
@@ -169,6 +169,28 @@ async function autoReject(
   }
 }
 
+async function toListItem(ctx: QueryCtx, reservation: Doc<"reservations">) {
+  const facility = await ctx.db.get("facilities", reservation.facilityId)
+
+  return {
+    id: reservation._id,
+    facilityId: reservation.facilityId,
+    facilityName: facility?.name ?? "Fasilitas dihapus",
+    facilityLocation: facility?.location ?? "-",
+    facilityHandlingNotice:
+      facility && reservation.endAt > Date.now()
+        ? (await facilityHandling(ctx, facility)).handlingNotice
+        : undefined,
+    purpose: reservation.purpose,
+    startAt: reservation.startAt,
+    endAt: reservation.endAt,
+    status: effectiveReservationStatus(reservation, Date.now()),
+    decisionNote: reservation.decisionNote,
+    createdAt: reservation.createdAt,
+    updatedAt: reservation.updatedAt,
+  }
+}
+
 export const listMine = query({
   args: {},
   returns: v.array(reservationListItemValidator),
@@ -181,29 +203,30 @@ export const listMine = query({
       .collect()
 
     return Promise.all(
-      reservations.map(async (reservation) => {
-        const facility = await ctx.db.get("facilities", reservation.facilityId)
-
-        return {
-          id: reservation._id,
-          facilityId: reservation.facilityId,
-          facilityName: facility?.name ?? "Fasilitas dihapus",
-          facilityLocation: facility?.location ?? "-",
-          facilityHandlingNotice:
-            facility && reservation.endAt > Date.now()
-              ? (await facilityHandling(ctx, facility)).handlingNotice
-              : undefined,
-          purpose: reservation.purpose,
-          startAt: reservation.startAt,
-          endAt: reservation.endAt,
-          status: effectiveReservationStatus(reservation, Date.now()),
-          decisionNote: reservation.decisionNote,
-          createdAt: reservation.createdAt,
-          updatedAt: reservation.updatedAt,
-        }
-      })
+      reservations.map((reservation) => toListItem(ctx, reservation))
     )
   },
+})
+
+/** One of the caller's own reservations, e.g. for a notification's details. */
+export const getMine = query({
+  args: { reservationId: v.id("reservations") },
+  returns: v.union(reservationListItemValidator, v.null()),
+  handler: async (ctx, args) => {
+    const profile = await requireActiveProfile(ctx)
+    const reservation = await ctx.db.get("reservations", args.reservationId)
+    if (!reservation || reservation.userId !== profile._id) return null
+    return toListItem(ctx, reservation)
+  },
+})
+
+const conflictValidator = v.object({
+  id: v.string(),
+  kind: v.union(v.literal("reservation"), v.literal("change")),
+  applicantName: v.string(),
+  startAt: v.number(),
+  endAt: v.number(),
+  purpose: v.string(),
 })
 
 export const listQueue = query({
@@ -213,39 +236,101 @@ export const listQueue = query({
       id: v.id("reservations"),
       applicantName: v.string(),
       applicantEmail: v.string(),
+      facilityId: v.id("facilities"),
       facilityName: v.string(),
       purpose: v.string(),
       startAt: v.number(),
       endAt: v.number(),
       status: reservationStatusValidator,
       decisionNote: v.optional(v.string()),
+      // For pending items: the other pending requests (and schedule-change
+      // proposals) that approving this one would auto-reject.
+      conflicts: v.array(conflictValidator),
       createdAt: v.number(),
     })
   ),
   handler: async (ctx) => {
     await requireRole(ctx, ["officer", "admin"])
-    const reservations = await ctx.db
-      .query("reservations")
-      .order("desc")
-      .collect()
+    const now = Date.now()
+    const [reservations, changes] = await Promise.all([
+      ctx.db.query("reservations").order("desc").collect(),
+      ctx.db
+        .query("reservationChanges")
+        .withIndex("by_status", (q) => q.eq("status", "pending"))
+        .collect(),
+    ])
+    const profiles = new Map<Id<"profiles">, Doc<"profiles"> | null>()
+    const profile = async (id: Id<"profiles">) => {
+      if (!profiles.has(id)) profiles.set(id, await ctx.db.get("profiles", id))
+      return profiles.get(id) ?? null
+    }
+    const pending = reservations.filter(
+      (item) => effectiveReservationStatus(item, now) === "pending"
+    )
+    const liveChanges = changes.filter((item) => changeDeadline(item) > now)
+
+    async function conflictsFor(reservation: Doc<"reservations">) {
+      const clash = (item: {
+        facilityId: Id<"facilities">
+        startAt: number
+        endAt: number
+      }) =>
+        item.facilityId === reservation.facilityId &&
+        overlaps(
+          item.startAt,
+          item.endAt,
+          reservation.startAt,
+          reservation.endAt
+        )
+      return Promise.all([
+        ...pending
+          .filter((item) => item._id !== reservation._id && clash(item))
+          .map(async (item) => ({
+            id: item._id as string,
+            kind: "reservation" as const,
+            applicantName:
+              (await profile(item.userId))?.name ?? "Pengguna dihapus",
+            startAt: item.startAt,
+            endAt: item.endAt,
+            purpose: item.purpose,
+          })),
+        ...liveChanges
+          .filter(
+            (item) => item.reservationId !== reservation._id && clash(item)
+          )
+          .map(async (item) => ({
+            id: item._id as string,
+            kind: "change" as const,
+            applicantName:
+              (await profile(item.userId))?.name ?? "Pengguna dihapus",
+            startAt: item.startAt,
+            endAt: item.endAt,
+            purpose: item.reason,
+          })),
+      ])
+    }
 
     return Promise.all(
       reservations.map(async (reservation) => {
+        const status = effectiveReservationStatus(reservation, now)
         const [facility, applicant] = await Promise.all([
           ctx.db.get("facilities", reservation.facilityId),
-          ctx.db.get("profiles", reservation.userId),
+          profile(reservation.userId),
         ])
 
         return {
           id: reservation._id,
           applicantName: applicant?.name ?? "Pengguna dihapus",
           applicantEmail: applicant?.email ?? "-",
+          facilityId: reservation.facilityId,
           facilityName: facility?.name ?? "Fasilitas dihapus",
           purpose: reservation.purpose,
           startAt: reservation.startAt,
           endAt: reservation.endAt,
-          status: effectiveReservationStatus(reservation, Date.now()),
+          status,
           decisionNote: reservation.decisionNote,
+          conflicts:
+            status === "pending" ? await conflictsFor(reservation) : [],
           createdAt: reservation.createdAt,
         }
       })

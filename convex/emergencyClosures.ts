@@ -29,6 +29,9 @@ const managedClosureValidator = v.object({
   reason: v.string(),
   estimatedEndAt: v.optional(v.number()),
   status: closureStatusValidator,
+  // Older rows predate modes and count as safety closures.
+  mode: closureModeValidator,
+  source: v.union(v.literal("manual"), v.literal("handling")),
   closedByName: v.string(),
   closedAt: v.number(),
   reopenedAt: v.optional(v.number()),
@@ -113,6 +116,8 @@ export const listManaged = query({
         reason: row.reason,
         estimatedEndAt: row.estimatedEndAt,
         status: row.status,
+        mode: row.mode ?? "safety",
+        source: row.source ?? "manual",
         closedByName:
           (await ctx.db.get("profiles", row.closedBy))?.name ?? "Petugas",
         closedAt: row.closedAt,
@@ -132,6 +137,7 @@ export const previewImpact = query({
         id: v.id("reservations"),
         startAt: v.number(),
         endAt: v.number(),
+        applicantName: v.string(),
       })
     ),
     approvedFuture: v.array(
@@ -139,6 +145,7 @@ export const previewImpact = query({
         id: v.id("reservations"),
         startAt: v.number(),
         endAt: v.number(),
+        applicantName: v.string(),
       })
     ),
     ongoing: v.array(
@@ -146,27 +153,22 @@ export const previewImpact = query({
         id: v.id("reservations"),
         startAt: v.number(),
         endAt: v.number(),
+        applicantName: v.string(),
       })
     ),
   }),
   handler: async (ctx, args) => {
     await requireRole(ctx, ["officer", "admin"])
     const now = Date.now()
-    const pending: {
+    type Item = {
       id: Id<"reservations">
       startAt: number
       endAt: number
-    }[] = []
-    const approvedFuture: {
-      id: Id<"reservations">
-      startAt: number
-      endAt: number
-    }[] = []
-    const ongoing: {
-      id: Id<"reservations">
-      startAt: number
-      endAt: number
-    }[] = []
+      applicantName: string
+    }
+    const pending: Item[] = []
+    const approvedFuture: Item[] = []
+    const ongoing: Item[] = []
     for (const status of ["pending", "approved"] as const) {
       const rows = await ctx.db
         .query("reservations")
@@ -180,7 +182,14 @@ export const previewImpact = query({
           effectiveReservationStatus(row, now) === "expired"
         )
           continue
-        const item = { id: row._id, startAt: row.startAt, endAt: row.endAt }
+        const item = {
+          id: row._id,
+          startAt: row.startAt,
+          endAt: row.endAt,
+          applicantName:
+            (await ctx.db.get("profiles", row.userId))?.name ??
+            "Pengguna dihapus",
+        }
         if (row.startAt <= now && row.endAt > now) ongoing.push(item)
         else if (status === "pending") pending.push(item)
         else approvedFuture.push(item)

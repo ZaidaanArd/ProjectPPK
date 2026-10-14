@@ -11,9 +11,13 @@ import {
 } from "react"
 import { toast } from "sonner"
 import {
+  IconAlertTriangle,
+  IconBellRinging,
   IconCalendarPlus,
   IconCheck,
   IconClockPlus,
+  IconLock,
+  IconLockOpen,
   IconTool,
   IconX,
 } from "@tabler/icons-react"
@@ -67,10 +71,25 @@ import {
 } from "@/lib/reservation-slots"
 import { toastError } from "@/lib/toast"
 import {
-  StaffClosurePanel,
-  StaffDisruptionPanel,
-  MaintenanceReminderSection,
+  ClosureCard,
+  ClosureDialog,
+  DisruptionDialog,
+  ENDING_SOON_MS,
+  IssueCard,
+  OpsLegend,
+  ReopenClosureDialog,
+  formatDateTime,
+  todayJakarta,
+  type ClosureItem,
+  type IssueItem,
 } from "@/components/staff-ops-panels"
+import {
+  Tabs,
+  TabsCount,
+  TabsList,
+  TabsPanel,
+  TabsTab,
+} from "@/components/ui/tabs"
 import { useAuthenticatedQuery } from "@/lib/use-authenticated-query"
 import { cn } from "@/lib/utils"
 
@@ -139,10 +158,6 @@ function useDayAgenda(facilityId: string, date: string) {
   return { agenda, busy }
 }
 
-function todayInJakarta() {
-  return jakartaDate(Date.now())
-}
-
 /**
  * Picks a free time range for a repair. Approved and pending reservations,
  * other repairs, and past slots all count as taken: a repair yields to
@@ -170,7 +185,7 @@ export function ScheduleMaintenanceDialog({
   const [previousInitialFacilityId, setPreviousInitialFacilityId] =
     useState(initialFacilityId)
   const facilityId = fixedFacilityId ?? chosenFacility
-  const [date, setDate] = useState(todayInJakarta)
+  const [date, setDate] = useState(todayJakarta)
   const [start, setStart] = useState("")
   const [end, setEnd] = useState("")
   const [reason, setReason] = useState("")
@@ -196,7 +211,7 @@ export function ScheduleMaintenanceDialog({
 
   function reset() {
     setChosenFacility("")
-    setDate(todayInJakarta())
+    setDate(todayJakarta())
     setStart("")
     setEnd("")
     setReason("")
@@ -441,8 +456,8 @@ function ExtendDialog({
             label="Tanggal selesai baru"
             portalled={false}
             disabled={pending}
-            minDate={currentEndDate || todayInJakarta()}
-            value={shownDate || todayInJakarta()}
+            minDate={currentEndDate || todayJakarta()}
+            value={shownDate || todayJakarta()}
             onChange={(value) => {
               setDate(value)
               setTime("")
@@ -581,12 +596,16 @@ function WindowCard({
   )
 }
 
+export type OpsTab = "perbaikan" | "gangguan" | "penutupan" | "riwayat"
+
 export function StaffMaintenance({
   initialFacilityId,
   autoSchedule = false,
+  initialTab = "perbaikan",
 }: {
   initialFacilityId?: string
   autoSchedule?: boolean
+  initialTab?: OpsTab
 }) {
   const router = useRouter()
   const facilities = useAuthenticatedQuery(api.facilities.listPublic, {})
@@ -602,6 +621,22 @@ export function StaffMaintenance({
   const [busy, setBusy] = useState(false)
   const now = useNow()
   const closingPhase = closing ? phase(closing, now) : null
+  const issues = useAuthenticatedQuery(api.facilityIssues.listManaged, {})
+  const closures = useAuthenticatedQuery(api.emergencyClosures.listManaged, {})
+  const [issueDialog, setIssueDialog] = useState<{
+    issue: IssueItem | null
+  } | null>(null)
+  const [closureOpen, setClosureOpen] = useState(false)
+  const [reopening, setReopening] = useState<ClosureItem | null>(null)
+  const [activeTab, setActiveTab] = useState<OpsTab>(initialTab)
+
+  // Keep the open tab in the URL so links and reloads land on it.
+  function changeTab(tab: OpsTab) {
+    setActiveTab(tab)
+    const url = new URL(window.location.href)
+    url.searchParams.set("tab", tab)
+    router.replace(`${url.pathname}${url.search}${url.hash}`, { scroll: false })
+  }
 
   const clearScheduleRequest = useCallback(() => {
     const url = new URL(window.location.href)
@@ -681,94 +716,300 @@ export function StaffMaintenance({
     }
   }
 
-  const sections = [
+  const openIssues = (issues ?? []).filter((issue) => issue.status === "open")
+  const activeClosures = (closures ?? []).filter(
+    (closure) => closure.status === "closed"
+  )
+  const endingSoon = groups.ongoing.filter(
+    (window) => window.endAt - now <= ENDING_SOON_MS
+  )
+  // Everything that is over, newest first, across the three kinds of work.
+  const history = [
+    ...groups.history.map((window) => ({
+      at: window.closedAt ?? window.endAt,
+      node: (
+        <WindowCard
+          key={window.id}
+          window={window}
+          now={now}
+          onExtend={setExtending}
+          onClose={setClosing}
+        />
+      ),
+    })),
+    ...(issues ?? [])
+      .filter((issue) => issue.status !== "open")
+      .map((issue) => ({
+        at: issue.updatedAt,
+        node: <IssueCard key={issue.id} issue={issue} />,
+      })),
+    ...(closures ?? [])
+      .filter((closure) => closure.status !== "closed")
+      .map((closure) => ({
+        at: closure.reopenedAt ?? closure.closedAt,
+        node: <ClosureCard key={closure.id} closure={closure} />,
+      })),
+  ].sort((a, b) => b.at - a.at)
+
+  const tabs: {
+    key: OpsTab
+    label: string
+    count: number | undefined
+  }[] = [
     {
-      key: "ongoing",
-      title: "Sedang berlangsung",
-      items: groups.ongoing,
-      empty: "Tidak ada perbaikan yang sedang berjalan.",
+      key: "perbaikan",
+      label: "Perbaikan",
+      count: windows
+        ? groups.ongoing.length + groups.upcoming.length
+        : undefined,
     },
+    { key: "gangguan", label: "Gangguan", count: issues && openIssues.length },
     {
-      key: "upcoming",
-      title: "Terjadwal",
-      items: groups.upcoming,
-      empty: "Belum ada perbaikan terjadwal.",
+      key: "penutupan",
+      label: "Penutupan",
+      count: closures && activeClosures.length,
     },
-    {
-      key: "history",
-      title: "Riwayat",
-      items: groups.history,
-      empty: "Belum ada riwayat perbaikan.",
-    },
+    { key: "riwayat", label: "Riwayat", count: undefined },
   ]
+
+  const emptyState = (text: string) => (
+    <p className="rounded-2xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
+      {text}
+    </p>
+  )
 
   return (
     <div className="space-y-6">
       <PortalPageHeader
         eyebrow="Operasional fasilitas"
         title="Jadwal perbaikan"
-        description="Perbaikan memakai slot yang kosong. Selama berlangsung, hanya rentang itu yang tertutup untuk reservasi."
+        description="Jadwalkan perbaikan, catat gangguan ringan, dan tutup fasilitas saat darurat dari satu tempat."
         icon={IconTool}
-      />
+        layout="actions-right"
+      >
+        <Button
+          onClick={() => {
+            setEntryMessage("")
+            setScheduleFacilityId(undefined)
+            setScheduling(true)
+          }}
+        >
+          <IconCalendarPlus size={16} aria-hidden="true" />
+          Jadwalkan perbaikan
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => setIssueDialog({ issue: null })}
+        >
+          <IconAlertTriangle size={16} aria-hidden="true" />
+          Catat gangguan
+        </Button>
+        <Button
+          variant="outline"
+          className="border-red-300 text-red-700 hover:bg-red-50 dark:border-red-400/40 dark:text-red-300 dark:hover:bg-red-400/10"
+          onClick={() => setClosureOpen(true)}
+        >
+          <IconLock size={16} aria-hidden="true" />
+          Tutup darurat
+        </Button>
+      </PortalPageHeader>
+
+      <OpsLegend />
+
       {entryMessage && (
         <output className="block rounded-2xl border border-border/70 bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
           {entryMessage}
         </output>
       )}
-      <Button
-        onClick={() => {
-          setEntryMessage("")
-          setScheduleFacilityId(undefined)
-          setScheduling(true)
-        }}
-      >
-        <IconCalendarPlus size={16} aria-hidden="true" />
-        Jadwalkan perbaikan
-      </Button>
-      <MaintenanceReminderSection now={now} />
-      <StaffDisruptionPanel />
-      <StaffClosurePanel />
 
-      {!windows ? (
-        <PortalListSkeleton layout="grid" />
-      ) : (
-        sections.map((section) => (
-          <section
-            key={section.key}
-            aria-labelledby={`maintenance-${section.key}`}
-            className="space-y-3"
+      {(endingSoon.length > 0 || activeClosures.length > 0) && (
+        <section
+          aria-labelledby="ops-attention"
+          className="space-y-2 rounded-3xl border border-amber-300/60 bg-amber-50/70 p-4 dark:border-amber-300/20 dark:bg-amber-400/5"
+        >
+          <h2
+            id="ops-attention"
+            className="flex items-center gap-2 text-sm font-semibold text-amber-900 dark:text-amber-100"
           >
-            <h2
-              id={`maintenance-${section.key}`}
-              className="text-sm font-semibold tracking-wide text-muted-foreground uppercase"
-            >
-              {section.title} ({section.items.length})
-            </h2>
-            {section.items.length === 0 ? (
-              <p className="rounded-2xl border border-dashed px-4 py-5 text-sm text-muted-foreground">
-                {section.empty}
-              </p>
-            ) : (
-              <div className="grid items-start gap-3 lg:grid-cols-2">
-                {section.items.map((window) => (
-                  <WindowCard
-                    key={window.id}
-                    window={window}
-                    now={now}
-                    onExtend={setExtending}
-                    onClose={setClosing}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-        ))
+            <IconBellRinging size={17} aria-hidden="true" />
+            Perlu perhatian
+          </h2>
+          <ul className="space-y-2">
+            {endingSoon.map((window) => (
+              <li
+                key={window.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-background px-4 py-3"
+              >
+                <span className="text-sm">
+                  Perbaikan <strong>{window.facilityName}</strong> berakhir{" "}
+                  {formatDateTime(window.endAt)}. Sudah beres?
+                </span>
+                <span className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setExtending(window)}
+                  >
+                    <IconClockPlus aria-hidden="true" />
+                    Perpanjang
+                  </Button>
+                  <Button size="sm" onClick={() => setClosing(window)}>
+                    <IconCheck aria-hidden="true" />
+                    Selesai
+                  </Button>
+                </span>
+              </li>
+            ))}
+            {activeClosures.map((closure) => (
+              <li
+                key={closure.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-background px-4 py-3"
+              >
+                <span className="text-sm">
+                  <strong>{closure.facilityName}</strong> ditutup darurat sejak{" "}
+                  {formatDateTime(closure.closedAt)}.
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setReopening(closure)}
+                >
+                  <IconLockOpen aria-hidden="true" />
+                  Buka kembali
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
+
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => changeTab(value as OpsTab)}
+      >
+        <TabsList aria-label="Jenis pekerjaan" className="grid-cols-4">
+          {tabs.map((tab) => (
+            <TabsTab key={tab.key} value={tab.key}>
+              {tab.label}
+              {tab.count !== undefined && <TabsCount>{tab.count}</TabsCount>}
+            </TabsTab>
+          ))}
+        </TabsList>
+
+        <TabsPanel value="perbaikan" className="space-y-6">
+          {!windows ? (
+            <PortalListSkeleton layout="grid" />
+          ) : (
+            [
+              {
+                key: "ongoing",
+                title: "Sedang berlangsung",
+                items: groups.ongoing,
+                empty: "Tidak ada perbaikan yang sedang berjalan.",
+              },
+              {
+                key: "upcoming",
+                title: "Terjadwal",
+                items: groups.upcoming,
+                empty: "Belum ada perbaikan terjadwal.",
+              },
+            ].map((section) => (
+              <section
+                key={section.key}
+                aria-labelledby={`maintenance-${section.key}`}
+                className="space-y-3"
+              >
+                <h2
+                  id={`maintenance-${section.key}`}
+                  className="text-sm font-semibold tracking-wide text-muted-foreground uppercase"
+                >
+                  {section.title} ({section.items.length})
+                </h2>
+                {section.items.length === 0 ? (
+                  emptyState(section.empty)
+                ) : (
+                  <div className="grid items-start gap-3 lg:grid-cols-2">
+                    {section.items.map((window) => (
+                      <WindowCard
+                        key={window.id}
+                        window={window}
+                        now={now}
+                        onExtend={setExtending}
+                        onClose={setClosing}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+            ))
+          )}
+        </TabsPanel>
+
+        <TabsPanel value="gangguan" className="space-y-3">
+          {!issues ? (
+            <PortalListSkeleton layout="grid" />
+          ) : openIssues.length === 0 ? (
+            emptyState("Tidak ada gangguan aktif.")
+          ) : (
+            <div className="grid items-start gap-3 lg:grid-cols-2">
+              {openIssues.map((issue) => (
+                <IssueCard
+                  key={issue.id}
+                  issue={issue}
+                  onEdit={(item) => setIssueDialog({ issue: item })}
+                />
+              ))}
+            </div>
+          )}
+        </TabsPanel>
+
+        <TabsPanel value="penutupan" className="space-y-3">
+          {!closures ? (
+            <PortalListSkeleton layout="grid" />
+          ) : activeClosures.length === 0 ? (
+            emptyState("Tidak ada fasilitas yang sedang ditutup darurat.")
+          ) : (
+            <div className="grid items-start gap-3 lg:grid-cols-2">
+              {activeClosures.map((closure) => (
+                <ClosureCard
+                  key={closure.id}
+                  closure={closure}
+                  onReopen={setReopening}
+                />
+              ))}
+            </div>
+          )}
+        </TabsPanel>
+
+        <TabsPanel value="riwayat" className="space-y-3">
+          {!windows || !issues || !closures ? (
+            <PortalListSkeleton layout="grid" />
+          ) : history.length === 0 ? (
+            emptyState("Belum ada riwayat.")
+          ) : (
+            <div className="grid items-start gap-3 lg:grid-cols-2">
+              {history.map((entry) => entry.node)}
+            </div>
+          )}
+        </TabsPanel>
+      </Tabs>
 
       <ScheduleMaintenanceDialog
         open={scheduling}
         initialFacilityId={scheduleFacilityId}
         onClose={closeScheduling}
+      />
+      {issueDialog && (
+        <DisruptionDialog
+          open
+          issue={issueDialog.issue}
+          onClose={() => setIssueDialog(null)}
+        />
+      )}
+      <ClosureDialog open={closureOpen} onClose={() => setClosureOpen(false)} />
+      <ReopenClosureDialog
+        closure={reopening}
+        onClose={() => setReopening(null)}
       />
       <ExtendDialog window={extending} onClose={() => setExtending(null)} />
       <AlertDialog

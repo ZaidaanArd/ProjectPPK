@@ -568,6 +568,66 @@ export function StaffDashboard() {
   )
 }
 
+type QueueConflict = {
+  id: string
+  kind: "reservation" | "change"
+  applicantName: string
+  startAt: number
+  endAt: number
+  purpose: string
+}
+
+/** Names each pending request this one clashes with, with a jump link. */
+function ConflictList({
+  conflicts,
+  onJump,
+}: {
+  conflicts: QueueConflict[]
+  onJump: (conflict: QueueConflict) => void
+}) {
+  return (
+    <div className="rounded-2xl border border-amber-300/60 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900 dark:border-amber-300/20 dark:bg-amber-400/10 dark:text-amber-100">
+      <p className="flex items-start gap-2 font-semibold">
+        <IconAlertTriangle
+          size={16}
+          className="mt-px shrink-0"
+          aria-hidden="true"
+        />
+        Bentrok dengan {conflicts.length} pengajuan lain — otomatis ditolak jika
+        ini disetujui:
+      </p>
+      <ul className="mt-2 space-y-1.5">
+        {conflicts.map((conflict) => (
+          <li
+            key={conflict.id}
+            className="flex items-center justify-between gap-3 rounded-xl bg-white/70 px-3 py-2 dark:bg-black/15"
+          >
+            <span className="min-w-0">
+              <span className="block truncate font-semibold">
+                {conflict.applicantName}
+                {conflict.kind === "change" && (
+                  <span className="font-normal"> · usulan ubah jadwal</span>
+                )}
+              </span>
+              <span className="block truncate opacity-80">
+                {formatWindow(conflict.startAt, conflict.endAt)} · Tujuan:{" "}
+                {conflict.purpose}
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={() => onJump(conflict)}
+              className="shrink-0 rounded-full border border-amber-400/60 px-3 py-1 font-semibold transition-colors hover:bg-amber-100 dark:hover:bg-amber-400/20"
+            >
+              Lihat
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 export function StaffReservations({
   initialTab = "menunggu",
   initialItem,
@@ -625,23 +685,35 @@ export function StaffReservations({
     return counts
   }, [reservations])
 
-  // Pending requests that clash with each other; approving one rejects the rest.
-  const overlaps = useMemo(() => {
-    const pending = (reservations ?? []).filter(
-      (item) => item.status === "pending"
+  // "Lihat" on a conflict: clear filters, then scroll to that request. The
+  // effect re-runs as the tab and search change until the card exists.
+  const [jumpTarget, setJumpTarget] = useState<string | null>(null)
+  useEffect(() => {
+    if (!jumpTarget) return
+    const frame = requestAnimationFrame(() => {
+      const card = document.getElementById(jumpTarget)
+      if (!card) return
+      card.scrollIntoView({
+        block: "center",
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+      })
+      card.focus({ preventScroll: true })
+      setJumpTarget(null)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [jumpTarget, search, activeTab])
+
+  function jumpToConflict(conflict: QueueConflict) {
+    setSearch("")
+    setActiveTab("menunggu")
+    setJumpTarget(
+      conflict.kind === "change"
+        ? "schedule-changes-heading"
+        : `queue-reservation-${conflict.id}`
     )
-    const counts: Record<string, number> = {}
-    for (const item of pending) {
-      counts[item.id] = pending.filter(
-        (other) =>
-          other.id !== item.id &&
-          other.facilityName === item.facilityName &&
-          other.startAt < item.endAt &&
-          item.startAt < other.endAt
-      ).length
-    }
-    return counts
-  }, [reservations])
+  }
 
   const visibleReservations = useMemo(() => {
     if (!reservations) return undefined
@@ -861,17 +933,11 @@ export function StaffReservations({
                     createdAt={item.createdAt}
                     meta={`${item.applicantName} · ${item.applicantEmail}`}
                     alert={
-                      item.status === "pending" && overlaps[item.id] ? (
-                        <p className="flex items-start gap-2 rounded-2xl border border-amber-300/60 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900 dark:border-amber-300/20 dark:bg-amber-400/10 dark:text-amber-100">
-                          <IconAlertTriangle
-                            size={16}
-                            className="mt-px shrink-0"
-                            aria-hidden="true"
-                          />
-                          Bentrok dengan {overlaps[item.id]} pengajuan lain pada
-                          jam yang sama — pengajuan itu otomatis ditolak jika
-                          ini disetujui.
-                        </p>
+                      item.status === "pending" && item.conflicts.length > 0 ? (
+                        <ConflictList
+                          conflicts={item.conflicts}
+                          onJump={jumpToConflict}
+                        />
                       ) : null
                     }
                   >
@@ -946,12 +1012,33 @@ export function StaffReservations({
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmAction?.action === "approved"
-                ? `Reservasi ${confirmReservation?.facilityName ?? "fasilitas ini"} pada ${confirmReservation ? `${formatDate(confirmReservation.startAt)} – ${formatDate(confirmReservation.endAt)}` : "jadwal ini"} akan disetujui. Ajuan lain yang bentrok otomatis ditolak.`
+                ? `Reservasi ${confirmReservation?.facilityName ?? "fasilitas ini"} pada ${confirmReservation ? `${formatDate(confirmReservation.startAt)} – ${formatDate(confirmReservation.endAt)}` : "jadwal ini"} akan disetujui.${confirmReservation?.conflicts.length ? "" : " Tidak ada pengajuan lain yang bentrok."}`
                 : confirmAction?.action === "rejected"
                   ? `Reservasi ${confirmReservation?.facilityName ?? "fasilitas ini"} akan ditolak dan tidak dapat diubah lagi.`
                   : `Reservasi ${confirmReservation?.facilityName ?? "fasilitas ini"} akan dibatalkan. Alasan pembatalan akan terlihat oleh pemohon.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {confirmAction?.action === "approved" &&
+            confirmReservation &&
+            confirmReservation.conflicts.length > 0 && (
+              <div className="rounded-2xl border border-amber-300/60 bg-amber-50 p-4 text-left text-sm text-amber-900 dark:border-amber-300/20 dark:bg-amber-400/10 dark:text-amber-100">
+                <p className="text-xs font-semibold">
+                  {confirmReservation.conflicts.length} pengajuan ini otomatis
+                  ditolak:
+                </p>
+                <ul className="mt-2 space-y-1.5">
+                  {confirmReservation.conflicts.map((conflict) => (
+                    <li key={conflict.id} className="text-xs leading-relaxed">
+                      <span className="font-semibold">
+                        {conflict.applicantName}
+                      </span>{" "}
+                      · {formatWindow(conflict.startAt, conflict.endAt)}
+                      {conflict.kind === "change" && " · usulan ubah jadwal"}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           {confirmNote && (
             <div className="rounded-2xl bg-muted/50 p-4 text-left text-sm">
               <p className="text-xs font-medium text-muted-foreground">

@@ -30,6 +30,7 @@ import {
   IconSearch,
   IconShare,
   IconTool,
+  IconAlertTriangle,
   IconUpload,
 } from "@tabler/icons-react"
 
@@ -1053,6 +1054,16 @@ export function ReservationForm({
     [availability]
   )
   const conflict = busy ? rangeIsBusy(date, startTime, endTime, busy) : false
+  // Other people's pending requests in the chosen range: still allowed, but
+  // the officer will approve only one of them.
+  const pendingOverlap =
+    availability && startTime && endTime
+      ? availability.pending.filter(
+          (item) =>
+            item.startAt < toTimestamp(date, endTime) &&
+            toTimestamp(date, startTime) < item.endAt
+        ).length
+      : 0
   const elapsed =
     now === null ||
     !startTime ||
@@ -1283,6 +1294,20 @@ export function ReservationForm({
                         : "Rentang waktu tersedia untuk diajukan."}
             </p>
           </div>
+          {!conflict && pendingOverlap > 0 && (
+            <output className="flex items-start gap-1.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+              <IconAlertTriangle
+                size={16}
+                aria-hidden="true"
+                className="mt-0.5 shrink-0"
+              />
+              <span>
+                Sudah ada {pendingOverlap} pengajuan menunggu di jam ini. Kamu
+                tetap bisa mengajukan; petugas memilih salah satu dan yang lain
+                otomatis ditolak.
+              </span>
+            </output>
+          )}
         </div>
         <div
           id="reservation-purpose"

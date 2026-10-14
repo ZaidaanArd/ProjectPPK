@@ -523,3 +523,69 @@ describe("reservation conflict rules", () => {
     expect(remaining).toHaveLength(0)
   })
 })
+
+describe("staff queue conflicts", () => {
+  it("names the pending requests that approving would auto-reject", async () => {
+    const { t, facility, otherFacility } = await setup()
+    const user = t.withIdentity({ subject: "user-auth" })
+    const other = t.withIdentity({ subject: "other-user-auth" })
+    const hour = 3600000
+    const mine = await user.mutation(api.reservations.create, {
+      facilityId: facility,
+      purpose: "Rapat",
+      startAt,
+      endAt: startAt + 2 * hour,
+    })
+    await other.mutation(api.reservations.create, {
+      facilityId: facility,
+      purpose: "Latihan",
+      startAt: startAt + hour,
+      endAt: startAt + 3 * hour,
+    })
+    // Adjacent and other-facility requests are not conflicts.
+    await other.mutation(api.reservations.create, {
+      facilityId: facility,
+      purpose: "Sesudahnya",
+      startAt: startAt + 2 * hour,
+      endAt: startAt + 3 * hour,
+    })
+    await other.mutation(api.reservations.create, {
+      facilityId: otherFacility,
+      purpose: "Lab",
+      startAt,
+      endAt: startAt + hour,
+    })
+
+    const queue = await t
+      .withIdentity({ subject: "officer-auth" })
+      .query(api.reservations.listQueue, {})
+    const row = queue.find((item) => item.id === mine)
+    expect(row?.facilityId).toBe(facility)
+    expect(row?.conflicts).toEqual([
+      expect.objectContaining({
+        kind: "reservation",
+        purpose: "Latihan",
+        startAt: startAt + hour,
+      }),
+    ])
+  })
+
+  it("returns only the caller's own reservation from getMine", async () => {
+    const { t, facility } = await setup()
+    const user = t.withIdentity({ subject: "user-auth" })
+    const id = await user.mutation(api.reservations.create, {
+      facilityId: facility,
+      purpose: "Rapat",
+      startAt,
+      endAt: startAt + 3600000,
+    })
+    expect(
+      await user.query(api.reservations.getMine, { reservationId: id })
+    ).toMatchObject({ id, purpose: "Rapat", facilityName: "Aula" })
+    expect(
+      await t
+        .withIdentity({ subject: "other-user-auth" })
+        .query(api.reservations.getMine, { reservationId: id })
+    ).toBe(null)
+  })
+})

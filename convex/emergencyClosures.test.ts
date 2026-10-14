@@ -123,6 +123,11 @@ describe("emergency closures", () => {
       mode: "long_repair",
     })
     expect(
+      (await officer.query(api.emergencyClosures.listManaged, {})).find(
+        (row) => row.id === closureId
+      )
+    ).toMatchObject({ mode: "long_repair", source: "manual" })
+    expect(
       (await t.run(async (ctx) => ctx.db.get("reservations", future)))?.status
     ).toBe("approved")
     await user.mutation(api.emergencyClosures.cancelMineForClosure, {
