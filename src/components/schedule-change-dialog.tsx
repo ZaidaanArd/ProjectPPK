@@ -71,6 +71,9 @@ export function ScheduleChangeDialog({
   )
   const startAt = toTimestamp(date, range.start),
     endAt = toTimestamp(date, range.end)
+  const pendingConflict = availability
+    ? rangeIsBusy(date, range.start, range.end, availability.pending)
+    : false
   const ready =
     now !== null &&
     startAt > now &&
@@ -79,6 +82,7 @@ export function ScheduleChangeDialog({
     availability?.facilityStatus === "active" &&
     Boolean(busy) &&
     !rangeIsBusy(date, range.start, range.end, busy ?? []) &&
+    !pendingConflict &&
     reason.trim().length > 0 &&
     (startAt !== reservation.startAt || endAt !== reservation.endAt)
   async function submit(event: FormEvent) {
@@ -154,6 +158,12 @@ export function ScheduleChangeDialog({
         {availability && availability.facilityStatus !== "active" && (
           <p role="alert" className="text-sm text-destructive">
             Fasilitas sedang tidak dapat dipesan.
+          </p>
+        )}
+        {pendingConflict && (
+          <p role="alert" className="text-sm text-destructive">
+            Slot ini sedang diajukan pengguna lain. Pilih jadwal lain atau
+            tunggu sampai tersedia.
           </p>
         )}
         <div className="space-y-2">

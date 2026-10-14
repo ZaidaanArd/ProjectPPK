@@ -53,7 +53,7 @@ describe("selectSlot", () => {
       selectSlot(slots, { start: "", end: "" }, index("09:00")).blocked
     ).toBe(true)
     const start = { start: "08:00", end: "08:30" }
-    expect(selectSlot(slots, start, index("10:00"))).toEqual({
+    expect(selectSlot(slots, start, index("10:00"))).toMatchObject({
       ...start,
       blocked: true,
     })
@@ -72,14 +72,27 @@ describe("helpers", () => {
       )
     ).toBe(false)
   })
-  it("keeps pending slots selectable and approved slots blocked", () => {
+  it("blocks pending slots and ranges crossing them", () => {
     const slots = daySlots(date, busy, { pending: busy })
     expect(slots.find((slot) => slot.start === "09:00")).toMatchObject({
       taken: true,
       pending: true,
     })
     const pending = daySlots(date, [], { pending: busy })
-    expect(selectSlot(pending, { start: "", end: "" }, 4).blocked).toBe(false)
+    expect(pending.find((slot) => slot.start === "09:00")).toMatchObject({
+      taken: false,
+      pending: true,
+    })
+    expect(selectSlot(pending, { start: "", end: "" }, 4).blocked).toBe(true)
+    expect(selectSlot(pending, { start: "", end: "" }, 4).blockedReason).toBe(
+      "pending"
+    )
+    const start = { start: "08:00", end: "08:30" }
+    const target = pending.findIndex((slot) => slot.start === "10:00")
+    expect(selectSlot(pending, start, target)).toMatchObject({
+      blocked: true,
+      blockedReason: "pending",
+    })
   })
   it("formats durations and detects overlaps", () => {
     expect(displayDuration(90)).toBe("1 jam 30 menit")

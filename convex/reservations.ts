@@ -68,6 +68,45 @@ async function approvedConflict(
   )
 }
 
+export const PENDING_CONFLICT_MESSAGE =
+  "Slot ini sedang diajukan pengguna lain. Pilih jadwal lain atau tunggu sampai tersedia."
+
+async function pendingConflict(
+  ctx: QueryCtx | MutationCtx,
+  facilityId: Id<"facilities">,
+  startAt: number,
+  endAt: number
+) {
+  const pending = await ctx.db
+    .query("reservations")
+    .withIndex("by_facility_status_start", (q) =>
+      q
+        .eq("facilityId", facilityId)
+        .eq("status", "pending")
+        .lt("startAt", endAt)
+    )
+    .collect()
+  if (
+    pending.some((item) => overlaps(item.startAt, item.endAt, startAt, endAt))
+  )
+    return true
+  const now = Date.now()
+  const changes = await ctx.db
+    .query("reservationChanges")
+    .withIndex("by_facility_status_start", (q) =>
+      q
+        .eq("facilityId", facilityId)
+        .eq("status", "pending")
+        .lt("startAt", endAt)
+    )
+    .collect()
+  return changes.some(
+    (change) =>
+      changeDeadline(change) > now &&
+      overlaps(change.startAt, change.endAt, startAt, endAt)
+  )
+}
+
 async function rejectChangeConflicts(
   ctx: MutationCtx,
   facilityId: Id<"facilities">,
@@ -296,6 +335,10 @@ export const create = mutation({
 
     if (await approvedConflict(ctx, facility._id, args.startAt, args.endAt)) {
       throw new ConvexError("Slot sudah digunakan oleh reservasi lain")
+    }
+
+    if (await pendingConflict(ctx, facility._id, args.startAt, args.endAt)) {
+      throw new ConvexError(PENDING_CONFLICT_MESSAGE)
     }
 
     assertNoMaintenanceOverlap(
@@ -822,6 +865,10 @@ export const requestScheduleChange = mutation({
       )
     )
       throw new ConvexError("Slot sudah digunakan oleh reservasi lain")
+    if (
+      await pendingConflict(ctx, original.facilityId, args.startAt, args.endAt)
+    )
+      throw new ConvexError(PENDING_CONFLICT_MESSAGE)
     const item = {
       reservationId: original._id,
       userId: user._id,

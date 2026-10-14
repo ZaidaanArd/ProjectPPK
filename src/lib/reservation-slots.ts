@@ -78,16 +78,26 @@ export function daySlots(
 /**
  * Applies a click on slot `index` to the current selection. The first click
  * (or a click before the current start) starts a new range; a later click
- * extends it through that slot unless a taken slot lies in between.
+ * extends it through that slot unless a taken or pending slot lies in between.
+ * Pending slots (kuning, menunggu persetujuan) are fully blocked.
  */
 export function selectSlot(
   slots: readonly Slot[],
   current: { start: string; end: string },
   index: number
-): { start: string; end: string; blocked: boolean } {
+): {
+  start: string
+  end: string
+  blocked: boolean
+  blockedReason?: "taken" | "pending"
+} {
   const slot = slots[index]
-  if (!slot || slot.taken || slot.past || slot.tooSoon)
-    return { ...current, blocked: true }
+  if (!slot || slot.taken || slot.past || slot.tooSoon || slot.pending)
+    return {
+      ...current,
+      blocked: true,
+      blockedReason: slot?.pending ? "pending" : "taken",
+    }
   const startIndex = slots.findIndex((item) => item.start === current.start)
   const endIndex = slots.findIndex((item) => item.end === current.end)
   const hasRange = startIndex >= 0 && endIndex >= startIndex
@@ -96,8 +106,19 @@ export function selectSlot(
     return { start: slot.start, end: slot.end, blocked: false }
   }
   const between = slots.slice(startIndex, index + 1)
-  if (between.some((item) => item.taken || item.past || item.tooSoon)) {
-    return { ...current, blocked: true }
+  if (
+    between.some(
+      (item) => item.taken || item.past || item.tooSoon || item.pending
+    )
+  ) {
+    const crossesPending = between.some(
+      (item) => item.pending && !item.taken && !item.past && !item.tooSoon
+    )
+    return {
+      ...current,
+      blocked: true,
+      blockedReason: crossesPending ? "pending" : "taken",
+    }
   }
   return { start: current.start, end: slot.end, blocked: false }
 }

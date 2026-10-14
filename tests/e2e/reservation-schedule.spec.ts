@@ -93,7 +93,7 @@ test.beforeEach(async ({ page }) => {
   )
 })
 
-test("elapsed slots are disabled and pending slots remain selectable in the form", async ({
+test("elapsed slots are disabled and pending slots are blocked in the form", async ({
   page,
 }) => {
   await page.clock.setFixedTime(new Date(at("15:30")))
@@ -107,21 +107,10 @@ test("elapsed slots are disabled and pending slots remain selectable in the form
   ).toBeEnabled()
   await expect(
     page.getByRole("button", {
-      name: "17.00 · Ada pengajuan, tetap dapat diajukan",
+      name: "17.00 · Menunggu persetujuan pengguna lain",
       exact: true,
     })
-  ).toBeEnabled()
-  await page
-    .getByRole("button", {
-      name: "17.00 · Ada pengajuan, tetap dapat diajukan",
-      exact: true,
-    })
-    .click()
-  await expect(
-    page
-      .getByRole("button", { name: /Kirim reservasi|Ajukan reservasi/ })
-      .last()
-  ).toBeEnabled()
+  ).toBeDisabled()
   await page.screenshot({
     path: test.info().outputPath("elapsed-and-pending.png"),
     fullPage: true,
@@ -183,7 +172,7 @@ test("schedule change keeps original until staff approval and survives refresh",
   })
 })
 
-test("public calendar exposes pending hints without locking them, in mobile dark mode", async ({
+test("public calendar locks pending hints, in mobile dark mode", async ({
   page,
 }) => {
   await page.clock.setFixedTime(new Date(at("15:30")))
@@ -205,10 +194,10 @@ test("public calendar exposes pending hints without locking them, in mobile dark
   ).toBeEnabled()
   await expect(
     dialog.getByRole("button", { name: "17.00", exact: true })
-  ).toBeEnabled()
+  ).toBeDisabled()
   await expect(
     dialog.getByRole("button", { name: "17.00", exact: true })
-  ).toHaveAttribute("title", /Ada pengajuan/)
+  ).toHaveAttribute("title", /diajukan pengguna lain/)
   await expect(dialog).not.toContainText("Agenda lain")
   await page.screenshot({
     path: test.info().outputPath("public-mobile-dark.png"),

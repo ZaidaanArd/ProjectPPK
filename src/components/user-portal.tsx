@@ -1053,6 +1053,9 @@ export function ReservationForm({
     [availability]
   )
   const conflict = busy ? rangeIsBusy(date, startTime, endTime, busy) : false
+  const pendingConflict = availability
+    ? rangeIsBusy(date, startTime, endTime, availability.pending)
+    : false
   const elapsed =
     now === null ||
     !startTime ||
@@ -1066,6 +1069,7 @@ export function ReservationForm({
     availability?.facilityStatus === "active" &&
     endTime &&
     !conflict &&
+    !pendingConflict &&
     !elapsed
   )
 
@@ -1080,9 +1084,14 @@ export function ReservationForm({
       availability.facilityStatus !== "active" ||
       !endTime ||
       conflict ||
+      pendingConflict ||
       elapsed
     ) {
-      setMessage("Pilih rentang waktu yang tersedia terlebih dahulu.")
+      setMessage(
+        pendingConflict && !conflict
+          ? "Slot ini sedang diajukan pengguna lain. Pilih jadwal lain atau tunggu sampai tersedia."
+          : "Pilih rentang waktu yang tersedia terlebih dahulu."
+      )
       return
     }
     setMessage("")
@@ -1267,7 +1276,9 @@ export function ReservationForm({
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <p
               className={cn(
-                conflict ? "text-destructive" : "text-muted-foreground"
+                conflict || pendingConflict
+                  ? "text-destructive"
+                  : "text-muted-foreground"
               )}
             >
               {!selectedFacility
@@ -1276,11 +1287,13 @@ export function ReservationForm({
                   ? "Memuat ketersediaan jadwal…"
                   : conflict
                     ? "Rentang waktu ini sudah dipakai. Pilih jam lain."
-                    : elapsed
-                      ? RESERVATION_LEAD_MESSAGE
-                      : !endTime
-                        ? "Pilih rentang waktu yang tersedia."
-                        : "Rentang waktu tersedia untuk diajukan."}
+                    : pendingConflict
+                      ? "Slot ini sedang diajukan pengguna lain. Pilih jadwal lain atau tunggu sampai tersedia."
+                      : elapsed
+                        ? RESERVATION_LEAD_MESSAGE
+                        : !endTime
+                          ? "Pilih rentang waktu yang tersedia."
+                          : "Rentang waktu tersedia untuk diajukan."}
             </p>
           </div>
         </div>

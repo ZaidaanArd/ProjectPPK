@@ -64,20 +64,14 @@ export function SlotGridModal({
         : []),
     [facility, bookedIds, slotsOverride]
   )
-  const tersedia = slots.filter(
-    (s) => s.status === "tersedia" || s.status === "pengajuan"
-  ).length
+  const tersedia = slots.filter((s) => s.status === "tersedia").length
   const terisi = slots.filter((s) => s.status === "terisi").length
   const gallery = facility ? getGalleryPhotos(facility) : []
   const [hanyaTersedia, setHanyaTersedia] = React.useState(false)
 
   const slotTampil = React.useMemo(
     () =>
-      hanyaTersedia
-        ? slots.filter(
-            (s) => s.status === "tersedia" || s.status === "pengajuan"
-          )
-        : slots,
+      hanyaTersedia ? slots.filter((s) => s.status === "tersedia") : slots,
     [slots, hanyaTersedia]
   )
 
@@ -296,8 +290,8 @@ export function SlotGridModal({
                 className="mt-3 grid grid-cols-3 gap-1.5 sm:grid-cols-4"
               >
                 {slotTampil.map((slot) => {
-                  const bisaKlik =
-                    slot.status === "tersedia" || slot.status === "pengajuan"
+                  const bisaKlik = slot.status === "tersedia"
+                  const menunggu = slot.status === "pengajuan"
                   return (
                     <button
                       key={slot.id}
@@ -307,8 +301,8 @@ export function SlotGridModal({
                         onPilihSlot?.(facility, slot, selectedDate)
                       }
                       title={
-                        slot.status === "pengajuan"
-                          ? "Ada pengajuan, belum disetujui. Tetap dapat diajukan."
+                        menunggu
+                          ? "Sedang diajukan pengguna lain, tidak dapat dipilih. Tunggu sampai tersedia."
                           : slot.status === "batas_pengajuan"
                             ? "Pengajuan minimal 48 jam sebelum mulai"
                             : slot.status === "lewat"
@@ -321,8 +315,8 @@ export function SlotGridModal({
                       }
                       className={cn(
                         "h-9 rounded-xl border text-[11px] font-semibold tabular-nums transition-all",
-                        slot.status === "pengajuan"
-                          ? "border-amber-500/40 bg-amber-500/10 text-amber-900 hover:bg-amber-500/20 dark:text-amber-200"
+                        menunggu
+                          ? "cursor-not-allowed border-amber-500/40 bg-amber-500/10 text-amber-900/50 line-through dark:text-amber-200/50"
                           : bisaKlik
                             ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-800 hover:bg-emerald-500/20 dark:text-emerald-200"
                             : slot.status === "terkunci"
@@ -337,9 +331,9 @@ export function SlotGridModal({
               </div>
 
               <p className="mt-2 text-[11px] text-muted-foreground">
-                Tiap slot 30 menit · hijau/kuning dapat diajukan. Kuning: ada
-                pengajuan, belum disetujui. Pengajuan minimal 48 jam sebelum
-                mulai.
+                Tiap slot 30 menit · hanya hijau yang dapat diajukan. Kuning:
+                sedang diajukan pengguna lain, tidak dapat dipilih. Pengajuan
+                minimal 48 jam sebelum mulai.
               </p>
               <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
                 <span className="inline-flex items-center gap-1">
