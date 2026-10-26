@@ -1,6 +1,7 @@
 <p align="center">
   <img src="./public/brand/sthana-mark-256.png" width="112" alt="Logo Sthana Kampus" />
 </p>
+<img width="1053" height="834" alt="image" src="https://github.com/user-attachments/assets/71eb70e8-3ce1-482a-bba3-9009b0ea7420" />
 
 # Sthana Kampus
 
